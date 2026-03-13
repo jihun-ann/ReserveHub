@@ -13,10 +13,12 @@ import NavBar from "./components/NavBar.vue";
 
 <style scoped>
 .app-shell {
-  font-family: "Georgia", serif;
+  min-height: 100vh;
+  font-family: "Pretendard", "Apple SD Gothic Neo", sans-serif;
+  background: #f4f7fb;
 }
 
 .page {
-  padding: 24px;
+  padding: 20px;
 }
 </style>

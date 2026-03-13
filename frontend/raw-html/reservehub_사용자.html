@@ -1,0 +1,1099 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ReserveHub — 사용자 + 일반관리자</title>
+<link href="https://fonts.googleapis.com/css2?family=Pretendard:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #0f0f13;
+  --surface: #18181f;
+  --surface2: #21212b;
+  --border: #2e2e3a;
+  --accent: #7c6af7;
+  --accent2: #4fd1c5;
+  --accent3: #f6ad55;
+  --red: #f87171;
+  --green: #4ade80;
+  --text: #e8e8f0;
+  --text-sub: #8888a0;
+  --text-dim: #55556a;
+  --sidebar-w: 220px;
+  --sidebar-collapsed: 60px;
+  --radius: 14px;
+  --radius-sm: 8px;
+  --transition: 0.22s ease;
+}
+
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family:'Pretendard',-apple-system,sans-serif; background:var(--bg); color:var(--text); min-height:100vh; overflow-x:hidden; }
+
+/* ═══════════════════ LAYOUT ═══════════════════ */
+.app { display:flex; min-height:100vh; }
+
+/* ── Sidebar ── */
+.sidebar {
+  width: var(--sidebar-w);
+  background: var(--surface);
+  border-right: 1px solid var(--border);
+  display: flex; flex-direction: column;
+  position: fixed; top:0; left:0; height:100vh;
+  z-index: 200;
+  transition: width var(--transition);
+  overflow: hidden;
+}
+.sidebar.collapsed { width: var(--sidebar-collapsed); }
+
+.logo {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 20px 16px 20px 20px;
+  border-bottom: 1px solid var(--border);
+  min-height: 65px;
+  flex-shrink: 0;
+}
+.logo-texts { overflow:hidden; white-space:nowrap; }
+.logo-mark { font-family:'DM Mono',monospace; font-size:10px; letter-spacing:3px; color:var(--accent); text-transform:uppercase; margin-bottom:2px; }
+.logo-name  { font-size:17px; font-weight:700; }
+.sidebar.collapsed .logo-texts { display:none; }
+
+.collapse-btn {
+  width:28px; height:28px; flex-shrink:0;
+  background:var(--surface2); border:1px solid var(--border); border-radius:6px;
+  cursor:pointer; display:flex;align-items:center;justify-content:center;
+  color:var(--text-sub); font-size:13px; transition:all 0.15s;
+}
+.collapse-btn:hover { color:var(--accent); border-color:var(--accent); }
+
+.nav { padding:14px 8px; flex:1; display:flex; flex-direction:column; gap:3px; overflow:hidden; }
+.nav-item {
+  display:flex; align-items:center; gap:10px;
+  padding:11px 14px; border-radius:var(--radius-sm);
+  cursor:pointer; color:var(--text-sub); font-size:13px; font-weight:500;
+  border:none; background:none; width:100%; text-align:left;
+  transition:all 0.15s; white-space:nowrap; overflow:hidden;
+}
+.nav-item:hover { background:var(--surface2); color:var(--text); }
+.nav-item.active { background:rgba(124,106,247,0.15); color:var(--accent); }
+.nav-icon { font-size:16px; width:20px; text-align:center; flex-shrink:0; }
+.nav-label { overflow:hidden; }
+.sidebar.collapsed .nav-label { display:none; }
+.sidebar.collapsed .nav-item { justify-content:center; padding:11px; }
+
+.sidebar-footer { padding:10px 8px; border-top:1px solid var(--border); flex-shrink:0; }
+.user-pill {
+  display:flex; align-items:center; gap:10px;
+  padding:9px 10px; background:var(--surface2); border-radius:var(--radius-sm);
+  overflow:hidden; white-space:nowrap;
+}
+.sidebar.collapsed .user-pill { justify-content:center; padding:9px; }
+.sidebar.collapsed .user-info { display:none; }
+.avatar { width:30px;height:30px; background:linear-gradient(135deg,var(--accent),var(--accent2)); border-radius:50%; display:flex;align-items:center;justify-content:center; font-size:12px;font-weight:700;color:white; flex-shrink:0; }
+.user-name { font-size:13px;font-weight:600; }
+.user-role { font-size:11px;color:var(--text-sub); }
+
+/* ── Main ── */
+.main {
+  margin-left: var(--sidebar-w);
+  flex:1; padding: 36px 40px; min-height:100vh;
+  transition: margin-left var(--transition);
+}
+.sidebar.collapsed ~ .main { margin-left: var(--sidebar-collapsed); }
+
+.page { display:none; }
+.page.active { display:block; }
+
+/* hamburger mobile */
+.hamburger { display:none; position:fixed;top:14px;left:14px;z-index:300; width:36px;height:36px; background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);align-items:center;justify-content:center;cursor:pointer;font-size:16px; }
+.sidebar-overlay { display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:150; }
+
+/* ═══════════════════ COMMON ═══════════════════ */
+.page-header { margin-bottom:28px; }
+.page-label { font-family:'DM Mono',monospace;font-size:10px;letter-spacing:3px;color:var(--accent);text-transform:uppercase;margin-bottom:5px; }
+.page-title  { font-size:24px;font-weight:700; }
+.page-subtitle { font-size:13px;color:var(--text-sub);margin-top:3px; }
+
+.card { background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:22px; }
+.card-title { font-size:11px;font-weight:600;color:var(--text-sub);text-transform:uppercase;letter-spacing:1px;margin-bottom:16px; }
+
+.btn { padding:9px 18px;border-radius:var(--radius-sm);border:none;cursor:pointer;font-size:13px;font-weight:600;font-family:'Pretendard',sans-serif;transition:all 0.15s; }
+.btn-primary { background:var(--accent);color:white; }
+.btn-primary:hover { background:#6b5ce7; }
+.btn-ghost   { background:var(--surface2);color:var(--text-sub);border:1px solid var(--border); }
+.btn-ghost:hover { color:var(--text);border-color:var(--text-sub); }
+.btn-danger  { background:rgba(248,113,113,0.15);color:var(--red);border:1px solid rgba(248,113,113,0.3); }
+.btn-danger:hover { background:rgba(248,113,113,0.25); }
+.btn-sm { padding:6px 12px; font-size:12px; }
+
+/* ═══════════════════════════════════════════════
+   PAGE: 마이페이지 (수정)
+══════════════════════════════════════════════════ */
+
+/* 프로필 상단 1줄 */
+.mypage-hero {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 24px 28px;
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  margin-bottom: 24px;
+  flex-wrap: wrap;
+}
+.hero-avatar {
+  width:60px;height:60px;
+  background:linear-gradient(135deg,var(--accent),var(--accent2));
+  border-radius:50%;display:flex;align-items:center;justify-content:center;
+  font-size:24px;font-weight:700;color:white;flex-shrink:0;
+}
+.hero-identity { flex:0 0 160px; }
+.hero-name  { font-size:18px;font-weight:700; }
+.hero-email { font-size:12px;color:var(--text-sub);margin-top:3px; }
+
+.hero-divider { width:1px;height:48px;background:var(--border);flex-shrink:0; }
+
+.hero-stats { display:flex;gap:0;flex:1; }
+.hero-stat { flex:1;text-align:center;padding:0 16px; }
+.hero-stat + .hero-stat { border-left:1px solid var(--border); }
+.hstat-val { font-family:'DM Mono',monospace;font-size:20px;font-weight:500;color:var(--accent); }
+.hstat-key { font-size:10px;color:var(--text-dim);margin-top:3px; }
+
+.hero-edit { flex-shrink:0; margin-left:auto; }
+
+/* 마이페이지 본문 그리드 */
+.mypage-body { display:grid;grid-template-columns:1fr 1fr;gap:20px; }
+
+.platform-item { display:flex;align-items:flex-start;gap:12px;padding:14px;background:var(--surface2);border-radius:var(--radius-sm);border:1px solid var(--border);margin-bottom:9px; }
+.platform-item:last-child { margin-bottom:0; }
+.plat-emoji { width:40px;height:40px;background:var(--surface);border-radius:var(--radius-sm);display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0; }
+.plat-detail { flex:1; }
+.plat-name { font-size:14px;font-weight:700; }
+.plat-tag { display:inline-block;font-size:10px;padding:2px 8px;border-radius:20px;font-weight:600;margin:3px 0 5px; }
+.plat-dates { font-size:11px;color:var(--text-sub); }
+.billing-row { display:flex;align-items:center;gap:7px;margin-top:5px;flex-wrap:wrap; }
+.billing-badge { font-size:10px;padding:2px 8px;border-radius:20px;font-weight:600;background:rgba(246,173,85,0.15);color:var(--accent3); }
+.billing-date  { font-family:'DM Mono',monospace;font-size:12px;color:var(--accent3); }
+.billing-amt   { font-size:11px;color:var(--text-sub); }
+.plat-status { font-size:11px;font-weight:600;padding:3px 10px;border-radius:20px;flex-shrink:0; }
+.ps-active  { background:rgba(74,222,128,0.12);color:var(--green); }
+.ps-expired { background:rgba(248,113,113,0.12);color:var(--red); }
+
+.res-hist { display:flex;flex-direction:column;gap:7px; }
+.res-item { display:flex;align-items:center;gap:12px;padding:11px 14px;background:var(--surface2);border-radius:var(--radius-sm);border:1px solid var(--border); }
+.res-date { font-family:'DM Mono',monospace;font-size:11px;color:var(--text-dim);width:88px;flex-shrink:0; }
+.res-name { font-size:13px;flex:1; }
+.res-status { font-size:10px;padding:3px 10px;border-radius:20px;font-weight:600; }
+.rs-confirmed { background:rgba(74,222,128,0.12);color:var(--green); }
+.rs-completed { background:rgba(124,106,247,0.12);color:var(--accent); }
+.rs-canceled  { background:rgba(248,113,113,0.12);color:var(--red); }
+
+/* ═══════════════════════════════════════════════
+   ADMIN LAYOUT (별도 앱 분리 느낌)
+══════════════════════════════════════════════════ */
+.admin-wrap { display:none; }
+.admin-wrap.active { display:flex; }
+
+/* admin sidebar 색 오버라이드 */
+.admin-sidebar { --accent: #4fd1c5; }
+.admin-sidebar .logo-mark { color:var(--accent2); }
+.admin-sidebar .nav-item.active { background:rgba(79,209,197,0.15);color:var(--accent2); }
+.admin-sidebar .avatar { background:linear-gradient(135deg,var(--accent2),#667eea); }
+
+/* ═══════════════════════════════════════════════
+   ADMIN PAGE: 캘린더 (일반관리자)
+══════════════════════════════════════════════════ */
+.admin-cal-layout { display:grid;grid-template-columns:1fr 340px;gap:24px;align-items:start; }
+
+/* mini cal */
+.cal-header { display:flex;align-items:center;justify-content:space-between;margin-bottom:18px; }
+.cal-month  { font-size:19px;font-weight:700; }
+.cal-nav    { display:flex;gap:7px; }
+.cal-btn    { width:30px;height:30px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--text-sub);font-size:14px;transition:all 0.15s; }
+.cal-btn:hover { border-color:var(--accent2);color:var(--accent2); }
+
+.cal-days-header { display:grid;grid-template-columns:repeat(7,1fr);margin-bottom:5px; }
+.cal-day-label   { text-align:center;font-size:10px;font-weight:600;color:var(--text-dim);padding:5px 0;letter-spacing:1px; }
+.cal-days        { display:grid;grid-template-columns:repeat(7,1fr);gap:3px; }
+
+.cal-day {
+  aspect-ratio:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  border-radius:var(--radius-sm);cursor:pointer;position:relative;
+  transition:background 0.15s;font-size:13px;font-weight:500;gap:3px;
+}
+.cal-day:hover { background:var(--surface2); }
+.cal-day.dim    { color:var(--text-dim);cursor:default; }
+.cal-day.dim:hover { background:transparent; }
+.day-num  { line-height:1; }
+.day-dots { display:flex;gap:2px;height:4px;align-items:center; }
+.dot      { width:4px;height:4px;border-radius:50%;flex-shrink:0; }
+
+.cal-day.today .day-num {
+  background:var(--accent2);color:white;
+  width:24px;height:24px;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;
+}
+.cal-day.selected { background:rgba(79,209,197,0.15); }
+.cal-day.selected .day-num { color:var(--accent2);font-weight:700; }
+
+/* 일정 상세 */
+.day-detail { margin-top:18px;padding-top:18px;border-top:1px solid var(--border); }
+.day-detail-header { display:flex;align-items:center;justify-content:space-between;margin-bottom:12px; }
+.day-detail-title  { font-size:14px;font-weight:700; }
+.day-detail-date   { font-family:'DM Mono',monospace;font-size:11px;color:var(--text-sub); }
+.day-events { display:flex;flex-direction:column;gap:7px; }
+.day-event-item { display:flex;align-items:center;gap:12px;padding:11px 13px;background:var(--surface2);border-radius:var(--radius-sm);border-left:3px solid transparent; }
+.event-time { font-family:'DM Mono',monospace;font-size:11px;width:42px;flex-shrink:0; }
+.event-info { flex:1; }
+.event-name { font-size:13px;font-weight:600; }
+.event-sub  { font-size:11px;color:var(--text-sub);margin-top:2px; }
+.event-badge { font-size:10px;padding:2px 8px;border-radius:20px;font-weight:600;flex-shrink:0; }
+.no-event { font-size:13px;color:var(--text-dim);text-align:center;padding:18px 0; }
+
+/* 플랫폼 칩 */
+.plat-chip {
+  display:inline-flex;align-items:center;gap:4px;
+  font-size:10px;font-weight:600;padding:2px 8px;border-radius:20px;
+  border:1px solid transparent;white-space:nowrap;flex-shrink:0;
+}
+
+/* 오른쪽 패널 */
+.admin-cal-right { display:flex;flex-direction:column;gap:18px; }
+
+/* 오늘 일정 요약 카드 */
+.today-summary {
+  display:grid;grid-template-columns:repeat(3,1fr);gap:0;
+  background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);
+  overflow:hidden;margin-bottom:20px;
+}
+.summary-cell { padding:18px 14px;text-align:center; }
+.summary-cell + .summary-cell { border-left:1px solid var(--border); }
+.summary-val { font-family:'DM Mono',monospace;font-size:24px;font-weight:500; }
+.summary-key { font-size:10px;color:var(--text-dim);margin-top:3px;letter-spacing:1px; }
+
+/* 오늘 스케줄 리스트 */
+.schedule-list { display:flex;flex-direction:column;gap:9px; }
+.schedule-item {
+  background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);
+  padding:14px;display:flex;align-items:flex-start;gap:12px;
+  border-left:3px solid var(--accent2);
+  position:relative;
+}
+.sch-time { font-family:'DM Mono',monospace;font-size:12px;color:var(--accent2);width:38px;flex-shrink:0;margin-top:1px; }
+.sch-info { flex:1; }
+.sch-name { font-size:14px;font-weight:700; }
+.sch-meta { font-size:12px;color:var(--text-sub);margin-top:3px; }
+.sch-actions { display:flex;gap:6px;flex-shrink:0;flex-wrap:wrap; }
+
+/* ═══════════════════════════════════════════════
+   ADMIN PAGE: 출석 관리
+══════════════════════════════════════════════════ */
+.attend-layout { display:grid;grid-template-columns:1fr 300px;gap:24px;align-items:start; }
+
+/* 날짜/필터 바 */
+.attend-filter { display:flex;align-items:center;gap:12px;margin-bottom:20px;flex-wrap:wrap; }
+.attend-date { font-size:15px;font-weight:700;flex:1; }
+.filter-chip { padding:6px 14px;border-radius:20px;border:1px solid var(--border);background:none;color:var(--text-sub);font-size:12px;font-weight:500;cursor:pointer;font-family:'Pretendard',sans-serif;transition:all 0.15s; }
+.filter-chip.active { background:rgba(79,209,197,0.15);border-color:var(--accent2);color:var(--accent2); }
+
+/* 수강생 출석 테이블 */
+.attend-table { width:100%;border-collapse:collapse; }
+.attend-table th { font-size:11px;font-weight:600;color:var(--text-sub);text-transform:uppercase;letter-spacing:1px;padding:8px 12px;text-align:left;border-bottom:1px solid var(--border); }
+.attend-table td { padding:12px 12px;border-bottom:1px solid var(--border);font-size:13px;vertical-align:middle; }
+.attend-table tr:last-child td { border-bottom:none; }
+.attend-table tr:hover td { background:rgba(255,255,255,0.02); }
+
+.student-name { font-weight:600; }
+.student-sub  { font-size:11px;color:var(--text-sub);margin-top:1px; }
+
+.attend-toggle {
+  display:flex;gap:4px;
+}
+.atbtn {
+  padding:5px 11px;border-radius:6px;border:1px solid var(--border);
+  background:none;color:var(--text-dim);font-size:11px;font-weight:600;cursor:pointer;
+  font-family:'Pretendard',sans-serif;transition:all 0.15s;
+}
+.atbtn.present { background:rgba(74,222,128,0.15);border-color:rgba(74,222,128,0.4);color:var(--green); }
+.atbtn.absent  { background:rgba(248,113,113,0.15);border-color:rgba(248,113,113,0.4);color:var(--red); }
+.atbtn.late    { background:rgba(246,173,85,0.15);border-color:rgba(246,173,85,0.4);color:var(--accent3); }
+
+/* 통계 사이드 */
+.attend-stats { display:flex;flex-direction:column;gap:14px; }
+.stat-row { display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--border); }
+.stat-row:last-child { border-bottom:none; }
+.stat-label { font-size:13px;color:var(--text-sub); }
+.stat-value { font-family:'DM Mono',monospace;font-size:14px;font-weight:500; }
+
+/* ═══════════════════════════════════════════════
+   ADMIN PAGE: 일정 변경 요청
+══════════════════════════════════════════════════ */
+.request-list { display:flex;flex-direction:column;gap:12px; }
+.request-card {
+  background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:18px;
+}
+.req-header { display:flex;align-items:center;justify-content:space-between;margin-bottom:12px; }
+.req-title  { font-size:14px;font-weight:700; }
+.req-status-badge { font-size:11px;padding:3px 10px;border-radius:20px;font-weight:600; }
+.rs-pending  { background:rgba(246,173,85,0.15);color:var(--accent3); }
+.rs-approved { background:rgba(74,222,128,0.12);color:var(--green); }
+.rs-rejected { background:rgba(248,113,113,0.12);color:var(--red); }
+
+.req-body { display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px; }
+.req-field { background:var(--surface2);border-radius:var(--radius-sm);padding:10px 12px; }
+.req-field-label { font-size:10px;color:var(--text-dim);letter-spacing:1px;text-transform:uppercase;margin-bottom:4px; }
+.req-field-val   { font-size:13px;font-weight:600; }
+.req-reason { background:var(--surface2);border-radius:var(--radius-sm);padding:10px 12px;margin-bottom:14px; }
+.req-reason-text { font-size:13px;color:var(--text-sub);line-height:1.5; }
+
+.req-actions { display:flex;gap:8px;justify-content:flex-end; }
+
+/* 새 요청 폼 */
+.request-form { background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:22px;margin-bottom:20px; }
+.form-grid { display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px; }
+.form-field label { display:block;font-size:11px;color:var(--text-sub);margin-bottom:6px;letter-spacing:1px;text-transform:uppercase; }
+.form-field input,
+.form-field select,
+.form-field textarea {
+  width:100%;padding:10px 12px;
+  background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);
+  color:var(--text);font-size:13px;font-family:'Pretendard',sans-serif;
+  outline:none;transition:border 0.15s;
+}
+.form-field input:focus,
+.form-field select:focus,
+.form-field textarea:focus { border-color:var(--accent2); }
+.form-field textarea { resize:vertical;min-height:72px; }
+.form-field select option { background:var(--surface2); }
+
+/* ═══════════════════ RESPONSIVE ═══════════════════ */
+@media (max-width:1100px) {
+  .admin-cal-layout { grid-template-columns:1fr; }
+  .admin-cal-right { display:grid;grid-template-columns:1fr 1fr;gap:18px; }
+  .attend-layout { grid-template-columns:1fr; }
+  .mypage-body { grid-template-columns:1fr; }
+}
+
+@media (max-width:768px) {
+  .sidebar { transform:translateX(-100%);width:220px !important; }
+  .sidebar.open { transform:translateX(0); }
+  .sidebar-overlay.open { display:block; }
+  .hamburger { display:flex; }
+  .main, .admin-main { margin-left:0 !important; padding:60px 16px 24px; }
+  .admin-cal-right { grid-template-columns:1fr; }
+  .today-summary  { grid-template-columns:1fr 1fr; }
+  .form-grid, .req-body { grid-template-columns:1fr; }
+  .mypage-hero { flex-direction:column;align-items:flex-start; }
+  .hero-divider { display:none; }
+  .hero-stats { width:100%;flex-wrap:wrap; }
+  .hero-stat { flex:0 0 50%; border:none;border-bottom:1px solid var(--border);padding:8px 0; }
+  .hero-edit { margin-left:0; }
+}
+
+/* ── 레이아웃 깨짐 수정 ── */
+
+/* 출석 테이블 가로 스크롤 */
+.attend-table-wrap {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+.attend-table {
+  min-width: 560px;
+}
+
+/* 요청 폼 / 카드 최소 너비 보호 */
+.request-form,
+.request-card {
+  min-width: 0;
+  overflow: hidden;
+}
+
+/* form-grid 최소 너비 깨짐 방지 */
+.form-grid {
+  min-width: 0;
+}
+.form-field input,
+.form-field select,
+.form-field textarea {
+  min-width: 0;
+  max-width: 100%;
+}
+
+/* req-body 카드 내부 텍스트 말줄임 */
+.req-field-val {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 타임라인 모바일 */
+@media (max-width: 600px) {
+  .form-grid  { grid-template-columns: 1fr; }
+  .req-body   { grid-template-columns: 1fr; }
+  .mypage-body { grid-template-columns: 1fr; }
+}
+
+
+/* ══ 슈퍼관리자 전용 ══ */
+.super-sidebar .nav-item.active { background:rgba(246,173,85,0.15);color:#f6ad55; }
+.super-sidebar .collapse-btn:hover { border-color:#f6ad55;color:#f6ad55; }
+
+.plat-tab {
+  padding:11px 18px;border:none;background:none;color:var(--text-sub);
+  font-size:13px;font-weight:500;cursor:pointer;font-family:'Pretendard',sans-serif;
+  border-bottom:2px solid transparent;white-space:nowrap;transition:all 0.15s;flex-shrink:0;
+}
+.plat-tab:hover { color:var(--text); }
+.plat-tab.active { color:#f6ad55;border-bottom-color:#f6ad55; }
+
+.platform-list-item { transition:background 0.15s; }
+.platform-list-item:hover { background:var(--surface2); }
+.platform-list-item.active { background:rgba(124,106,247,0.08)!important; }
+
+@media(max-width:900px) {
+  #super-platforms > div > div:first-child { display:none; }
+  #super-platforms > div { grid-template-columns:1fr; }
+}
+@media(max-width:768px) {
+  .today-summary { grid-template-columns:1fr 1fr; }
+}
+
+
+/* ══ 서브슈퍼관리자 전용 ══ */
+.subsup-sidebar .nav-item.active { background:rgba(79,209,197,0.15); color:#4fd1c5; }
+.subsup-sidebar .collapse-btn:hover { border-color:#4fd1c5; color:#4fd1c5; }
+.subsup-plat-tab { transition: all 0.15s; }
+.subsup-plat-tab:hover { background: var(--surface2) !important; }
+.subsup-plat-tab.active { background: rgba(124,106,247,0.15) !important; }
+
+
+  /* ══ USER: 캘린더 ══ */
+  .calendar-grid { display:grid; grid-template-columns:1fr 340px; gap:24px; }
+  .cal-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:20px; }
+  .cal-month { font-size:18px; font-weight:700; }
+  .cal-nav { display:flex; gap:8px; }
+  .cal-btn { width:32px; height:32px; background:var(--surface2); border:1px solid var(--border); border-radius:var(--radius-sm); cursor:pointer; display:flex; align-items:center; justify-content:center; color:var(--text-sub); font-size:14px; transition:all 0.15s; }
+  .cal-btn:hover { border-color:var(--accent); color:var(--accent); }
+  .cal-days-header { display:grid; grid-template-columns:repeat(7,1fr); margin-bottom:8px; }
+  .cal-day-label { text-align:center; font-size:11px; font-weight:600; color:var(--text-dim); padding:6px 0; letter-spacing:1px; }
+  .cal-days { display:grid; grid-template-columns:repeat(7,1fr); gap:4px; }
+  .cal-day { aspect-ratio:1; display:flex; flex-direction:column; align-items:center; justify-content:center; border-radius:var(--radius-sm); cursor:pointer; position:relative; transition:background 0.15s; font-size:14px; font-weight:500; }
+  .cal-day:hover { background:var(--surface2); }
+  .cal-day.today { background:rgba(124,106,247,0.18); color:var(--accent); font-weight:700; }
+  .cal-day.today::after { content:''; position:absolute; bottom:6px; width:4px; height:4px; background:var(--accent); border-radius:50%; }
+  .cal-day.has-lesson::after { content:''; position:absolute; bottom:6px; width:4px; height:4px; background:var(--accent2); border-radius:50%; }
+  .cal-day.today.has-lesson::after { background:var(--accent3); }
+  .cal-day.dim { color:var(--text-dim); }
+  .cal-day.selected { background:rgba(124,106,247,0.3); color:var(--text); }
+  .cal-right { display:flex; flex-direction:column; gap:20px; }
+  .today-lessons { display:flex; flex-direction:column; gap:10px; }
+  .lesson-item { display:flex; align-items:center; gap:12px; padding:12px 14px; background:var(--surface2); border-radius:var(--radius-sm); border-left:3px solid var(--accent2); }
+  .lesson-time { font-family:monospace; font-size:12px; color:var(--accent2); width:40px; flex-shrink:0; }
+  .lesson-info { flex:1; }
+  .lesson-name { font-size:13px; font-weight:600; }
+  .lesson-place { font-size:11px; color:var(--text-sub); margin-top:2px; }
+  .lesson-badge { font-size:10px; padding:2px 8px; border-radius:20px; font-weight:600; background:rgba(74,222,128,0.15); color:var(--confirmed); }
+  .timer-display { text-align:center; padding:28px 20px; }
+  .timer-type-selector { display:flex; gap:8px; justify-content:center; margin-bottom:20px; }
+  .type-btn { padding:6px 14px; border-radius:20px; border:1px solid var(--border); background:none; color:var(--text-sub); font-size:12px; cursor:pointer; font-family:'Pretendard',sans-serif; transition:all 0.15s; }
+  .type-btn.active { background:rgba(124,106,247,0.2); border-color:var(--accent); color:var(--accent); }
+  .timer-digits { font-family:monospace; font-size:52px; font-weight:500; letter-spacing:4px; color:var(--text); margin-bottom:8px; line-height:1; }
+  .timer-label { font-size:11px; color:var(--text-dim); letter-spacing:2px; margin-bottom:24px; }
+  .timer-btns { display:flex; gap:10px; justify-content:center; }
+  .timer-today-record { margin-top:16px; padding-top:16px; border-top:1px solid var(--border); display:flex; justify-content:center; gap:24px; }
+  .record-item { text-align:center; }
+  .record-val { font-family:monospace; font-size:16px; font-weight:500; color:var(--accent2); }
+  .record-key { font-size:10px; color:var(--text-dim); margin-top:2px; }
+  .history-list { display:flex; flex-direction:column; gap:8px; }
+  .history-item { display:flex; align-items:center; gap:12px; padding:10px 0; border-bottom:1px solid var(--border); }
+  .history-item:last-child { border-bottom:none; }
+  .history-dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
+  .history-date { font-family:monospace; font-size:11px; color:var(--text-dim); width:90px; flex-shrink:0; }
+  .history-name { font-size:13px; flex:1; }
+  .history-duration { font-size:11px; color:var(--text-sub); }
+  @keyframes userPulse { 0%,100%{opacity:1}50%{opacity:0.3} }
+  .timer-running .timer-digits { color:var(--accent2); }
+
+  /* ══ USER: 예약 ══ */
+  .reservation-layout { display:grid; grid-template-columns:1fr 300px; gap:24px; }
+  .filter-bar { display:flex; gap:8px; margin-bottom:20px; flex-wrap:wrap; }
+  .filter-chip { padding:7px 16px; border-radius:20px; border:1px solid var(--border); background:none; color:var(--text-sub); font-size:12px; font-weight:500; cursor:pointer; font-family:'Pretendard',sans-serif; transition:all 0.15s; }
+  .filter-chip.active { background:rgba(124,106,247,0.2); border-color:var(--accent); color:var(--accent); }
+  .program-list { display:flex; flex-direction:column; gap:12px; }
+  .program-card { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:18px 20px; display:flex; align-items:center; gap:16px; cursor:pointer; transition:all 0.15s; }
+  .program-card:hover { border-color:var(--accent); }
+  .program-card.selected { border-color:var(--accent); background:rgba(124,106,247,0.06); }
+  .program-icon { width:44px; height:44px; border-radius:10px; display:flex; align-items:center; justify-content:center; font-size:20px; flex-shrink:0; }
+  .program-info { flex:1; }
+  .program-name { font-size:15px; font-weight:600; }
+  .program-meta { font-size:12px; color:var(--text-sub); margin-top:3px; }
+  .program-type-badge { font-size:10px; padding:3px 10px; border-radius:20px; font-weight:600; flex-shrink:0; }
+  .badge-group { background:rgba(124,106,247,0.15); color:var(--accent); }
+  .badge-private { background:rgba(79,209,197,0.15); color:var(--accent2); }
+  .badge-room { background:rgba(246,173,85,0.15); color:var(--accent3); }
+  .slot-panel { position:sticky; top:24px; }
+  .slot-date-header { font-size:15px; font-weight:700; margin-bottom:16px; }
+  .slot-date-sub { font-size:12px; color:var(--text-sub); font-weight:400; }
+  .slot-list { display:flex; flex-direction:column; gap:8px; margin-bottom:16px; }
+  .slot-item { display:flex; align-items:center; gap:12px; padding:12px 14px; background:var(--surface2); border-radius:var(--radius-sm); border:1px solid var(--border); cursor:pointer; transition:all 0.15s; }
+  .slot-item:hover { border-color:var(--accent); }
+  .slot-item.selected-slot { border-color:var(--accent); background:rgba(124,106,247,0.12); }
+  .slot-item.full { opacity:0.4; cursor:not-allowed; }
+  .slot-time { font-family:monospace; font-size:13px; color:var(--text); width:90px; flex-shrink:0; }
+  .slot-capacity { flex:1; }
+  .capacity-bar-bg { height:4px; background:var(--border); border-radius:2px; overflow:hidden; margin-bottom:3px; }
+  .capacity-bar { height:100%; background:var(--accent2); border-radius:2px; }
+  .capacity-text { font-size:10px; color:var(--text-dim); }
+  .slot-status { font-size:10px; font-weight:600; }
+  .status-open { color:var(--confirmed); }
+  .status-full { color:var(--canceled); }
+  .confirm-section { padding:16px; background:var(--surface2); border-radius:var(--radius-sm); border:1px solid var(--border); margin-top:16px; }
+  .confirm-row { display:flex; justify-content:space-between; font-size:13px; margin-bottom:8px; }
+  .confirm-label { color:var(--text-sub); }
+  .confirm-val { font-weight:600; }
+  .btn-confirm { width:100%; padding:12px; background:var(--accent); color:white; border:none; border-radius:var(--radius-sm); font-size:14px; font-weight:700; cursor:pointer; margin-top:14px; font-family:'Pretendard',sans-serif; transition:background 0.15s; }
+  .btn-confirm:hover { background:#6b5ce7; }
+
+  /* ══ USER: 마이페이지 ══ */
+  .mypage-grid { display:grid; grid-template-columns:280px 1fr; gap:24px; }
+  .profile-card { text-align:center; padding:32px 24px; }
+  .profile-avatar { width:72px; height:72px; background:linear-gradient(135deg,var(--accent),var(--accent2)); border-radius:50%; margin:0 auto 14px; display:flex; align-items:center; justify-content:center; font-size:28px; font-weight:700; color:white; }
+  .profile-name { font-size:18px; font-weight:700; margin-bottom:4px; }
+  .profile-email { font-size:13px; color:var(--text-sub); margin-bottom:18px; }
+  .profile-stats { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:20px; }
+  .stat-box { background:var(--surface2); border-radius:var(--radius-sm); padding:12px 10px; text-align:center; }
+  .stat-val { font-family:monospace; font-size:20px; font-weight:500; color:var(--accent); }
+  .stat-key { font-size:10px; color:var(--text-dim); margin-top:2px; }
+  .btn-edit-profile { width:100%; padding:10px; background:var(--surface2); border:1px solid var(--border); border-radius:var(--radius-sm); color:var(--text-sub); font-size:13px; cursor:pointer; font-family:'Pretendard',sans-serif; transition:all 0.15s; }
+  .btn-edit-profile:hover { color:var(--text); border-color:var(--text-sub); }
+  .mypage-right { display:flex; flex-direction:column; gap:20px; }
+  .platform-item { display:flex; align-items:flex-start; gap:14px; padding:16px; background:var(--surface2); border-radius:var(--radius-sm); border:1px solid var(--border); margin-bottom:10px; }
+  .platform-item:last-child { margin-bottom:0; }
+  .platform-emoji { font-size:24px; width:44px; height:44px; background:var(--surface); border-radius:var(--radius-sm); display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+  .platform-detail { flex:1; }
+  .platform-name-label { font-size:14px; font-weight:700; }
+  .platform-type-tag { display:inline-block; font-size:10px; padding:2px 8px; border-radius:20px; margin:4px 0 6px; font-weight:600; }
+  .platform-dates { font-size:12px; color:var(--text-sub); }
+  .billing-info { display:flex; align-items:center; gap:8px; margin-top:6px; }
+  .billing-badge { font-size:10px; padding:2px 8px; border-radius:20px; font-weight:600; background:rgba(246,173,85,0.15); color:var(--accent3); }
+  .billing-date { font-family:monospace; font-size:12px; color:var(--accent3); }
+  .platform-status-badge { flex-shrink:0; font-size:11px; font-weight:600; padding:4px 10px; border-radius:20px; }
+  .ps-active { background:rgba(74,222,128,0.12); color:var(--confirmed); }
+  .ps-expired { background:rgba(248,113,113,0.12); color:var(--canceled); }
+  .reservation-history { display:flex; flex-direction:column; gap:8px; }
+  .res-item { display:flex; align-items:center; gap:14px; padding:12px 16px; background:var(--surface2); border-radius:var(--radius-sm); border:1px solid var(--border); }
+  .res-date { font-family:monospace; font-size:11px; color:var(--text-dim); width:100px; flex-shrink:0; }
+  .res-name { font-size:13px; flex:1; }
+  .res-status { font-size:10px; padding:3px 10px; border-radius:20px; font-weight:600; }
+  .rs-confirmed { background:rgba(74,222,128,0.12); color:var(--confirmed); }
+  .rs-completed { background:rgba(124,106,247,0.12); color:var(--accent); }
+  .rs-canceled { background:rgba(248,113,113,0.12); color:var(--canceled); }
+
+  @media(max-width:900px) {
+    .calendar-grid { grid-template-columns:1fr; }
+    .reservation-layout { grid-template-columns:1fr; }
+    .mypage-grid { grid-template-columns:1fr; }
+    .slot-panel { position:static; }
+  }
+</style>
+</head>
+<body>
+id="user-app">
+  <button class="hamburger" onclick="toggleSidebar('user-sidebar','user-overlay')">☰</button>
+  <div class="sidebar-overlay" id="user-overlay" onclick="toggleSidebar('user-sidebar','user-overlay')"></div>
+
+  <nav class="sidebar" id="user-sidebar">
+    <div class="logo">
+      <div class="logo-texts">
+        <div class="logo-mark">Platform</div>
+        <div class="logo-name">ReserveHub</div>
+      </div>
+      <button class="collapse-btn" onclick="collapseSidebar('user-sidebar','user-main')">◀</button>
+    </div>
+    <div class="nav">
+      <button class="nav-item active" onclick="showPage('calendar',this,'user-sidebar')"><span class="nav-icon">📅</span><span class="nav-label">캘린더</span></button>
+      <button class="nav-item" onclick="showPage('reservation',this,'user-sidebar')"><span class="nav-icon">🎯</span><span class="nav-label">예약하기</span></button>
+      <button class="nav-item" onclick="showPage('mypage',this,'user-sidebar')"><span class="nav-icon">👤</span><span class="nav-label">마이페이지</span></button>
+    </div>
+    <div class="sidebar-footer">
+      <div class="user-pill">
+        <div class="avatar">김</div>
+        <div class="user-info">
+          <div class="user-name">김지수</div>
+          <div class="user-role">일반 회원</div>
+        </div>
+      </div>
+    </div>
+  </nav>
+
+  <main class="main" id="user-main">
+
+    <!-- ── 마이페이지 ── -->
+    <div id="page-mypage" class="page">
+      <div class="page-header">
+        <div class="page-label">My Page</div>
+        <div class="page-title">마이페이지</div>
+        <div class="page-subtitle">내 정보와 등록된 플랫폼을 한눈에 확인하세요</div>
+      </div>
+
+      <!-- 프로필 1줄 히어로 -->
+      <div class="mypage-hero">
+        <div class="hero-avatar">김</div>
+        <div class="hero-identity">
+          <div class="hero-name">김지수</div>
+          <div class="hero-email"><a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="f69c9f8583d89d9f9bb6939b979f9ad895999b">[email&#160;protected]</a></div>
+        </div>
+        <div class="hero-divider"></div>
+        <div class="hero-stats">
+          <div class="hero-stat">
+            <div class="hstat-val">32</div>
+            <div class="hstat-key">총 레슨 횟수</div>
+          </div>
+          <div class="hero-stat">
+            <div class="hstat-val">2</div>
+            <div class="hstat-key">활성 플랫폼</div>
+          </div>
+          <div class="hero-stat">
+            <div class="hstat-val">47h</div>
+            <div class="hstat-key">누적 타이머</div>
+          </div>
+          <div class="hero-stat">
+            <div class="hstat-val">5</div>
+            <div class="hstat-key">이번 달 횟수</div>
+          </div>
+        </div>
+        <button class="btn btn-ghost hero-edit btn-sm">✏️ 정보 수정</button>
+      </div>
+
+      <!-- 본문 2컬럼 -->
+      <div class="mypage-body">
+        <div class="card">
+          <div class="card-title">등록된 플랫폼</div>
+          <div class="platform-item">
+            <div class="plat-emoji">🤸</div>
+            <div class="plat-detail">
+              <div class="plat-name">스튜디오 필라테스 강남</div>
+              <span class="plat-tag" style="background:rgba(124,106,247,0.15);color:var(--accent)">필라테스</span>
+              <div class="plat-dates">등록일 2025.10.01</div>
+              <div class="billing-row">
+                <span class="billing-badge">다음 결제</span>
+                <span class="billing-date">2026.03.01</span>
+                <span class="billing-amt">/ 월 95,000원</span>
+              </div>
+            </div>
+            <span class="plat-status ps-active">이용 중</span>
+          </div>
+          <div class="platform-item">
+            <div class="plat-emoji">🎵</div>
+            <div class="plat-detail">
+              <div class="plat-name">뮤직하우스 홍대</div>
+              <span class="plat-tag" style="background:rgba(246,173,85,0.15);color:var(--accent3)">음악</span>
+              <div class="plat-dates">등록일 2025.12.15</div>
+              <div class="billing-row">
+                <span class="billing-badge">다음 결제</span>
+                <span class="billing-date">2026.03.15</span>
+                <span class="billing-amt">/ 월 50,000원</span>
+              </div>
+            </div>
+            <span class="plat-status ps-active">이용 중</span>
+          </div>
+          <div class="platform-item" style="opacity:0.5">
+            <div class="plat-emoji">🧘</div>
+            <div class="plat-detail">
+              <div class="plat-name">요가라운지 홍대</div>
+              <span class="plat-tag" style="background:rgba(79,209,197,0.15);color:var(--accent2)">요가</span>
+              <div class="plat-dates">2025.03.01 – 2025.08.31</div>
+            </div>
+            <span class="plat-status ps-expired">만료</span>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">최근 예약 이력</div>
+          <div class="res-hist">
+            <div class="res-item"><div class="res-date">02.26 10:00</div><div class="res-name">필라테스 그룹반 A</div><span class="res-status rs-confirmed">예약됨</span></div>
+            <div class="res-item"><div class="res-date">02.20 10:00</div><div class="res-name">필라테스 그룹반 A</div><span class="res-status rs-completed">완료</span></div>
+            <div class="res-item"><div class="res-date">02.18 14:00</div><div class="res-name">1번 연습실</div><span class="res-status rs-completed">완료</span></div>
+            <div class="res-item"><div class="res-date">02.10 14:00</div><div class="res-name">1번 연습실</div><span class="res-status rs-canceled">취소됨</span></div>
+            <div class="res-item"><div class="res-date">02.05 10:00</div><div class="res-name">필라테스 그룹반 A</div><span class="res-status rs-completed">완료</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ 캘린더 ══ -->
+    <div id="page-calendar" class="page active">
+      <div class="page-header">
+        <div class="page-label">Calendar</div>
+        <div class="page-title">내 캘린더</div>
+        <div class="page-subtitle">레슨 이력과 오늘의 일정을 확인하세요</div>
+      </div>
+      <div class="calendar-grid">
+        <!-- 달력 -->
+        <div class="card">
+          <div class="cal-header">
+            <span class="cal-month" id="userCalMonth">2026년 3월</span>
+            <div class="cal-nav">
+              <button class="cal-btn" onclick="userCalNav(-1)">‹</button>
+              <button class="cal-btn" onclick="userCalNav(1)">›</button>
+            </div>
+          </div>
+          <div class="cal-days-header">
+            <div class="cal-day-label">일</div><div class="cal-day-label">월</div>
+            <div class="cal-day-label">화</div><div class="cal-day-label">수</div>
+            <div class="cal-day-label">목</div><div class="cal-day-label">금</div>
+            <div class="cal-day-label">토</div>
+          </div>
+          <div class="cal-days" id="userCalDays"></div>
+          <div style="display:flex;gap:16px;margin-top:16px;padding-top:14px;border-top:1px solid var(--border);">
+            <div style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--text-sub);">
+              <span style="display:inline-block;width:8px;height:8px;background:var(--accent);border-radius:50%;"></span> 오늘
+            </div>
+            <div style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--text-sub);">
+              <span style="display:inline-block;width:8px;height:8px;background:var(--accent2);border-radius:50%;"></span> 레슨/예약
+            </div>
+            <div style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--text-sub);">
+              <span style="display:inline-block;width:8px;height:8px;background:var(--accent3);border-radius:50%;"></span> 오늘 레슨 있음
+            </div>
+          </div>
+        </div>
+
+        <!-- 오른쪽 패널 -->
+        <div class="cal-right">
+          <!-- 오늘 레슨 -->
+          <div class="card">
+            <div class="card-title">오늘 레슨</div>
+            <div class="today-lessons">
+              <div class="lesson-item">
+                <div class="lesson-time">10:00</div>
+                <div class="lesson-info">
+                  <div class="lesson-name">필라테스 그룹반 A</div>
+                  <div class="lesson-place">스튜디오 필라테스 강남점</div>
+                </div>
+                <div class="lesson-badge">예약됨</div>
+              </div>
+              <div class="lesson-item" style="border-left-color:var(--accent3);">
+                <div class="lesson-time" style="color:var(--accent3);">14:00</div>
+                <div class="lesson-info">
+                  <div class="lesson-name">1번 연습실</div>
+                  <div class="lesson-place">뮤직하우스 홍대점</div>
+                </div>
+                <div class="lesson-badge">예약됨</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 타이머 -->
+          <div class="card">
+            <div class="card-title">운동 · 연습 타이머</div>
+            <div class="timer-display" id="userTimerDisplay">
+              <div class="timer-type-selector">
+                <button class="type-btn active" onclick="setTimerType(this,'운동')">🏋️ 운동</button>
+                <button class="type-btn" onclick="setTimerType(this,'스트레칭')">🧘 스트레칭</button>
+                <button class="type-btn" onclick="setTimerType(this,'연습')">🎵 연습</button>
+              </div>
+              <div class="timer-digits" id="timerDigits">00:00:00</div>
+              <div class="timer-label">ELAPSED TIME</div>
+              <div class="timer-btns">
+                <button class="action-btn" id="timerToggleBtn" onclick="toggleTimer()" style="background:var(--accent);color:white;border:none;padding:10px 22px;border-radius:var(--radius-sm);font-size:13px;font-weight:600;cursor:pointer;font-family:'Pretendard',sans-serif;">시작</button>
+                <button class="action-btn" onclick="resetTimer()" style="background:var(--surface2);color:var(--text-sub);border:1px solid var(--border);padding:10px 22px;border-radius:var(--radius-sm);font-size:13px;font-weight:600;cursor:pointer;font-family:'Pretendard',sans-serif;">초기화</button>
+              </div>
+              <div class="timer-today-record">
+                <div class="record-item"><div class="record-val" id="todayTotal">01:42</div><div class="record-key">오늘 총 시간</div></div>
+                <div class="record-item"><div class="record-val">3</div><div class="record-key">이번 달 기록</div></div>
+                <div class="record-item"><div class="record-val">12</div><div class="record-key">누적 세션</div></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 최근 이력 -->
+          <div class="card">
+            <div class="card-title">최근 이력</div>
+            <div class="history-list">
+              <div class="history-item">
+                <div class="history-dot" style="background:var(--accent2)"></div>
+                <div class="history-date">03.07 10:00</div>
+                <div class="history-name">필라테스 그룹반 A</div>
+                <div class="history-duration">60분</div>
+              </div>
+              <div class="history-item">
+                <div class="history-dot" style="background:var(--accent3)"></div>
+                <div class="history-date">03.05 14:00</div>
+                <div class="history-name">연습실 자율 연습</div>
+                <div class="history-duration">90분</div>
+              </div>
+              <div class="history-item">
+                <div class="history-dot" style="background:var(--accent)"></div>
+                <div class="history-date">03.03 10:00</div>
+                <div class="history-name">필라테스 그룹반 A</div>
+                <div class="history-duration">60분</div>
+              </div>
+              <div class="history-item">
+                <div class="history-dot" style="background:var(--accent3)"></div>
+                <div class="history-date">02.28 13:00</div>
+                <div class="history-name">개인 운동 타이머</div>
+                <div class="history-duration">45분</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ 예약하기 ══ -->
+    <div id="page-reservation" class="page">
+      <div class="page-header">
+        <div class="page-label">Reservation</div>
+        <div class="page-title">예약하기</div>
+        <div class="page-subtitle">원하는 프로그램과 시간대를 선택하세요</div>
+      </div>
+      <div class="reservation-layout">
+        <div>
+          <!-- 필터 -->
+          <div class="filter-bar">
+            <button class="filter-chip active" onclick="filterToggle(this)">전체</button>
+            <button class="filter-chip" onclick="filterToggle(this)">🤸 필라테스</button>
+            <button class="filter-chip" onclick="filterToggle(this)">🧘 요가</button>
+            <button class="filter-chip" onclick="filterToggle(this)">🎵 음악</button>
+            <button class="filter-chip" onclick="filterToggle(this)">🏋️ 헬스</button>
+          </div>
+          <!-- 프로그램 목록 -->
+          <div class="program-list">
+            <div class="program-card selected" onclick="selectProgram(this)">
+              <div class="program-icon" style="background:rgba(124,106,247,0.15);">🤸</div>
+              <div class="program-info">
+                <div class="program-name">필라테스 그룹반 A</div>
+                <div class="program-meta">스튜디오 필라테스 강남 · 60분 · 최대 8명</div>
+              </div>
+              <span class="program-type-badge badge-group">그룹 레슨</span>
+            </div>
+            <div class="program-card" onclick="selectProgram(this)">
+              <div class="program-icon" style="background:rgba(79,209,197,0.15);">🤸</div>
+              <div class="program-info">
+                <div class="program-name">필라테스 1:1 개인레슨</div>
+                <div class="program-meta">스튜디오 필라테스 강남 · 50분 · 개인</div>
+              </div>
+              <span class="program-type-badge badge-private">개인 레슨</span>
+            </div>
+            <div class="program-card" onclick="selectProgram(this)">
+              <div class="program-icon" style="background:rgba(124,106,247,0.15);">🧘</div>
+              <div class="program-info">
+                <div class="program-name">요가 기초반</div>
+                <div class="program-meta">요가라운지 홍대 · 60분 · 최대 10명</div>
+              </div>
+              <span class="program-type-badge badge-group">그룹 레슨</span>
+            </div>
+            <div class="program-card" onclick="selectProgram(this)">
+              <div class="program-icon" style="background:rgba(246,173,85,0.15);">🎵</div>
+              <div class="program-info">
+                <div class="program-name">1번 연습실</div>
+                <div class="program-meta">뮤직하우스 홍대 · 60분 단위 · 개인/팀</div>
+              </div>
+              <span class="program-type-badge badge-room">공간 예약</span>
+            </div>
+            <div class="program-card" onclick="selectProgram(this)">
+              <div class="program-icon" style="background:rgba(246,173,85,0.15);">🎸</div>
+              <div class="program-info">
+                <div class="program-name">2번 연습실 (드럼)</div>
+                <div class="program-meta">뮤직하우스 홍대 · 60분 단위 · 개인/팀</div>
+              </div>
+              <span class="program-type-badge badge-room">공간 예약</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- 슬롯 선택 패널 -->
+        <div class="slot-panel">
+          <div class="card">
+            <div class="slot-date-header">
+              2026년 3월 10일 <span class="slot-date-sub">화요일</span>
+            </div>
+            <div class="slot-list">
+              <div class="slot-item full">
+                <div class="slot-time">09:00 – 10:00</div>
+                <div class="slot-capacity">
+                  <div class="capacity-bar-bg"><div class="capacity-bar" style="width:100%"></div></div>
+                  <div class="capacity-text">8 / 8명</div>
+                </div>
+                <span class="slot-status status-full">마감</span>
+              </div>
+              <div class="slot-item selected-slot" onclick="selectSlot(this)">
+                <div class="slot-time">10:00 – 11:00</div>
+                <div class="slot-capacity">
+                  <div class="capacity-bar-bg"><div class="capacity-bar" style="width:62%"></div></div>
+                  <div class="capacity-text">5 / 8명</div>
+                </div>
+                <span class="slot-status status-open">예약 가능</span>
+              </div>
+              <div class="slot-item" onclick="selectSlot(this)">
+                <div class="slot-time">14:00 – 15:00</div>
+                <div class="slot-capacity">
+                  <div class="capacity-bar-bg"><div class="capacity-bar" style="width:25%"></div></div>
+                  <div class="capacity-text">2 / 8명</div>
+                </div>
+                <span class="slot-status status-open">예약 가능</span>
+              </div>
+              <div class="slot-item" onclick="selectSlot(this)">
+                <div class="slot-time">16:00 – 17:00</div>
+                <div class="slot-capacity">
+                  <div class="capacity-bar-bg"><div class="capacity-bar" style="width:87%"></div></div>
+                  <div class="capacity-text">7 / 8명</div>
+                </div>
+                <span class="slot-status status-open">예약 가능</span>
+              </div>
+              <div class="slot-item full">
+                <div class="slot-time">18:00 – 19:00</div>
+                <div class="slot-capacity">
+                  <div class="capacity-bar-bg"><div class="capacity-bar" style="width:100%"></div></div>
+                  <div class="capacity-text">8 / 8명</div>
+                </div>
+                <span class="slot-status status-full">마감</span>
+              </div>
+            </div>
+            <div class="confirm-section">
+              <div class="confirm-row"><span class="confirm-label">프로그램</span><span class="confirm-val">필라테스 그룹반 A</span></div>
+              <div class="confirm-row"><span class="confirm-label">일시</span><span class="confirm-val">3.10 10:00</span></div>
+              <div class="confirm-row" style="margin-bottom:0;"><span class="confirm-label">잔여석</span><span class="confirm-val" style="color:var(--accent2);">3석</span></div>
+              <button class="btn-confirm" onclick="alert('예약이 완료되었습니다!')">예약 확정하기</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- ══════════════════════════════════════════════════
+     ADMIN MODE (일반관리자)
+══════════════════════════════════════════════════ -->
+<div class="app" 
+<script>
+// ReserveHub — 사용자
+// ──────────────────────────────
+
+window.collapseSidebar = function(sidebarId) {
+  const s = document.getElementById(sidebarId);
+  s.classList.toggle('collapsed');
+  s.querySelector('.collapse-btn').textContent = s.classList.contains('collapsed') ? '▶' : '◀';
+};
+
+window.toggleSidebar = function(sidebarId, overlayId) {
+  document.getElementById(sidebarId).classList.toggle('open');
+  document.getElementById(overlayId).classList.toggle('open');
+};
+
+window.showPage = function(name, el, sidebarId) {
+  document.querySelectorAll('#user-app .page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('#' + sidebarId + ' .nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('page-' + name).classList.add('active');
+  el.classList.add('active');
+  if (window.innerWidth <= 768) document.getElementById(sidebarId).classList.remove('open');
+};
+
+(function() {
+  let userCalYear = 2026, userCalMonth = 3;
+  const lessonDays = [3, 5, 7, 10, 14, 17, 21, 24];
+
+  function renderUserCal() {
+    const days = document.getElementById('userCalDays');
+    if (!days) return;
+    const label = document.getElementById('userCalMonth');
+    if (label) label.textContent = userCalYear + '년 ' + userCalMonth + '월';
+    const today = (userCalYear === 2026 && userCalMonth === 3) ? 10 : -1;
+    const firstDay = new Date(userCalYear, userCalMonth - 1, 1).getDay();
+    const totalDays = new Date(userCalYear, userCalMonth, 0).getDate();
+    days.innerHTML = '';
+    for (let i = 0; i < firstDay; i++) {
+      const d = document.createElement('div');
+      d.className = 'cal-day dim';
+      d.textContent = new Date(userCalYear, userCalMonth - 1, -firstDay + i + 1).getDate();
+      days.appendChild(d);
+    }
+    for (let d = 1; d <= totalDays; d++) {
+      const el = document.createElement('div');
+      let cls = 'cal-day';
+      if (d === today && lessonDays.includes(d)) cls += ' today has-lesson';
+      else if (d === today) cls += ' today';
+      else if (lessonDays.includes(d)) cls += ' has-lesson';
+      el.className = cls;
+      el.textContent = d;
+      el.onclick = () => {
+        document.querySelectorAll('#userCalDays .cal-day').forEach(x => x.classList.remove('selected'));
+        el.classList.add('selected');
+      };
+      days.appendChild(el);
+    }
+  }
+
+window.userCalNav = function(delta) {
+    userCalMonth += delta;
+    if (userCalMonth > 12) { userCalMonth = 1; userCalYear++; }
+    if (userCalMonth < 1) { userCalMonth = 12; userCalYear--; }
+    renderUserCal();
+  };
+
+  document.addEventListener('DOMContentLoaded', renderUserCal);
+  setTimeout(renderUserCal, 100);
+})();
+
+// ── 타이머 ──
+
+let timerInterval = null, timerSeconds = 0, timerRunning = false;
+
+function pad(n) { return String(n).padStart(2, '0'); }
+
+function updateTimerDisplay() {
+  const h = Math.floor(timerSeconds / 3600);
+  const m = Math.floor((timerSeconds % 3600) / 60);
+  const s = timerSeconds % 60;
+  const el = document.getElementById('timerDigits');
+  if (el) el.textContent = pad(h) + ':' + pad(m) + ':' + pad(s);
+}
+
+window.toggleTimer = function() {
+  const btn = document.getElementById('timerToggleBtn');
+  if (!timerRunning) {
+    timerRunning = true;
+    if (btn) { btn.textContent = '일시정지'; btn.style.background = 'var(--accent2)'; }
+    timerInterval = setInterval(() => { timerSeconds++; updateTimerDisplay(); }, 1000);
+  } else {
+    timerRunning = false;
+    if (btn) { btn.textContent = '재개'; btn.style.background = 'var(--accent)'; }
+    clearInterval(timerInterval);
+  }
+};
+
+window.resetTimer = function() {
+  clearInterval(timerInterval);
+  timerRunning = false;
+  timerSeconds = 0;
+  updateTimerDisplay();
+  const btn = document.getElementById('timerToggleBtn');
+  if (btn) { btn.textContent = '시작'; btn.style.background = 'var(--accent)'; }
+};
+
+window.setTimerType = function(el, type) {
+  document.querySelectorAll('.type-btn').forEach(b => b.classList.remove('active'));
+  el.classList.add('active');
+};
+
+// ── 예약 페이지 ──
+
+window.filterToggle = function(el) {
+  document.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active'));
+  el.classList.add('active');
+};
+
+window.selectProgram = function(el) {
+  document.querySelectorAll('.program-card').forEach(c => c.classList.remove('selected'));
+  el.classList.add('selected');
+};
+
+window.selectSlot = function(el) {
+  if (el.classList.contains('full')) return;
+  document.querySelectorAll('.slot-item').forEach(s => s.classList.remove('selected-slot'));
+  el.classList.add('selected-slot');
+};
+</script>
+</body>
+</html>

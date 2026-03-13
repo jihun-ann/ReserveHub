@@ -45,7 +45,7 @@ Infra     Docker Compose (로컬)
 ```
 SUPER        슈퍼관리자 (대표)
   └─ SUB_SUPER   서브슈퍼관리자 (점주/사장)  ← 플랫폼 1개 고정
-       └─ ADMIN      일반관리자 (강사)       ← 복수 플랫폼 가능
+       └─ TUTOR      일반관리자 (강사)       ← 복수 플랫폼 가능
             └─ USER      수강생
 ```
 
@@ -170,7 +170,7 @@ reservehub/
 │   └── src/
 │       ├── views/
 │       │   ├── user/
-│       │   ├── admin/          # 강사
+│       │   ├── turor/          # 강사
 │       │   ├── subsup/         # 서브슈퍼
 │       │   └── super/          # 슈퍼관리자
 │       ├── stores/             # Pinia
@@ -221,7 +221,17 @@ request.approve();
 
 // ✅ 플랫폼 권한 검증은 항상 서비스 최상단에서
 platformAccessGuard.verify(platformId, currentUser);
+
+// ✅ 작성된 코드, 특히 복잡하고 알기 어려운 코드 상단에는 주석으로 간략한 기능 및 로직 영어와 한글로 설영 
+@PostMapping("/register")
+// Creates a new user account and returns a token for immediate authenticated use.
+// 새 사용자 계정을 만들고 바로 인증에 사용할 토큰을 반환한다.
+public ResponseEntity<AuthResponse> register(@Valid @RequestBody RegisterRequest request) {
+  AuthResult authResult = authService.register(request.email(), request.password(), request.role());
+  return ResponseEntity.status(HttpStatus.CREATED).body(AuthResponse.from(authResult));
+}
 ```
+
 
 ### SQL (QueryDSL / JPQL)
 
