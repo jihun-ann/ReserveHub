@@ -715,7 +715,6 @@ export default {
   </html>
 
 </template>
-
 <style scoped>
 
 </style>
