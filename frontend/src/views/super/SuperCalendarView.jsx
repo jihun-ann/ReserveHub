@@ -10,40 +10,40 @@ export default function SuperCalendarView(){
 
             {/* 범례 */}
             <div
-                style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;padding:10px 16px;background:var(--surface);border:1px solid var(--border);border-radius:10px;margin-bottom:20px;">
+                style={{display: 'flex', alignItems: 'center', gap: '14px', flexWrap: 'wrap', padding: '10px 16px', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '10px', marginBottom: '20px'}}>
                         <span
-                            style="font-size:10px;color:var(--text-dim);letter-spacing:1px;text-transform:uppercase">범례</span>
+                            style={{fontSize: '10px', color: 'var(--text-dim)', letterSpacing: '1px', textTransform: 'uppercase'}}>범례</span>
                 <div
-                    style="display:flex;align-items:center;gap:5px;font-size:11px;font-weight:600;color:#7c6af7">
+                    style={{display: 'flex', alignItems: 'center', gap: '5px', fontSize: '11px', fontWeight: '600', color: '#7c6af7'}}>
                             <span
-                                style="display:inline-block;width:10px;height:4px;background:#7c6af7;border-radius:2px"></span>그룹
+                                style={{display: 'inline-block', width: '10px', height: '4px', background: '#7c6af7', borderRadius: '2px'}}></span>그룹
                     레슨
                 </div>
                 <div
-                    style="display:flex;align-items:center;gap:5px;font-size:11px;font-weight:600;color:#4fd1c5">
+                    style={{display: 'flex', alignItems: 'center', gap: '5px', fontSize: '11px', fontWeight: '600', color: '#4fd1c5'}}>
                             <span
-                                style="display:inline-block;width:10px;height:4px;background:#4fd1c5;border-radius:2px"></span>개인
+                                style={{display: 'inline-block', width: '10px', height: '4px', background: '#4fd1c5', borderRadius: '2px'}}></span>개인
                     레슨
                 </div>
                 <div
-                    style="display:flex;align-items:center;gap:5px;font-size:11px;font-weight:600;color:#f6ad55">
+                    style={{display: 'flex', alignItems: 'center', gap: '5px', fontSize: '11px', fontWeight: '600', color: '#f6ad55'}}>
                             <span
-                                style="display:inline-block;width:10px;height:4px;background:#f6ad55;border-radius:2px"></span>플랫폼
+                                style={{display: 'inline-block', width: '10px', height: '4px', background: '#f6ad55', borderRadius: '2px'}}></span>플랫폼
                     공지/휴무
                 </div>
                 <div
-                    style="display:flex;align-items:center;gap:5px;font-size:11px;font-weight:600;color:#f87171">
+                    style={{display: 'flex', alignItems: 'center', gap: '5px', fontSize: '11px', fontWeight: '600', color: '#f87171'}}>
                             <span
-                                style="display:inline-block;width:10px;height:4px;background:#f87171;border-radius:2px"></span>본사
+                                style={{display: 'inline-block', width: '10px', height: '4px', background: '#f87171', borderRadius: '2px'}}></span>본사
                     공지
                 </div>
                 <button className="btn btn-primary btn-sm"
-                        style="margin-left:auto;background:var(--accent);color:#0f0f13"
+                        style={{marginLeft: 'auto', background: 'var(--accent)', color: '#0f0f13'}}
                         onClick="openShareEventModal()">+ 공유 이벤트 등록
                 </button>
             </div>
 
-            <div style="display:grid;grid-template-columns:1fr 320px;gap:20px;align-items:start;">
+            <div style={{display: 'grid', gridTemplateColumns: '1fr 320px', gap: '20px', alignItems: 'start'}}>
                 {/* 달력 */}
                 <div className="card">
                     <div className="cal-nav-row">
@@ -54,13 +54,13 @@ export default function SuperCalendarView(){
                         </div>
                     </div>
                     <div className="cal-dow">
-                        <div className="cal-dow-lbl" style="color:#f87171">일</div>
+                        <div className="cal-dow-lbl" style={{color: '#f87171'}}>일</div>
                         <div className="cal-dow-lbl">월</div>
                         <div className="cal-dow-lbl">화</div>
                         <div className="cal-dow-lbl">수</div>
                         <div className="cal-dow-lbl">목</div>
                         <div className="cal-dow-lbl">금</div>
-                        <div className="cal-dow-lbl" style="color:#60a5fa">토</div>
+                        <div className="cal-dow-lbl" style={{color: '#60a5fa'}}>토</div>
                     </div>
                     <div className="cal-grid-7" id="calDays"></div>
                 </div>
@@ -71,7 +71,7 @@ export default function SuperCalendarView(){
                         <div className="card-title" id="calDetailTitle">3월 11일 화요일 — 오늘</div>
                         <div id="calDetailBody">
                             <div
-                                style="font-size:13px;color:var(--text-dim);text-align:center;padding:24px 0">날짜를
+                                style={{fontSize: '13px', color: 'var(--text-dim)', textAlign: 'center', padding: '24px 0'}}>날짜를
                                 선택하세요
                             </div>
                         </div>

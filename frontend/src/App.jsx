@@ -1,7 +1,7 @@
 import {Routes, Route} from "react-router-dom";
 import TestHomeView from "./views/TestHomeView.jsx";
 import UserView from "./views/user/UserView.jsx";
-import UserViewNav from "./nav/user/UserViewNav.jsx";
+import SuperView from "./views/super/SuperView.jsx";
 
 
 export default function App() {
@@ -10,6 +10,7 @@ export default function App() {
             <Routes>
                 <Route path="/" element={<TestHomeView/>}/>
                 <Route path="/user" element={<UserView/>}/>
+                <Route path="/subsup" element={<SuperView/>}/>
             </Routes>
         </>
     )

@@ -4,6 +4,7 @@ import './UserView.js'
 import UserMypage from './UserMypageView.jsx'
 import UserReservation from './UserReservationView.jsx'
 import UserCalendar from './UserCalendarView.jsx'
+import {openSidebar, closeSidebar, toggleCollapse} from '../default.js'
 
 export default function UserView() {
     const [currentContext, setCurrentContext] = useState('calendar')
@@ -74,21 +75,6 @@ export default function UserView() {
             {/* /main */}
         </div>
     )
-
-    //사이드바 닫기
-    function closeSidebar() {
-        document.getElementById('user-sidebar').classList.remove('open');
-        document.getElementById('user-overlay').classList.remove('open');
-    }
-    //사이드바 토글
-    function toggleCollapse() {
-        document.getElementById('user-sidebar').classList.toggle('collapsed');
-    }
-    //사이드바 열기
-    function openSidebar() {
-        document.getElementById('user-sidebar').classList.add('open');
-        document.getElementById('user-overlay').classList.add('open');
-    }
 
     //메인 컨텐츠 처리 메서드 (currentContext 값을 변경하여 메인 컨텐츠 변경)
     function showPage(parm) {

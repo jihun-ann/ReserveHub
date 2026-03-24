@@ -9,7 +9,7 @@ function closeSidebar(){ document.getElementById('subsup-sidebar').classList.rem
 function toggleCollapse(){ document.getElementById('subsup-sidebar').classList.toggle('collapsed'); }
 
 // ── 페이지 전환 ───────────────────────────
-const PAGE_TITLES = { dashboard:'대시보드', approval:'승인 관리', members:'회원 관리', instructors:'강사 관리', payment:'수강권 / 결제', calc:'상담 계산툴', calendar:'캘린더', history:'수업 이력', mypage:'내 정보' };
+const PAGE_TITLES = { dashboard:'대시보드', approval:'승인 관리', members:'회원 관리', tutor:'강사 관리', payment:'수강권 / 결제', calc:'상담 계산툴', calendar:'캘린더', history:'수업 이력', mypage:'내 정보' };
 window.showPage = function(name, el) {
     document.querySelectorAll('#subsup-app .page').forEach(p => p.classList.remove('active'));
     document.querySelectorAll('#subsup-nav .nav-item').forEach(n => n.classList.remove('active'));
@@ -26,7 +26,7 @@ window.openShareEventModal = () => openModal('shareEventModal');
 window.closeShareEventModal = () => closeModal('shareEventModal');
 window.openDiscountModal = () => openModal('discountModal');
 window.openAddMemberModal = () => openModal('addMemberModal');
-window.openAddInstructorModal = () => openModal('addInstructorModal');
+window.openAddTutorModal = () => openModal('addTutorModal');
 window.openPassModal = () => openModal('passModal');
 
 // ── 토스트 ───────────────────────────────
@@ -42,8 +42,8 @@ window.showToast = function(msg) {
 //  플랫폼 데이터
 // ═══════════════════════════════════════════
 const PLATS_DATA = {
-    pilates: { emoji:'🤸', name:'스튜디오 필라테스 강남', short:'🤸 필라테스 강남', members:'142', instructors:'4', revenue:'9.8만', attend:'93%', pending:'2' },
-    yoga:    { emoji:'🧘', name:'요가라운지 홍대',        short:'🧘 요가라운지 홍대', members:'86',  instructors:'2', revenue:'5.2만', attend:'89%', pending:'0' },
+    pilates: { emoji:'🤸', name:'스튜디오 필라테스 강남', short:'🤸 필라테스 강남', members:'142', tutor:'4', revenue:'9.8만', attend:'93%', pending:'2' },
+    yoga:    { emoji:'🧘', name:'요가라운지 홍대',        short:'🧘 요가라운지 홍대', members:'86',  tutor:'2', revenue:'5.2만', attend:'89%', pending:'0' },
 };
 let currentPlat = 'pilates';
 
@@ -281,17 +281,17 @@ window.submitAddMember = function() {
 // ═══════════════════════════════════════════
 //  강사 관리
 // ═══════════════════════════════════════════
-let INSTRUCTORS = [
+let TUTORS = [
     { name:'이수진', title:'트레이너', program:'그룹반 A · 그룹반 B · 1:1 개인레슨', students:18, lessons:86, attend:'93%', status:'active', color:'linear-gradient(135deg,var(--accent2),#667eea)' },
     { name:'김현우', title:'트레이너', program:'그룹반 A 보조 · 그룹반 C', students:12, lessons:42, attend:'90%', status:'active', color:'linear-gradient(135deg,#f6ad55,#ed8936)' },
     { name:'박지현', title:'트레이너', program:'요가 기초반 · 요가 심화반', students:16, lessons:54, attend:'88%', status:'active', color:'linear-gradient(135deg,#4fd1c5,#38b2ac)' },
     { name:'최수민', title:'트레이너', program:'1:1 개인레슨 (요가)', students:5, lessons:20, attend:'95%', status:'active', color:'linear-gradient(135deg,#f87171,#fc8181)' },
 ];
 
-function renderInstructors() {
-    const el = document.getElementById('instructor-list');
+function renderTutors() {
+    const el = document.getElementById('tutor-list');
     if (!el) return;
-    el.innerHTML = INSTRUCTORS.map(inst => `
+    el.innerHTML = TUTORS.map(inst => `
     <div class="card" style="display:flex;align-items:center;gap:16px">
       <div style="width:46px;height:46px;border-radius:50%;background:${inst.color};display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:700;color:white;flex-shrink:0">${inst.name[0]}</div>
       <div style="flex:1;min-width:0">
@@ -310,13 +310,13 @@ function renderInstructors() {
     </div>`).join('');
 }
 
-window.submitAddInstructor = function() {
+window.submitAddTutor = function() {
     const name = document.getElementById('newInstName').value.trim();
     const program = document.getElementById('newInstProgram').value.trim();
     if (!name) { showToast('⚠️ 이름을 입력해 주세요.'); return; }
-    INSTRUCTORS.unshift({ name: name.replace(' 트레이너',''), title:'트레이너', program: program || '—', students:0, lessons:0, attend:'—', status:'active', color:'linear-gradient(135deg,#7c6af7,#a78bfa)' });
-    closeModal('addInstructorModal');
-    renderInstructors();
+    TUTORS.unshift({ name: name.replace(' 트레이너',''), title:'트레이너', program: program || '—', students:0, lessons:0, attend:'—', status:'active', color:'linear-gradient(135deg,#7c6af7,#a78bfa)' });
+    closeModal('addTutorModal');
+    renderTutors();
     showToast(`✅ ${name}이 등록되었습니다.`);
 };
 
@@ -654,7 +654,7 @@ const HIST_DATA = [
 const INST_COLORS = { '이수진':'linear-gradient(135deg,var(--accent2),#667eea)', '김현우':'linear-gradient(135deg,#f6ad55,#ed8936)' };
 
 window.histRender = function() {
-    const instFilt = document.getElementById('histInstructor')?.value || 'all';
+    const instFilt = document.getElementById('histTutor')?.value || 'all';
     const typeFilt = document.getElementById('histType')?.value || 'all';
     const filtered = HIST_DATA.filter(r => (instFilt==='all'||r.inst===instFilt) && (typeFilt==='all'||r.type===typeFilt));
     const total=filtered.length, groups=filtered.filter(r=>r.type==='group').length, privs=filtered.filter(r=>r.type==='private').length;
@@ -720,7 +720,7 @@ document.addEventListener('DOMContentLoaded', function() {
     renderRenewal();
     renderApprovals();
     renderMembers();
-    renderInstructors();
+    renderTutors();
     renderDiscounts();
     renderCalcUI();
     renderCal();
