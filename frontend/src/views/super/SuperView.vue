@@ -1,6 +1,6 @@
 <script>
 export default {
-  name: "SubsupView"
+  name: "superView"
 }
 </script>
 
@@ -290,11 +290,11 @@ export default {
   </head>
   <body>
 
-  <div class="app" id="subsup-app">
-    <div class="overlay" id="subsup-overlay" onclick="closeSidebar()"></div>
+  <div class="app" id="super-app">
+    <div class="overlay" id="super-overlay" onclick="closeSidebar()"></div>
 
     <!-- ══ 사이드바 ══ -->
-    <nav class="sidebar" id="subsup-sidebar">
+    <nav class="sidebar" id="super-sidebar">
       <div class="sidebar-top">
         <div class="logo">
           <div class="logo-icon">🏪</div>
@@ -324,7 +324,7 @@ export default {
         </div>
       </div>
 
-      <div class="nav" id="subsup-nav">
+      <div class="nav" id="super-nav">
         <button class="nav-item active" onclick="showPage('dashboard',this)"><span class="nav-icon">📊</span><span class="nav-label">대시보드</span></button>
         <button class="nav-item" onclick="showPage('approval',this)"><span class="nav-icon">✅</span><span class="nav-label">승인 관리</span><span class="nav-badge" id="approval-badge">2</span></button>
         <button class="nav-item" onclick="showPage('members',this)"><span class="nav-icon">👥</span><span class="nav-label">회원 관리</span></button>
@@ -355,7 +355,7 @@ export default {
       <div class="content">
 
         <!-- ══════════════ 대시보드 ══════════════ -->
-        <div class="page active" id="subsup-dashboard">
+        <div class="page active" id="super-dashboard">
           <div class="page-header">
             <div class="page-label">DASHBOARD</div>
             <div class="page-title" id="dash-plat-title">스튜디오 필라테스 강남</div>
@@ -390,7 +390,7 @@ export default {
                   <div class="pending-title">홍길동 — 1:1 레슨 일정 변경 요청</div>
                   <div class="pending-meta">이수진 트레이너 · 2026.03.10</div>
                 </div>
-                <button class="btn btn-ghost btn-sm" onclick="showPage('approval',document.querySelectorAll('#subsup-nav .nav-item')[1])">처리</button>
+                <button class="btn btn-ghost btn-sm" onclick="showPage('approval',document.querySelectorAll('#super-nav .nav-item')[1])">처리</button>
               </div>
               <div class="pending-item" style="border-left:3px solid var(--accent3)">
                 <div class="pending-dot" style="background:var(--accent3)"></div>
@@ -398,7 +398,7 @@ export default {
                   <div class="pending-title">박서준 — 수강권 환불 요청</div>
                   <div class="pending-meta">자동 알림 · 2026.03.09</div>
                 </div>
-                <button class="btn btn-ghost btn-sm" onclick="showPage('approval',document.querySelectorAll('#subsup-nav .nav-item')[1])">처리</button>
+                <button class="btn btn-ghost btn-sm" onclick="showPage('approval',document.querySelectorAll('#super-nav .nav-item')[1])">처리</button>
               </div>
               <div class="pending-item" style="border-left:3px solid var(--text-dim);opacity:.6">
                 <div class="pending-dot" style="background:var(--green)"></div>
@@ -452,7 +452,7 @@ export default {
         </div>
 
         <!-- ══════════════ 승인 관리 ══════════════ -->
-        <div class="page" id="subsup-approval">
+        <div class="page" id="super-approval">
           <div class="page-header">
             <div class="page-label">APPROVAL</div>
             <div class="page-title">승인 관리</div>
@@ -468,7 +468,7 @@ export default {
         </div>
 
         <!-- ══════════════ 회원 관리 ══════════════ -->
-        <div class="page" id="subsup-members">
+        <div class="page" id="super-members">
           <div class="page-header">
             <div class="page-label">MEMBERS</div>
             <div class="page-title">회원 관리</div>
@@ -494,7 +494,7 @@ export default {
         </div>
 
         <!-- ══════════════ 강사 관리 ══════════════ -->
-        <div class="page" id="subsup-instructors">
+        <div class="page" id="super-instructors">
           <div class="page-header">
             <div class="page-label">INSTRUCTORS</div>
             <div class="page-title">강사 관리</div>
@@ -507,7 +507,7 @@ export default {
         </div>
 
         <!-- ══════════════ 수강권/결제 ══════════════ -->
-        <div class="page" id="subsup-billing">
+        <div class="page" id="super-billing">
           <div class="page-header">
             <div class="page-label">BILLING</div>
             <div class="page-title">수강권 / 결제</div>
@@ -576,7 +576,7 @@ export default {
         </div>
 
         <!-- ══════════════ 상담 계산툴 ══════════════ -->
-        <div class="page" id="subsup-calc">
+        <div class="page" id="super-calc">
           <div class="page-header">
             <div class="page-label">CALCULATOR</div>
             <div class="page-title">상담 계산툴</div>
@@ -676,7 +676,7 @@ export default {
         </div>
 
         <!-- ══════════════ 캘린더 ══════════════ -->
-        <div class="page" id="subsup-calendar">
+        <div class="page" id="super-calendar">
           <div class="page-header">
             <div class="page-label">CALENDAR</div>
             <div class="page-title">캘린더</div>
@@ -726,7 +726,7 @@ export default {
         </div>
 
         <!-- ══════════════ 수업 이력 ══════════════ -->
-        <div class="page" id="subsup-history">
+        <div class="page" id="super-history">
           <div class="page-header">
             <div class="page-label">HISTORY</div>
             <div class="page-title">수업 이력</div>
@@ -787,7 +787,7 @@ export default {
         </div>
 
         <!-- ══════════════ 마이페이지 ══════════════ -->
-        <div class="page" id="subsup-mypage">
+        <div class="page" id="super-mypage">
           <div class="page-header">
             <div class="page-label">MY PAGE</div>
             <div class="page-title">내 정보</div>

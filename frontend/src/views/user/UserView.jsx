@@ -105,7 +105,6 @@ export default function UserView() {
             case 'mypage': resultContext = <UserMypage />; break;
             default: resultContext = <UserCalendar />; break;
         }
-
         return resultContext
     }
 }

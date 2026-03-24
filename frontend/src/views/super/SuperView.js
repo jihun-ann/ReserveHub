@@ -9,7 +9,7 @@ function closeSidebar(){ document.getElementById('subsup-sidebar').classList.rem
 function toggleCollapse(){ document.getElementById('subsup-sidebar').classList.toggle('collapsed'); }
 
 // ── 페이지 전환 ───────────────────────────
-const PAGE_TITLES = { dashboard:'대시보드', approval:'승인 관리', members:'회원 관리', instructors:'강사 관리', billing:'수강권 / 결제', calc:'상담 계산툴', calendar:'캘린더', history:'수업 이력', mypage:'내 정보' };
+const PAGE_TITLES = { dashboard:'대시보드', approval:'승인 관리', members:'회원 관리', instructors:'강사 관리', payment:'수강권 / 결제', calc:'상담 계산툴', calendar:'캘린더', history:'수업 이력', mypage:'내 정보' };
 window.showPage = function(name, el) {
     document.querySelectorAll('#subsup-app .page').forEach(p => p.classList.remove('active'));
     document.querySelectorAll('#subsup-nav .nav-item').forEach(n => n.classList.remove('active'));
@@ -323,9 +323,9 @@ window.submitAddInstructor = function() {
 // ═══════════════════════════════════════════
 //  수강권/결제 탭
 // ═══════════════════════════════════════════
-window.billingTab = function(tab, el) {
-    document.querySelectorAll('#subsup-billing .tab-pane').forEach(p => p.classList.remove('active'));
-    document.querySelectorAll('#subsup-billing .tab-btn').forEach(b => b.classList.remove('active'));
+window.paymentTab = function(tab, el) {
+    document.querySelectorAll('#subsup-payment .tab-pane').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('#subsup-payment .tab-btn').forEach(b => b.classList.remove('active'));
     document.getElementById('btab-' + tab).classList.add('active');
     el.classList.add('active');
 };

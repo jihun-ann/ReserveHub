@@ -348,7 +348,6 @@ export default function UserCalendarView() {
     }
 
     function init() {
-        console.log("init")
         renderCal()
     }
 

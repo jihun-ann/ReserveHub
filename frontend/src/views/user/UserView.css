@@ -70,13 +70,6 @@
 
     /* ── 페이지 ── */
 
-    .page {
-        display: none;
-    }
-
-    .page.active {
-        display: block;
-    }
 
     .page-header {
         margin-bottom: 24px;
