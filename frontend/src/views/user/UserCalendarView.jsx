@@ -109,7 +109,7 @@ export default function UserCalendarView() {
                         <div className="card-title">운동 · 연습 타이머</div>
                         <div className="timer-type-row">
                             <button className="type-btn active">🏋️ 운동</button>
-                            {/*<button className="type-btn active" onClick="setTimerType(this,'운동')">🏋️ 운동</button>
+                            {/* 등록된 플랫폼 + 플랫폼에서 제공하는 타이머 <button className="type-btn active" onClick="setTimerType(this,'운동')">🏋️ 운동</button>
                             <button className="type-btn" onClick="setTimerType(this,'스트레칭')">🧘 스트레칭</button>
                             <button className="type-btn" onClick="setTimerType(this,'연습')">🎵 연습</button>*/}
                         </div>
