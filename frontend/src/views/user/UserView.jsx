@@ -1,9 +1,10 @@
 import {useState} from 'react'
 import './UserView.css'
-import './UserView.js'
+// import './UserView.js'
 import UserMypage from './UserMypageView.jsx'
 import UserReservation from './UserReservationView.jsx'
 import UserCalendar from './UserCalendarView.jsx'
+import {closeSidebar, toggleCollapse} from '../default.js'
 
 export default function UserView() {
     const [currentContext, setCurrentContext] = useState('calendar')
@@ -58,16 +59,10 @@ export default function UserView() {
 
             {/* ── 메인 ── */}
             <div className="main" id="user-main">
-                <div className="topbar">
-                    <button className="hamburger" onClick={openSidebar}>☰</button>
-                    <div className="topbar-title" id="topbar-title">내 캘린더</div>
-                    <div className="topbar-right">
-                        <button className="notif-btn" title="알림">🔔<span className="notif-dot"></span></button>
-                    </div>
-                </div>
 
                 <div className="content">
-                    {renderContext()}
+                    {/*{renderContext()}*/}
+                    <RenderContext currentContext={currentContext} />
                 </div>
                 {/* /content */}
             </div>
@@ -75,37 +70,19 @@ export default function UserView() {
         </div>
     )
 
-    //사이드바 닫기
-    function closeSidebar() {
-        document.getElementById('user-sidebar').classList.remove('open');
-        document.getElementById('user-overlay').classList.remove('open');
-    }
-    //사이드바 토글
-    function toggleCollapse() {
-        document.getElementById('user-sidebar').classList.toggle('collapsed');
-    }
-    //사이드바 열기
-    function openSidebar() {
-        document.getElementById('user-sidebar').classList.add('open');
-        document.getElementById('user-overlay').classList.add('open');
-    }
-
     //메인 컨텐츠 처리 메서드 (currentContext 값을 변경하여 메인 컨텐츠 변경)
     function showPage(parm) {
         setCurrentContext(parm)
     }
 
     //변경된 컨텐츠 적용
-    function renderContext(){
-        let resultContext = '';
-
+    function RenderContext({currentContext}){
         switch (currentContext) {
-            case 'calendar': resultContext = <UserCalendar />; break;
-            case 'reservation': resultContext = <UserReservation />; break;
-            case 'mypage': resultContext = <UserMypage />; break;
-            default: resultContext = <UserCalendar />; break;
+            case 'calendar': return <UserCalendar />;
+            case 'reservation': return <UserReservation />;
+            case 'mypage': return <UserMypage />;
+            default: return <UserCalendar />;
         }
-
-        return resultContext
     }
+
 }

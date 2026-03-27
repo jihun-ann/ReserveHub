@@ -34,6 +34,14 @@ export default function UserCalendarView() {
 
     return (
         <div className="user-view page active" id="page-calendar">
+            <div className="topbar">
+                <div className="topbar-title" id="topbar-title">내 캘린더</div>
+                <span className="topbar-plat" id="topbar-plat">🤸 필라테스 강남</span>
+                <div className="topbar-right">
+                    <button className="notif-btn" title="알림">🔔<span className="notif-dot"></span></button>
+                </div>
+            </div>
+
             <div className="page-header">
                 <div className="page-label">CALENDAR</div>
                 <div className="page-title">내 캘린더</div>
@@ -348,7 +356,6 @@ export default function UserCalendarView() {
     }
 
     function init() {
-        console.log("init")
         renderCal()
     }
 

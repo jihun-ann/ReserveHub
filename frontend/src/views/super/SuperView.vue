@@ -1,6 +1,6 @@
 <script>
 export default {
-  name: "SubsupView"
+  name: "superView"
 }
 </script>
 
@@ -13,288 +13,16 @@ export default {
     <title>ReserveHub — 서브담당자 (서브슈퍼)</title>
     <link href="https://fonts.googleapis.com/css2?family=Pretendard:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
     <style>
-      /* ── 리셋 & 변수 ── */
-      *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
-      :root{
-        --bg:#0f0f13;--surface:#18181f;--surface2:#21212b;--border:#2e2e3a;
-        --accent:#4fd1c5;--accent2:#7c6af7;--accent3:#f6ad55;
-        --red:#f87171;--green:#4ade80;
-        --text:#e8e8f0;--text-sub:#8888a0;--text-dim:#55556a;
-        --sw:228px;--sw-c:60px;--r:14px;--rs:8px;--tr:.22s ease;
-      }
-      body{background:var(--bg);color:var(--text);font-family:'Pretendard',sans-serif;height:100vh;overflow:hidden;}
 
-      /* ── 앱 레이아웃 ── */
-      .app{display:flex;height:100vh;overflow:hidden;}
-      .overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:100;backdrop-filter:blur(2px);}
-      .overlay.open{display:block;}
-
-      /* ── 사이드바 ── */
-      .sidebar{
-        width:var(--sw);min-width:var(--sw);height:100vh;
-        background:var(--surface);border-right:1px solid var(--border);
-        display:flex;flex-direction:column;transition:width var(--tr),min-width var(--tr);
-        position:relative;z-index:101;overflow:hidden;
-      }
-      .sidebar.collapsed{width:var(--sw-c);min-width:var(--sw-c);}
-      .sidebar-top{display:flex;align-items:center;justify-content:space-between;padding:20px 16px 16px;border-bottom:1px solid var(--border);}
-      .logo{display:flex;align-items:center;gap:10px;overflow:hidden;}
-      .logo-icon{width:32px;height:32px;border-radius:8px;background:linear-gradient(135deg,var(--accent),#38b2ac);display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;}
-      .logo-text{font-size:15px;font-weight:700;white-space:nowrap;overflow:hidden;}
-      .collapse-btn{background:none;border:none;color:var(--text-sub);cursor:pointer;font-size:14px;padding:4px;transition:color var(--tr);}
-      .collapse-btn:hover{color:var(--text);}
-      .sidebar.collapsed .logo-text{opacity:0;width:0;}
-      .sidebar.collapsed .collapse-btn{transform:rotate(180deg);}
-
-      /* 플랫폼 전환 탭 */
-      .plat-switch{padding:10px 12px;border-bottom:1px solid var(--border);display:flex;flex-direction:column;gap:4px;}
-      .plat-switch-label{font-size:9px;color:var(--text-dim);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:2px;}
-      .plat-tab-btn{display:flex;align-items:center;gap:8px;padding:7px 10px;border-radius:var(--rs);border:none;background:none;color:var(--text-sub);cursor:pointer;font-size:12px;font-weight:500;font-family:inherit;transition:all var(--tr);width:100%;text-align:left;white-space:nowrap;overflow:hidden;}
-      .plat-tab-btn:hover{background:var(--surface2);}
-      .plat-tab-btn.active{background:rgba(79,209,197,.12);color:var(--accent);font-weight:700;}
-      .plat-tab-btn .plat-dot{width:8px;height:8px;border-radius:2px;flex-shrink:0;}
-      .sidebar.collapsed .plat-switch-label,.sidebar.collapsed .plat-tab-btn span{display:none;}
-      .sidebar.collapsed .plat-tab-btn{justify-content:center;}
-
-      .user-card{display:flex;align-items:center;gap:10px;padding:12px 16px;border-bottom:1px solid var(--border);overflow:hidden;}
-      .avatar{width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,var(--accent),#38b2ac);display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;flex-shrink:0;color:#0f0f13;}
-      .user-info{overflow:hidden;}
-      .user-name{font-size:13px;font-weight:600;white-space:nowrap;}
-      .user-role{font-size:11px;color:var(--accent);white-space:nowrap;}
-      .sidebar.collapsed .user-info{display:none;}
-
-      .nav{flex:1;padding:10px 10px;display:flex;flex-direction:column;gap:2px;overflow-y:auto;}
-      .nav-item{display:flex;align-items:center;gap:12px;padding:9px 10px;border-radius:var(--rs);background:none;border:none;color:var(--text-sub);cursor:pointer;font-size:13px;font-weight:500;font-family:inherit;transition:background var(--tr),color var(--tr);width:100%;text-align:left;white-space:nowrap;overflow:hidden;}
-      .nav-item:hover{background:var(--surface2);color:var(--text);}
-      .nav-item.active{background:rgba(79,209,197,.15);color:var(--accent);font-weight:600;}
-      .nav-icon{font-size:16px;flex-shrink:0;}
-      .sidebar.collapsed .nav-label{display:none;}
-      .sidebar.collapsed .nav-item{justify-content:center;}
-      .nav-badge{margin-left:auto;background:var(--red);color:white;font-size:10px;font-weight:700;min-width:18px;height:18px;border-radius:9px;display:flex;align-items:center;justify-content:center;padding:0 4px;}
-      .sidebar.collapsed .nav-badge{display:none;}
-
-      .sidebar-bottom{padding:12px;border-top:1px solid var(--border);}
-      .btn-logout{width:100%;padding:9px;border-radius:var(--rs);background:none;border:1px solid var(--border);color:var(--text-sub);font-size:12px;cursor:pointer;font-family:inherit;transition:all var(--tr);display:flex;align-items:center;justify-content:center;gap:6px;}
-      .btn-logout:hover{border-color:var(--red);color:var(--red);}
-      .sidebar.collapsed .btn-logout span{display:none;}
-
-      /* ── 메인 ── */
-      .main{flex:1;overflow-y:auto;display:flex;flex-direction:column;}
-      .topbar{display:flex;align-items:center;gap:12px;padding:14px 24px;border-bottom:1px solid var(--border);background:var(--surface);position:sticky;top:0;z-index:50;}
-      .hamburger{display:none;background:none;border:none;color:var(--text);font-size:20px;cursor:pointer;padding:4px;}
-      .topbar-title{font-size:15px;font-weight:600;}
-      .topbar-plat{font-size:12px;color:var(--accent);font-weight:600;padding:3px 10px;background:rgba(79,209,197,.1);border-radius:20px;}
-      .topbar-right{margin-left:auto;display:flex;align-items:center;gap:10px;}
-      .notif-btn{position:relative;background:none;border:none;color:var(--text-sub);font-size:18px;cursor:pointer;padding:4px;}
-      .notif-dot{position:absolute;top:2px;right:2px;width:7px;height:7px;border-radius:50%;background:var(--red);border:2px solid var(--surface);}
-      .content{flex:1;padding:24px;}
-
-      /* ── 페이지 ── */
-      .page{display:none;}
-      .page.active{display:block;}
-      .page-header{margin-bottom:22px;}
-      .page-label{font-size:10px;color:var(--accent);letter-spacing:2px;font-weight:600;margin-bottom:4px;}
-      .page-title{font-size:22px;font-weight:700;}
-      .page-subtitle{font-size:13px;color:var(--text-sub);margin-top:4px;}
-
-      /* ── 카드 ── */
-      .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:20px;}
-      .card-title{font-size:12px;font-weight:700;color:var(--text-sub);letter-spacing:.5px;margin-bottom:14px;text-transform:uppercase;}
-
-      /* ── 버튼 ── */
-      .btn{padding:8px 16px;border-radius:var(--rs);font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;border:none;transition:all var(--tr);}
-      .btn-primary{background:var(--accent);color:#0f0f13;}
-      .btn-primary:hover{opacity:.85;}
-      .btn-ghost{background:none;border:1px solid var(--border);color:var(--text-sub);}
-      .btn-ghost:hover{border-color:var(--accent);color:var(--accent);}
-      .btn-danger{background:rgba(248,113,113,.12);color:var(--red);border:1px solid rgba(248,113,113,.3);}
-      .btn-danger:hover{background:rgba(248,113,113,.2);}
-      .btn-sm{padding:5px 12px;font-size:12px;}
-
-      /* ── 필터 칩 ── */
-      .filter-chip{padding:6px 14px;border-radius:20px;border:1.5px solid var(--border);background:none;color:var(--text-sub);font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;transition:all var(--tr);}
-      .filter-chip:hover{border-color:var(--accent);color:var(--accent);}
-      .filter-chip.active{background:rgba(79,209,197,.15);border-color:var(--accent);color:var(--accent);}
-
-      /* ── 테이블 ── */
-      .data-table{width:100%;border-collapse:collapse;font-size:13px;}
-      .data-table th{padding:10px 14px;text-align:left;font-size:11px;font-weight:700;color:var(--text-sub);letter-spacing:.5px;border-bottom:1px solid var(--border);background:var(--surface2);}
-      .data-table td{padding:12px 14px;border-bottom:1px solid var(--border);vertical-align:middle;}
-      .data-table tr:last-child td{border-bottom:none;}
-      .data-table tr:hover td{background:rgba(255,255,255,.015);}
-
-      /* ── 뱃지 / 상태 ── */
-      .badge{font-size:11px;padding:3px 9px;border-radius:20px;font-weight:600;border:1px solid transparent;}
-      .bs-active  {background:rgba(74,222,128,.12);color:var(--green);border-color:rgba(74,222,128,.3);}
-      .bs-soon    {background:rgba(246,173,85,.12);color:var(--accent3);border-color:rgba(246,173,85,.3);}
-      .bs-expired {background:rgba(248,113,113,.12);color:var(--red);border-color:rgba(248,113,113,.3);}
-      .bs-pending {background:rgba(246,173,85,.12);color:var(--accent3);border-color:rgba(246,173,85,.3);}
-      .bs-approved{background:rgba(74,222,128,.12);color:var(--green);border-color:rgba(74,222,128,.3);}
-      .bs-rejected{background:rgba(248,113,113,.12);color:var(--red);border-color:rgba(248,113,113,.3);}
-
-      /* ── 폼 ── */
-      .form-field{display:flex;flex-direction:column;gap:6px;}
-      .form-field label{font-size:11px;font-weight:600;color:var(--text-sub);letter-spacing:.5px;}
-      .form-field input,.form-field select,.form-field textarea{background:var(--surface2);border:1px solid var(--border);border-radius:var(--rs);color:var(--text);font-family:inherit;font-size:13px;padding:9px 12px;outline:none;transition:border-color var(--tr);width:100%;}
-      .form-field input:focus,.form-field select:focus,.form-field textarea:focus{border-color:var(--accent);}
-      .form-field textarea{resize:vertical;min-height:80px;}
-      .form-field select option{background:var(--surface2);}
-
-      /* ── KPI ── */
-      .kpi-row{display:grid;gap:12px;}
-      .kpi-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:16px;text-align:center;}
-      .kpi-val{font-family:'DM Mono',monospace;font-size:28px;font-weight:500;line-height:1;}
-      .kpi-key{font-size:11px;color:var(--text-sub);margin-top:6px;}
-      .kpi-sub{font-size:10px;margin-top:4px;}
-
-      /* ── 탭 ── */
-      .tab-row{display:flex;gap:0;border-bottom:1px solid var(--border);margin-bottom:20px;}
-      .tab-btn{padding:10px 18px;background:none;border:none;border-bottom:2px solid transparent;color:var(--text-sub);font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;transition:all var(--tr);margin-bottom:-1px;}
-      .tab-btn:hover{color:var(--text);}
-      .tab-btn.active{color:var(--accent);border-bottom-color:var(--accent);}
-      .tab-pane{display:none;}
-      .tab-pane.active{display:block;}
-
-      /* ════════════════════════════════
-         대시보드
-      ════════════════════════════════ */
-      .dash-kpi{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:22px;}
-      .dash-grid{display:grid;grid-template-columns:1fr 1fr 280px;gap:18px;}
-      .renewal-item{display:flex;align-items:center;gap:12px;padding:11px 0;border-bottom:1px solid var(--border);}
-      .renewal-item:last-child{border-bottom:none;}
-      .renewal-dday{width:34px;height:34px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0;}
-      .renewal-body{flex:1;min-width:0;}
-      .renewal-name{font-size:13px;font-weight:700;}
-      .renewal-meta{font-size:11px;color:var(--text-sub);margin-top:2px;}
-      .pending-item{display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--surface2);border-radius:var(--rs);margin-bottom:8px;}
-      .pending-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
-      .pending-body{flex:1;min-width:0;}
-      .pending-title{font-size:13px;font-weight:600;}
-      .pending-meta{font-size:11px;color:var(--text-sub);margin-top:2px;}
-      .activity-item{display:flex;gap:10px;align-items:flex-start;padding:9px 0;border-bottom:1px solid var(--border);}
-      .activity-item:last-child{border-bottom:none;}
-      .activity-icon{width:28px;height:28px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0;}
-      .activity-body{flex:1;min-width:0;}
-      .activity-title{font-size:12px;font-weight:600;}
-      .activity-time{font-size:10px;color:var(--text-dim);margin-top:2px;font-family:'DM Mono',monospace;}
-
-      /* ════════════════════════════════
-         승인관리
-      ════════════════════════════════ */
-      .req-card{background:var(--surface);border:1px solid var(--border);border-left:3px solid var(--accent3);border-radius:var(--r);padding:16px;margin-bottom:12px;}
-      .req-header{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:12px;}
-      .req-title{font-size:14px;font-weight:700;}
-      .req-meta{font-size:11px;color:var(--text-dim);font-family:'DM Mono',monospace;margin-top:4px;}
-      .req-date-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;}
-      .req-date-box{background:var(--surface2);border-radius:var(--rs);padding:10px 12px;}
-      .req-date-lbl{font-size:10px;color:var(--text-dim);letter-spacing:1px;margin-bottom:4px;}
-      .req-date-val{font-size:13px;font-weight:600;}
-      .req-reason{background:var(--surface2);border-radius:var(--rs);padding:10px 12px;font-size:13px;color:var(--text-sub);line-height:1.6;margin-bottom:10px;}
-      .req-memo{width:100%;padding:9px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--rs);color:var(--text);font-size:12px;font-family:'Pretendard',sans-serif;outline:none;resize:none;min-height:54px;}
-      .req-memo:focus{border-color:var(--accent);}
-      .req-footer{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-top:10px;}
-      .req-footer-hint{font-size:11px;color:var(--text-dim);}
-
-      /* ════════════════════════════════
-         회원관리
-      ════════════════════════════════ */
-      .member-detail{background:var(--surface);border:1px solid rgba(79,209,197,.3);border-radius:var(--r);padding:20px;margin-top:14px;}
-      .member-detail-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;}
-      .member-detail-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
-      .detail-stat{background:var(--surface2);border-radius:var(--rs);padding:12px;text-align:center;}
-      .detail-stat-val{font-family:'DM Mono',monospace;font-size:20px;font-weight:500;}
-      .detail-stat-key{font-size:10px;color:var(--text-sub);margin-top:3px;}
-      .memo-item{display:flex;gap:10px;align-items:flex-start;padding:9px 12px;background:rgba(79,209,197,.07);border:1px solid rgba(79,209,197,.2);border-radius:var(--rs);}
-      .memo-date{font-family:'DM Mono',monospace;font-size:10px;color:var(--text-dim);flex-shrink:0;margin-top:1px;}
-      .memo-author{font-size:11px;color:var(--accent);font-weight:600;flex-shrink:0;}
-
-      /* ════════════════════════════════
-         수강권/결제
-      ════════════════════════════════ */
-
-      /* ════════════════════════════════
-         상담 계산툴
-      ════════════════════════════════ */
-      .calc-pass-row{display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:var(--rs);border:1px solid var(--border);cursor:pointer;transition:all var(--tr);}
-      .calc-pass-row.checked{background:rgba(79,209,197,.06);border-color:rgba(79,209,197,.35);}
-      .calc-disc-row{display:flex;align-items:center;gap:12px;padding:10px 14px;border-radius:var(--rs);border:1px solid var(--border);cursor:pointer;transition:all var(--tr);}
-      .calc-disc-row.checked{background:rgba(124,106,247,.06);border-color:rgba(124,106,247,.3);}
-      .qty-btn{width:22px;height:22px;border-radius:4px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-size:13px;cursor:pointer;line-height:1;display:flex;align-items:center;justify-content:center;font-family:inherit;transition:all var(--tr);}
-      .qty-btn:hover{background:var(--accent);border-color:var(--accent);color:#0f0f13;}
-      .quote-row{display:flex;justify-content:space-between;align-items:center;padding:8px 10px;background:var(--surface2);border-radius:var(--rs);}
-      .quote-disc-row{padding:8px 10px;background:rgba(124,106,247,.06);border:1px solid rgba(124,106,247,.2);border-radius:var(--rs);}
-
-      /* ════════════════════════════════
-         캘린더
-      ════════════════════════════════ */
-      .cal-nav-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;}
-      .cal-month-lbl{font-size:15px;font-weight:700;}
-      .cal-nav-btns{display:flex;gap:6px;}
-      .cal-nav-btn{width:28px;height:28px;border-radius:50%;background:var(--surface2);border:1px solid var(--border);color:var(--text);cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;transition:all var(--tr);}
-      .cal-nav-btn:hover{background:var(--accent);border-color:var(--accent);color:#0f0f13;}
-      .cal-dow{display:grid;grid-template-columns:repeat(7,1fr);gap:2px;margin-bottom:4px;}
-      .cal-dow-lbl{text-align:center;font-size:10px;color:var(--text-dim);font-weight:600;padding:3px 0;}
-      .cal-grid-7{display:grid;grid-template-columns:repeat(7,1fr);gap:2px;}
-      .cal-cell{aspect-ratio:1;border-radius:6px;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;padding:4px 2px;font-size:11px;font-weight:500;cursor:pointer;transition:all var(--tr);position:relative;border:1.5px solid transparent;gap:2px;}
-      .cal-cell:hover{background:var(--surface2);}
-      .cal-cell.dim{color:var(--text-dim);cursor:default;}
-      .cal-cell.dim:hover{background:none;}
-      .cal-cell.today{background:rgba(79,209,197,.15);border-color:var(--accent);color:var(--accent);font-weight:700;}
-      .cal-cell.selected{background:var(--accent);color:#0f0f13;border-color:var(--accent);}
-      .event-bar{height:3px;border-radius:2px;width:100%;margin-top:1px;}
-
-      /* ════════════════════════════════
-         수업 이력
-      ════════════════════════════════ */
-      .hist-kpi{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:20px;}
-
-      /* ════════════════════════════════
-         마이페이지
-      ════════════════════════════════ */
-      .hero{display:flex;align-items:center;gap:16px;padding:20px 24px;background:linear-gradient(135deg,rgba(79,209,197,.12),rgba(124,106,247,.07));border:1px solid rgba(79,209,197,.25);border-radius:var(--r);margin-bottom:22px;}
-      .hero-avatar{width:54px;height:54px;border-radius:50%;background:linear-gradient(135deg,var(--accent),#38b2ac);display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:700;color:#0f0f13;flex-shrink:0;}
-      .hero-info{flex:1;}
-      .hero-name{font-size:18px;font-weight:700;}
-      .hero-email{font-size:12px;color:var(--text-sub);margin-top:4px;}
-      .hero-stats{display:flex;gap:20px;flex-wrap:wrap;}
-      .hstat{text-align:center;}
-      .hstat-val{font-family:'DM Mono',monospace;font-size:19px;font-weight:600;color:var(--accent);}
-      .hstat-key{font-size:10px;color:var(--text-sub);margin-top:2px;}
-
-      /* ── 반응형 ── */
-      @media(max-width:1200px){.dash-grid{grid-template-columns:1fr 1fr;}.dash-grid>:nth-child(3){grid-column:span 2;}}
-      @media(max-width:900px){.dash-kpi{grid-template-columns:repeat(2,1fr);}.dash-grid{grid-template-columns:1fr;}.dash-grid>:nth-child(3){grid-column:span 1;}.hist-kpi{grid-template-columns:repeat(3,1fr);}}
-      @media(max-width:768px){
-        .sidebar{position:fixed;left:-100%;z-index:200;transition:left var(--tr);width:var(--sw)!important;min-width:var(--sw)!important;}
-        .sidebar.open{left:0;}
-        .hamburger{display:flex;}
-        .collapse-btn{display:none;}
-        .sidebar .logo-text,.sidebar .user-info,.sidebar .nav-label{opacity:1!important;width:auto!important;display:block!important;}
-        .sidebar .nav-item,.sidebar .plat-tab-btn{justify-content:flex-start!important;}
-        .sidebar .plat-switch-label{display:block!important;}
-        .sidebar .nav-badge{display:flex!important;}
-      }
-      @media(max-width:600px){.content{padding:16px;}.dash-kpi{grid-template-columns:repeat(2,1fr);}.hist-kpi{grid-template-columns:repeat(2,1fr);}.member-detail-grid{grid-template-columns:1fr;}}
-
-      /* ── 토스트 & 모달 ── */
-      .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(80px);background:var(--surface);border:1px solid var(--accent);border-radius:var(--r);padding:13px 24px;font-size:14px;font-weight:600;color:var(--accent);z-index:999;transition:transform .3s,opacity .3s;opacity:0;pointer-events:none;white-space:nowrap;}
-      .toast.show{transform:translateX(-50%) translateY(0);opacity:1;}
-      .modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:500;align-items:center;justify-content:center;backdrop-filter:blur(4px);}
-      .modal-overlay.open{display:flex;}
-      .modal-box{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:28px;width:min(480px,90vw);max-height:80vh;overflow-y:auto;}
-      .modal-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;}
-      .modal-title{font-size:16px;font-weight:700;}
-      .modal-close{background:none;border:none;color:var(--text-sub);font-size:20px;cursor:pointer;padding:4px;}
-      .modal-close:hover{color:var(--text);}
     </style>
   </head>
   <body>
 
-  <div class="app" id="subsup-app">
-    <div class="overlay" id="subsup-overlay" onclick="closeSidebar()"></div>
+  <div class="app" id="super-app">
+    <div class="overlay" id="super-overlay" onclick="closeSidebar()"></div>
 
     <!-- ══ 사이드바 ══ -->
-    <nav class="sidebar" id="subsup-sidebar">
+    <nav class="sidebar" id="super-sidebar">
       <div class="sidebar-top">
         <div class="logo">
           <div class="logo-icon">🏪</div>
@@ -324,7 +52,7 @@ export default {
         </div>
       </div>
 
-      <div class="nav" id="subsup-nav">
+      <div class="nav" id="super-nav">
         <button class="nav-item active" onclick="showPage('dashboard',this)"><span class="nav-icon">📊</span><span class="nav-label">대시보드</span></button>
         <button class="nav-item" onclick="showPage('approval',this)"><span class="nav-icon">✅</span><span class="nav-label">승인 관리</span><span class="nav-badge" id="approval-badge">2</span></button>
         <button class="nav-item" onclick="showPage('members',this)"><span class="nav-icon">👥</span><span class="nav-label">회원 관리</span></button>
@@ -355,7 +83,7 @@ export default {
       <div class="content">
 
         <!-- ══════════════ 대시보드 ══════════════ -->
-        <div class="page active" id="subsup-dashboard">
+        <div class="page active" id="super-dashboard">
           <div class="page-header">
             <div class="page-label">DASHBOARD</div>
             <div class="page-title" id="dash-plat-title">스튜디오 필라테스 강남</div>
@@ -390,7 +118,7 @@ export default {
                   <div class="pending-title">홍길동 — 1:1 레슨 일정 변경 요청</div>
                   <div class="pending-meta">이수진 트레이너 · 2026.03.10</div>
                 </div>
-                <button class="btn btn-ghost btn-sm" onclick="showPage('approval',document.querySelectorAll('#subsup-nav .nav-item')[1])">처리</button>
+                <button class="btn btn-ghost btn-sm" onclick="showPage('approval',document.querySelectorAll('#super-nav .nav-item')[1])">처리</button>
               </div>
               <div class="pending-item" style="border-left:3px solid var(--accent3)">
                 <div class="pending-dot" style="background:var(--accent3)"></div>
@@ -398,7 +126,7 @@ export default {
                   <div class="pending-title">박서준 — 수강권 환불 요청</div>
                   <div class="pending-meta">자동 알림 · 2026.03.09</div>
                 </div>
-                <button class="btn btn-ghost btn-sm" onclick="showPage('approval',document.querySelectorAll('#subsup-nav .nav-item')[1])">처리</button>
+                <button class="btn btn-ghost btn-sm" onclick="showPage('approval',document.querySelectorAll('#super-nav .nav-item')[1])">처리</button>
               </div>
               <div class="pending-item" style="border-left:3px solid var(--text-dim);opacity:.6">
                 <div class="pending-dot" style="background:var(--green)"></div>
@@ -452,7 +180,7 @@ export default {
         </div>
 
         <!-- ══════════════ 승인 관리 ══════════════ -->
-        <div class="page" id="subsup-approval">
+        <div class="page" id="super-approval">
           <div class="page-header">
             <div class="page-label">APPROVAL</div>
             <div class="page-title">승인 관리</div>
@@ -468,7 +196,7 @@ export default {
         </div>
 
         <!-- ══════════════ 회원 관리 ══════════════ -->
-        <div class="page" id="subsup-members">
+        <div class="page" id="super-members">
           <div class="page-header">
             <div class="page-label">MEMBERS</div>
             <div class="page-title">회원 관리</div>
@@ -494,7 +222,7 @@ export default {
         </div>
 
         <!-- ══════════════ 강사 관리 ══════════════ -->
-        <div class="page" id="subsup-instructors">
+        <div class="page" id="super-instructors">
           <div class="page-header">
             <div class="page-label">INSTRUCTORS</div>
             <div class="page-title">강사 관리</div>
@@ -507,7 +235,7 @@ export default {
         </div>
 
         <!-- ══════════════ 수강권/결제 ══════════════ -->
-        <div class="page" id="subsup-billing">
+        <div class="page" id="super-billing">
           <div class="page-header">
             <div class="page-label">BILLING</div>
             <div class="page-title">수강권 / 결제</div>
@@ -576,7 +304,7 @@ export default {
         </div>
 
         <!-- ══════════════ 상담 계산툴 ══════════════ -->
-        <div class="page" id="subsup-calc">
+        <div class="page" id="super-calc">
           <div class="page-header">
             <div class="page-label">CALCULATOR</div>
             <div class="page-title">상담 계산툴</div>
@@ -676,7 +404,7 @@ export default {
         </div>
 
         <!-- ══════════════ 캘린더 ══════════════ -->
-        <div class="page" id="subsup-calendar">
+        <div class="page" id="super-calendar">
           <div class="page-header">
             <div class="page-label">CALENDAR</div>
             <div class="page-title">캘린더</div>
@@ -726,7 +454,7 @@ export default {
         </div>
 
         <!-- ══════════════ 수업 이력 ══════════════ -->
-        <div class="page" id="subsup-history">
+        <div class="page" id="super-history">
           <div class="page-header">
             <div class="page-label">HISTORY</div>
             <div class="page-title">수업 이력</div>
@@ -787,7 +515,7 @@ export default {
         </div>
 
         <!-- ══════════════ 마이페이지 ══════════════ -->
-        <div class="page" id="subsup-mypage">
+        <div class="page" id="super-mypage">
           <div class="page-header">
             <div class="page-label">MY PAGE</div>
             <div class="page-title">내 정보</div>
