@@ -18,15 +18,7 @@ export default function SuperApprovalView(){
 
     return(
         <div className="page" id="super-approval">
-            <div className="topbar">
-                <div className="topbar-title" id="topbar-title">승인 관리</div>
-                <span className="topbar-plat" id="topbar-plat">🤸 필라테스 강남</span>
-                <div className="topbar-right">
-                    <button className="notif-btn">🔔
-                        <span className="notif-dot"></span>
-                    </button>
-                </div>
-            </div>
+
             {/* ══════════════ 승인 관리 ══════════════ */}
             <div className="page-header">
                 <div className="page-label">APPROVAL</div>

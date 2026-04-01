@@ -1,13 +1,7 @@
+
 export default function UserMypageView() {
     return (
         <div className="page" id="page-mypage">
-            <div className="topbar">
-                <div className="topbar-title" id="topbar-title">마이페이지</div>
-                <span className="topbar-plat" id="topbar-plat">🤸 필라테스 강남</span>
-                <div className="topbar-right">
-                    <button className="notif-btn" title="알림">🔔<span className="notif-dot"></span></button>
-                </div>
-            </div>
 
             <div className="page-header">
                 <div className="page-label">MY PAGE</div>

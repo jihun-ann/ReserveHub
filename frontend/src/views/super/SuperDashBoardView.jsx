@@ -1,13 +1,10 @@
+import {useEffect} from "react";
+
 export default function SuperDashBoardView(){
+
     return(
         <div className="page active" id="super-dashboard">
-            <div className="topbar">
-                <div className="topbar-title" id="topbar-title">대시보드</div>
-                <span className="topbar-plat" id="topbar-plat">🤸 필라테스 강남</span>
-                <div className="topbar-right">
-                    <button className="notif-btn">🔔<span className="notif-dot"></span></button>
-                </div>
-            </div>
+
             {/* ══════════════ 대시보드 ══════════════ */}
             <div className="page-header">
                 <div className="page-label">DASHBOARD</div>
@@ -61,7 +58,8 @@ export default function SuperDashBoardView(){
                             <div className="pending-meta">이수진 트레이너 · 2026.03.10</div>
                         </div>
                         <button className="btn btn-ghost btn-sm"
-                                onClick="showPage('approval',document.querySelectorAll('#super-nav .nav-item')[1])">처리
+                                // onClick={showPage('approval',document.querySelectorAll('#super-nav .nav-item')[1])}
+                            >처리
                         </button>
                     </div>
                     <div className="pending-item" style={{borderLeft: '3px solid var(--accent3)'}}>
@@ -134,4 +132,6 @@ export default function SuperDashBoardView(){
         document.getElementById('topbar-title').textContent = PAGE_TITLES[name] || name;
         closeSidebar();
     }
+
+
 }

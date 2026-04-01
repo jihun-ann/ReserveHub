@@ -8,6 +8,16 @@
         flex-direction: column;
     }
 
+    .hamburger {
+        display: none;
+        background: none;
+        border: none;
+        color: var(--text);
+        font-size: 20px;
+        cursor: pointer;
+        padding: 4px;
+    }
+
     .topbar {
         display: flex;
         align-items: center;

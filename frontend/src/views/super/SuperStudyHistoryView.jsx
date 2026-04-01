@@ -1,12 +1,5 @@
 export default function SuperStudyHistoryView(){
     return (<div className="page" id="super-history">
-        <div className="topbar">
-            <div className="topbar-title" id="topbar-title">수업이력</div>
-            <span className="topbar-plat" id="topbar-plat">🤸 필라테스 강남</span>
-            <div className="topbar-right">
-                <button className="notif-btn">🔔<span className="notif-dot"></span></button>
-            </div>
-        </div>
 
         {/* ══════════════ 수업 이력 ══════════════ */}
         <div className="page-header">

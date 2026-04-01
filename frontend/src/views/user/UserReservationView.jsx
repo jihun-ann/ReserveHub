@@ -85,15 +85,7 @@ export default function UserReservationView() {
 
     return (
         <div className="page" id="page-reservation">
-            <div className="topbar">
-                <div className="topbar-title" id="topbar-title">예약하기</div>
-                <span className="topbar-plat" id="topbar-plat">🤸 필라테스 강남</span>
-                <div className="topbar-right">
-                    <button className="notif-btn" title="알림">🔔<span className="notif-dot"></span></button>
-                </div>
-            </div>
-
-            <div className="page-header">
+                        <div className="page-header">
                 <div className="page-label">RESERVATION</div>
                 <div className="page-title">예약하기</div>
                 <div className="page-subtitle">원하는 프로그램과 시간을 선택하세요</div>

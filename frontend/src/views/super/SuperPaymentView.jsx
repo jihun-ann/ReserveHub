@@ -1,13 +1,7 @@
 export default function SuperPaymentView() {
     return (
         <div className="page" id="super-payment">
-            <div className="topbar">
-                <div className="topbar-title" id="topbar-title">수강권/결제 정책</div>
-                <span className="topbar-plat" id="topbar-plat">🤸 필라테스 강남</span>
-                <div className="topbar-right">
-                    <button className="notif-btn">🔔<span className="notif-dot"></span></button>
-                </div>
-            </div>
+
             {/* ══════════════ 수강권/결제 ══════════════ */}
             <div className="page-header">
                 <div className="page-label">Payment</div>

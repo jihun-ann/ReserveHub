@@ -4,7 +4,7 @@ import './UserView.css'
 import UserMypage from './UserMypageView.jsx'
 import UserReservation from './UserReservationView.jsx'
 import UserCalendar from './UserCalendarView.jsx'
-import {closeSidebar, toggleCollapse} from '../default.js'
+import {closeSidebar, toggleCollapse,openSidebar} from '../default.js'
 
 export default function UserView() {
     const [currentContext, setCurrentContext] = useState('calendar')
@@ -59,6 +59,14 @@ export default function UserView() {
 
             {/* ── 메인 ── */}
             <div className="main" id="user-main">
+                <div className="topbar">
+                    <button className="hamburger" onClick={openSidebar}>☰</button>
+                    <div className="topbar-title" id="topbar-title"><SetTopbarTitle currentContext={currentContext}/></div>
+                    <span className="topbar-plat" id="topbar-plat">🤸 필라테스 강남</span>
+                    <div className="topbar-right">
+                        <button className="notif-btn" title="알림">🔔<span className="notif-dot"></span></button>
+                    </div>
+                </div>
 
                 <div className="content">
                     {/*{renderContext()}*/}
@@ -78,10 +86,28 @@ export default function UserView() {
     //변경된 컨텐츠 적용
     function RenderContext({currentContext}){
         switch (currentContext) {
-            case 'calendar': return <UserCalendar />;
-            case 'reservation': return <UserReservation />;
-            case 'mypage': return <UserMypage />;
-            default: return <UserCalendar />;
+            case 'calendar':
+                return <UserCalendar />;
+            case 'reservation':
+                return <UserReservation />;
+            case 'mypage':
+                return <UserMypage />;
+            default:
+                return <UserCalendar />;
+        }
+    }
+
+    function SetTopbarTitle({currentContext}){
+
+        switch (currentContext) {
+            case 'calendar':
+                return '캘린더'
+            case 'reservation':
+                return '예약하기'
+            case 'mypage':
+                return '마이페이지'
+            default:
+                return '캘린더'
         }
     }
 

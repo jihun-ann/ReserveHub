@@ -8,3 +8,9 @@ export function closeSidebar() {
 export function toggleCollapse() {
     document.getElementById('user-sidebar').classList.toggle('collapsed');
 }
+
+//작은 화면시 사이드바 열기
+export function openSidebar() {
+    document.getElementById('user-sidebar').classList.add('open');
+    document.getElementById('user-overlay').classList.add('open');
+}

@@ -1,13 +1,7 @@
+
 export default function SuperTutorManageView(){
     return(
         <div className="page" id="super-instructors">
-            <div className="topbar">
-                <div className="topbar-title" id="topbar-title">강사관리</div>
-                <span className="topbar-plat" id="topbar-plat">🤸 필라테스 강남</span>
-                <div className="topbar-right">
-                    <button className="notif-btn">🔔<span className="notif-dot"></span></button>
-                </div>
-            </div>
 
             {/* ══════════════ 강사 관리 ══════════════ */}
             <div className="page-header">
