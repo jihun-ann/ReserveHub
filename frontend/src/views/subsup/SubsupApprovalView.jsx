@@ -1,6 +1,6 @@
 import {useState,useEffect} from "react";
 
-export default function SuperApprovalView(){
+export default function SubsupApprovalView(){
     let APPROVAL_DATA = [
         { id:'a1', title:'홍길동 — 1:1 개인레슨 일정 변경', requester:'이수진 트레이너', from:'2026.03.11 10:00', to:'2026.03.14 14:00', reason:'수강생 개인 사정으로 인한 일정 조정 요청입니다.', date:'2026.03.10', status:'pending' },
         { id:'a2', title:'박서준 — 수강권 환불 요청', requester:'자동 시스템', from:'개인 10회권 잔여 6회', to:'결제 취소 (환불)', reason:'수강생 부상으로 인한 수강 중단 및 잔여분 환불 요청입니다.', date:'2026.03.09', status:'pending' },

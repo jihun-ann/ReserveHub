@@ -1,5 +1,5 @@
 
-export default function SuperTutorManageView(){
+export default function SubsupTutorManageView(){
     return(
         <div className="page" id="super-instructors">
 

@@ -1,4 +1,4 @@
-export default function SuperCalculationView() {
+export default function SubsupCalculationView() {
     return (<div className="page" id="super-calc">
 
         {/* ══════════════ 상담 계산툴 ══════════════ */}

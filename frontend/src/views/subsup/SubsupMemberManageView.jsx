@@ -1,6 +1,6 @@
 import {useEffect, useState} from "react";
 
-export default function SuperMemberManageView(){
+export default function SubsupMemberManageView(){
 
     let MEMBERS = [
         { name:'박서준', phone:'010-5555-4444', pass:'개인 10회권', exp:'2026.03.12', dday:1,  status:'soon',    notes:[] },
@@ -14,7 +14,7 @@ export default function SuperMemberManageView(){
     ];
 
     useEffect(() => {
-        window.showPage = showPage;
+        // window.showPage = showPage;
         renderMembers()
     });
 
@@ -73,7 +73,7 @@ export default function SuperMemberManageView(){
         console.log(tbody)
         if (!tbody) return;
         const filtered = MEMBERS.filter(m => {
-            const matchFilter = memberFilterCurrent === 'all' || m.status === memberFilterCurrent;
+            const matchFilter = currentMemberStatusFilter === 'all' || m.status === currentMemberStatusFilter;
             const matchSearch = !search || m.name.includes(search) || m.phone.includes(search);
             return matchFilter && matchSearch;
         });

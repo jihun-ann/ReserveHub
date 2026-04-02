@@ -1,17 +1,17 @@
 import {useState, useEffect} from 'react'
 import {closeSidebar, toggleCollapse, openSidebar} from '../default.js'
-import './SuperView.css'
-import SuperApprovalView from "./SuperApprovalView.jsx";
-import SuperCalculationView from "./SuperCalculationView.jsx";
-import SuperCalendarView from "./SuperCalendarView.jsx";
-import SuperDashBoardView from "./SuperDashBoardView.jsx";
-import SuperMemberManageView from "./SuperMemberManageView.jsx";
-import SuperMypageView from "./SuperMypageView.jsx";
-import SuperPaymentView from "./SuperPaymentView.jsx";
-import SuperStudyHistoryView from "./SuperStudyHistoryView.jsx";
-import SuperTutorManageView from "./SuperTutorManageView.jsx";
+import './SubsupView.css'
+import SubsupApprovalView from "./SubsupApprovalView.jsx";
+import SubsupCalculationView from "./SubsupCalculationView.jsx";
+import SubsupCalendarView from "./SubsupCalendarView.jsx";
+import SubsupDashBoardView from "./SubsupDashBoardView.jsx";
+import SubsupMemberManageView from "./SubsupMemberManageView.jsx";
+import SuperMypageView from "./SubsupMypageView.jsx";
+import SubsupPaymentView from "./SubsupPaymentView.jsx";
+import SubsupStudyHistoryView from "./SubsupStudyHistoryView.jsx";
+import SubsupTutorManageView from "./SubsupTutorManageView.jsx";
 
-export default function SuperView() {
+export default function SubsupView() {
     const [currentPlatform, setCurrentPlatform] = useState('pilates')
     const [currentContext, setCurrentContext] = useState('dashboard')
 
@@ -126,16 +126,16 @@ export default function SuperView() {
     //변경된 컨텐츠 적용
     function RenderContext({currentContext, currentPlatform}){
         switch (currentContext) {
-            case 'dashboard': return <SuperDashBoardView />;
-            case 'approval': return <SuperApprovalView />;
-            case 'members': return <SuperMemberManageView />;
-            case 'tutor': return <SuperTutorManageView />;
-            case 'payment': return <SuperPaymentView />;
-            case 'calc': return <SuperCalculationView />;
-            case 'calendar': return <SuperCalendarView />;
-            case 'history': return <SuperStudyHistoryView />;
+            case 'dashboard': return <SubsupDashBoardView />;
+            case 'approval': return <SubsupApprovalView />;
+            case 'members': return <SubsupMemberManageView />;
+            case 'tutor': return <SubsupTutorManageView />;
+            case 'payment': return <SubsupPaymentView />;
+            case 'calc': return <SubsupCalculationView />;
+            case 'calendar': return <SubsupCalendarView />;
+            case 'history': return <SubsupStudyHistoryView />;
             case 'mypage': return <SuperMypageView />;
-            default: return <SuperDashBoardView />;
+            default: return <SubsupDashBoardView />;
         }
     }
 

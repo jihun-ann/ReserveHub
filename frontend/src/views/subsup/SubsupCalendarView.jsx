@@ -1,6 +1,6 @@
 import {useEffect} from "react";
 
-export default function SuperCalendarView() {
+export default function SubsupCalendarView() {
     let calYear = 2026, calMonth = 3, calSelDay = 11;
     const WEEKDAYS = ['일','월','화','수','목','금','토'];
 

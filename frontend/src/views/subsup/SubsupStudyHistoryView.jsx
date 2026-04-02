@@ -1,4 +1,4 @@
-export default function SuperStudyHistoryView(){
+export default function SubsupStudyHistoryView(){
     return (<div className="page" id="super-history">
 
         {/* ══════════════ 수업 이력 ══════════════ */}

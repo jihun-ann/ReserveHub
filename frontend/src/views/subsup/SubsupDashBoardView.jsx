@@ -1,6 +1,6 @@
 import {useEffect} from "react";
 
-export default function SuperDashBoardView(){
+export default function SubsupDashBoardView(){
 
     return(
         <div className="page active" id="super-dashboard">

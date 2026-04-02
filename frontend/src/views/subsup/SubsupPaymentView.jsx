@@ -1,4 +1,4 @@
-export default function SuperPaymentView() {
+export default function SubsupPaymentView() {
     return (
         <div className="page" id="super-payment">
 
