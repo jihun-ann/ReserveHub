@@ -598,7 +598,7 @@ body { font-family:'Pretendard',-apple-system,sans-serif; background:var(--bg); 
 </style>
 </head>
 <body>
-id="super-app" style="display:none;">
+<div id="super-app">
   <button class="hamburger" onclick="toggleSidebar('super-sidebar','super-overlay')">☰</button>
   <div class="sidebar-overlay" id="super-overlay" onclick="toggleSidebar('super-sidebar','super-overlay')"></div>
 

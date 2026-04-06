@@ -6,7 +6,7 @@ import SubsupCalculationView from "./SubsupCalculationView.jsx";
 import SubsupCalendarView from "./SubsupCalendarView.jsx";
 import SubsupDashBoardView from "./SubsupDashBoardView.jsx";
 import SubsupMemberManageView from "./SubsupMemberManageView.jsx";
-import SuperMypageView from "./SubsupMypageView.jsx";
+import SubsupMypageView from "./SubsupMypageView.jsx";
 import SubsupPaymentView from "./SubsupPaymentView.jsx";
 import SubsupStudyHistoryView from "./SubsupStudyHistoryView.jsx";
 import SubsupTutorManageView from "./SubsupTutorManageView.jsx";
@@ -16,11 +16,11 @@ export default function SubsupView() {
 	const [currentContext, setCurrentContext] = useState("dashboard");
 
 	return (
-		<div className="app" id="super-app">
-			<div className="overlay" id="super-overlay" onClick={closeSidebar}></div>
+		<div className="app" id="subsup-app">
+			<div className="overlay" id="subsup-overlay" onClick={closeSidebar}></div>
 
 			{/* ══ 사이드바 ══ */}
-			<nav className="sidebar" id="super-sidebar">
+			<nav className="sidebar" id="subsup-sidebar">
 				<div className="sidebar-top">
 					<div className="logo">
 						<div className="logo-icon">🏪</div>
@@ -60,7 +60,7 @@ export default function SubsupView() {
 					</div>
 				</div>
 
-				<div className="nav" id="super-nav">
+				<div className="nav" id="subsup-nav">
 					<button
 						className={`nav-item ${currentContext === "dashboard" ? "active" : ""}`}
 						onClick={() => showPage("dashboard")}
@@ -191,7 +191,7 @@ export default function SubsupView() {
 			case "history":
 				return <SubsupStudyHistoryView />;
 			case "mypage":
-				return <SuperMypageView />;
+				return <SubsupMypageView />;
 			default:
 				return <SubsupDashBoardView />;
 		}

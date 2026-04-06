@@ -616,4 +616,9 @@ export default function TutorCalendarView() {
 			</div>
 		</div>
 	);
+
+	function openRequestModal() {
+		window.showAdminPage("admin-request", document.querySelectorAll("#admin-sidebar .nav-item")[2]);
+		window.scrollTo({ top: 0, behavior: "smooth" });
+	}
 }

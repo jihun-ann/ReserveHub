@@ -180,7 +180,6 @@ export default function SubsupMemberManageView() {
 	function renderMembers() {
 		const search = (document.getElementById("memberSearch")?.value || "").trim().toLowerCase();
 		const tbody = document.getElementById("memberTbody");
-		console.log(tbody);
 		if (!tbody) return;
 		const filtered = MEMBERS.filter((m) => {
 			const matchFilter =
@@ -195,7 +194,7 @@ export default function SubsupMemberManageView() {
 					m.dday === null
 						? "—"
 						: m.status === "expired"
-							? '<span class="badge bs-expired" style="font-size:10px">만료</span>'
+							? `<span class="badge bs-expired" style="font-size:10px">만료</span>`
 							: m.dday <= 3
 								? `<span class="badge bs-expired" style="font-size:10px">D-${m.dday}</span>`
 								: m.dday <= 7

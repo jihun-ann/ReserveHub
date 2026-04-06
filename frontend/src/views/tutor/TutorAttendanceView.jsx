@@ -1,8 +1,79 @@
+import { useEffect, useState } from "react";
+
 export default function TutorAttendanceView() {
+	let [currentFilter, setCurrentFilter] = useState("all");
+
+	useEffect(() => {
+		renderAttendance();
+	});
+
+	let SCHEDULE = [
+		{
+			name: "박서준",
+			phone: "010-5555-4444",
+			plan: "개인 레슨",
+			plan_code: "private",
+			platform_name: "스튜디오 필라테스 강남",
+			platform_id: "platform1",
+			time: "10:00",
+			attendance: "present"
+		},
+		{
+			name: "김민지",
+			phone: "010-9876-5432",
+			plan: "그룹 레슨 A",
+			plan_code: "groupA",
+			platform_name: "스튜디오 필라테스 강남",
+			platform_id: "platform1",
+			time: "09:00",
+			attendance: "late"
+		},
+		{
+			name: "정하준",
+			phone: "010-7777-8888",
+			plan: "그룹 레슨 A",
+			plan_code: "groupA",
+			platform_name: "스튜디오 필라테스 강남",
+			platform_id: "platform1",
+			time: "09:00",
+			attendance: "absent"
+		},
+		{
+			name: "홍길동",
+			phone: "010-1234-5678",
+			plan: "개인 레슨",
+			plan_code: "private",
+			platform_name: "요가 라운지",
+			platform_id: "platform2",
+			time: "11:00",
+			attendance: "present"
+		},
+		{
+			name: "최유나",
+			phone: "010-2020-3030",
+			plan: "그룹 레슨 B",
+			plan_code: "groupB",
+			platform_name: "요가 라운지",
+			platform_id: "platform2",
+			time: "10:00",
+			attendance: ""
+		},
+		{
+			name: "이지은",
+			phone: "010-2222-3333",
+			plan: "그룹 레슨 B",
+			plan_code: "groupB",
+			platform_name: "요가 라운지",
+			platform_id: "platform2",
+			time: "10:00",
+			attendance: ""
+		}
+	];
+
 	return (
 		<div id="tutor-attend" className="page">
 			<div className="page-header">
-				<div className="page-label">Ttutor / Attendance</div>
+				<div className="page-label">Tutor / Attendance</div>
 				<div className="page-title">출석 관리</div>
 				<div className="page-subtitle">수강생 출석을 확인하고 처리하세요</div>
 			</div>
@@ -21,10 +92,30 @@ export default function TutorAttendanceView() {
 						<span style={{ fontSize: "15px", fontWeight: 700, flex: 1 }}>
 							2026년 2월 26일 목요일
 						</span>
-						<button className="filter-chip active">전체</button>
-						<button className="filter-chip">그룹반 A</button>
-						<button className="filter-chip">그룹반 B</button>
-						<button className="filter-chip">개인레슨</button>
+						<button
+							className={`filter-chip ${currentFilter === "all" ? "active" : ""}`}
+							onClick={() => filterChip("all")}
+						>
+							전체
+						</button>
+						<button
+							className={`filter-chip ${currentFilter === "groupA" ? "active" : ""}`}
+							onClick={() => filterChip("groupA")}
+						>
+							그룹반 A
+						</button>
+						<button
+							className={`filter-chip ${currentFilter === "groupB" ? "active" : ""}`}
+							onClick={() => filterChip("groupB")}
+						>
+							그룹반 B
+						</button>
+						<button
+							className={`filter-chip ${currentFilter === "private" ? "active" : ""}`}
+							onClick={() => filterChip("private")}
+						>
+							개인레슨
+						</button>
 					</div>
 
 					<div className="card" style={{ padding: 0, overflow: "hidden" }}>
@@ -39,203 +130,7 @@ export default function TutorAttendanceView() {
 										<th>출결</th>
 									</tr>
 								</thead>
-								<tbody>
-									<tr>
-										<td>
-											<div style={{ fontWeight: 600 }}>홍길동</div>
-											<div style={{ fontSize: "11px", color: "var(--text-sub)" }}>
-												010-1234-5678
-											</div>
-										</td>
-										<td>1:1 개인 레슨</td>
-										<td>
-											<span
-												className="plat-chip"
-												style={{
-													background: "rgba(124,106,247,0.12)",
-													color: "#7c6af7",
-													borderColor: "rgba(124,106,247,0.3)"
-												}}
-											>
-												🤸 필라테스
-											</span>
-										</td>
-										<td>
-											<span style={{ fontFamily: "'DM Mono',monospace", fontSize: "12px" }}>
-												10:00
-											</span>
-										</td>
-										<td>
-											<div style={{ display: "flex", gap: "4px" }}>
-												<button className="atbtn present" onClick="setAttend(this,'present')">
-													출석
-												</button>
-												<button className="atbtn" onClick="setAttend(this,'late')">
-													지각
-												</button>
-												<button className="atbtn" onClick="setAttend(this,'absent')">
-													결석
-												</button>
-											</div>
-										</td>
-									</tr>
-									<tr>
-										<td>
-											<div style={{ fontWeight: 600 }}>김민지</div>
-											<div style={{ fontSize: "11px", color: "var(--text-sub)" }}>
-												010-9876-5432
-											</div>
-										</td>
-										<td>그룹반 A</td>
-										<td>
-											<span
-												className="plat-chip"
-												style={{
-													background: "rgba(124,106,247,0.12)",
-													color: "#7c6af7",
-													borderColor: "rgba(124,106,247,0.3)"
-												}}
-											>
-												🤸 필라테스
-											</span>
-										</td>
-										<td>
-											<span style={{ fontFamily: "'DM Mono',monospace", fontSize: "12px" }}>
-												09:00
-											</span>
-										</td>
-										<td>
-											<div style={{ display: "flex", gap: "4px" }}>
-												<button className="atbtn" onClick="setAttend(this,'present')">
-													출석
-												</button>
-												<button className="atbtn late" onClick="setAttend(this,'late')">
-													지각
-												</button>
-												<button className="atbtn" onClick="setAttend(this,'absent')">
-													결석
-												</button>
-											</div>
-										</td>
-									</tr>
-									<tr>
-										<td>
-											<div style={{ fontWeight: 600 }}>박서준</div>
-											<div style={{ fontSize: "11px", color: "var(--text-sub)" }}>
-												010-5555-4444
-											</div>
-										</td>
-										<td>그룹반 A</td>
-										<td>
-											<span
-												className="plat-chip"
-												style={{
-													background: "rgba(124,106,247,0.12)",
-													color: "#7c6af7",
-													borderColor: "rgba(124,106,247,0.3)"
-												}}
-											>
-												🤸 필라테스
-											</span>
-										</td>
-										<td>
-											<span style={{ fontFamily: "'DM Mono',monospace", fontSize: "12px" }}>
-												09:00
-											</span>
-										</td>
-										<td>
-											<div style={{ display: "flex", gap: "4px" }}>
-												<button className="atbtn" onClick="setAttend(this,'present')">
-													출석
-												</button>
-												<button className="atbtn" onClick="setAttend(this,'late')">
-													지각
-												</button>
-												<button className="atbtn absent" onClick="setAttend(this,'absent')">
-													결석
-												</button>
-											</div>
-										</td>
-									</tr>
-									<tr>
-										<td>
-											<div style={{ fontWeight: 600 }}>이지은</div>
-											<div style={{ fontSize: "11px", color: "var(--text-sub)" }}>
-												010-2222-3333
-											</div>
-										</td>
-										<td>그룹반 B</td>
-										<td>
-											<span
-												className="plat-chip"
-												style={{
-													background: "rgba(79,209,197,0.12)",
-													color: "#4fd1c5",
-													borderColor: "rgba(79,209,197,0.3)"
-												}}
-											>
-												🧘 요가
-											</span>
-										</td>
-										<td>
-											<span style={{ fontFamily: "'DM Mono',monospace", fontSize: "12px" }}>
-												14:00
-											</span>
-										</td>
-										<td>
-											<div style={{ display: "flex", gap: "4px" }}>
-												<button className="atbtn present" onClick="setAttend(this,'present')">
-													출석
-												</button>
-												<button className="atbtn" onClick="setAttend(this,'late')">
-													지각
-												</button>
-												<button className="atbtn" onClick="setAttend(this,'absent')">
-													결석
-												</button>
-											</div>
-										</td>
-									</tr>
-									<tr>
-										<td>
-											<div style={{ fontWeight: 600 }}>최유나</div>
-											<div style={{ fontSize: "11px", color: "var(--text-sub)" }}>
-												010-7777-8888
-											</div>
-										</td>
-										<td>그룹반 B</td>
-										<td>
-											<span
-												className="plat-chip"
-												style={{
-													background: "rgba(79,209,197,0.12)",
-													color: "#4fd1c5",
-													borderColor: "rgba(79,209,197,0.3)"
-												}}
-											>
-												🧘 요가
-											</span>
-										</td>
-										<td>
-											<span style={{ fontFamily: "'DM Mono',monospace", fontSize: "12px" }}>
-												14:00
-											</span>
-										</td>
-										<td>
-											<div style={{ display: "flex", gap: "4px" }}>
-												<button className="atbtn" onClick="setAttend(this,'present')">
-													출석
-												</button>
-												<button className="atbtn" onClick="setAttend(this,'late')">
-													지각
-												</button>
-												<button className="atbtn" onClick="setAttend(this,'absent')">
-													결석
-												</button>
-											</div>
-										</td>
-									</tr>
-								</tbody>
+								<tbody id="attendTbody"></tbody>
 							</table>
 						</div>
 					</div>
@@ -376,4 +271,81 @@ export default function TutorAttendanceView() {
 			</div>
 		</div>
 	);
+	function setAttend() {}
+
+	function filterChip(cat) {
+		setCurrentFilter(cat);
+		renderAttendance();
+	}
+
+	function renderAttendance() {
+		const platformStyles = {
+			platform1: {
+				background: "rgba(79,209,197,0.12)",
+				color: "#4fd1c5",
+				borderColor: "rgba(79,209,197,0.3)"
+			},
+			platform2: {
+				background: "rgba(66,133,244,0.12)",
+				color: "#4285f4",
+				borderColor: "rgba(66,133,244,0.3)"
+			},
+			platform3: {
+				background: "rgba(98,100,167,0.12)",
+				color: "#6264a7",
+				borderColor: "rgba(98,100,167,0.3)"
+			},
+			platform4: {
+				background: "rgba(88,101,242,0.12)",
+				color: "#5865f2",
+				borderColor: "rgba(88,101,242,0.3)"
+			},
+			platform5: {
+				background: "rgba(160,174,192,0.12)",
+				color: "#a0aec0",
+				borderColor: "rgba(160,174,192,0.3)"
+			}
+		};
+
+		const tbody = document.getElementById("attendTbody");
+		if (!tbody) return;
+		const filtered = SCHEDULE.filter((m) => {
+			return currentFilter === "all" || m.plan_code === currentFilter;
+		});
+		tbody.innerHTML = filtered
+			.map((m, i) => {
+				const status = { present: "출석", late: "지각", absent: "결석" };
+				const attendStatus =
+					m.attendance === ""
+						? `<button class="atbtn" onClick="setAttend(this,'present')">출석</button>
+							 <button class="atbtn" onClick="setAttend(this,'late')">지각</button>
+							 <button class="atbtn" onClick="setAttend(this,'absent')">결석</button>`
+						: `<button class="atbtn ${m.attendance}">${status[m.attendance]}</button>`;
+				return `<tr>
+				<td>
+					<div style="font-weight: 600">${m.name}</div>
+					<div style="font-size: 11px; color: var(--text-sub)">${m.phone}</div>
+				</td>
+				<td>${m.plan}</td>
+				<td>
+					<span class="plat-chip" style="background : ${platformStyles[m.platform_id].background};
+																				 color : ${platformStyles[m.platform_id].color};
+																				 border-color:${platformStyles[m.platform_id].borderColor}">
+						${m.platform_name}
+					</span>
+				</td>
+				<td>
+					<span style="font-family: 'DM Mono',monospace; font-size: 12px">
+						${m.time}
+					</span>
+				</td>
+				<td>
+					<div style="display: flex; gap: 4px; justify-content: center;">
+						${attendStatus}
+					</div>
+				</td>
+			</tr>`;
+			})
+			.join("");
+	}
 }

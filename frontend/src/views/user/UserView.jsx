@@ -60,9 +60,7 @@ export default function UserView() {
 				</div>
 
 				<div className="sidebar-bottom">
-					<button className="btn-logout">
-						🚪 <span>로그아웃</span>
-					</button>
+					<button className="btn-logout"></button>
 				</div>
 			</nav>
 

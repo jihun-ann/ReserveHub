@@ -1,8 +1,8 @@
-export default function TutorMypage() {
+export default function TutorMypageView() {
 	return (
 		<div id="tutor-mypage" className="page">
 			<div className="page-header">
-				<div className="page-label">Ttutor / My Page</div>
+				<div className="page-label">Tutor / My Page</div>
 				<div className="page-title">내 정보</div>
 				<div className="page-subtitle">내 계정 정보와 소속 플랫폼 현황을 확인하세요</div>
 			</div>
