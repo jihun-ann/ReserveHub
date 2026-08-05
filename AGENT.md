@@ -284,8 +284,8 @@ docker compose up -d postgres redis
 # 스키마 적용
 psql -U reservehub -d reservehub -f db/schema.sql
 
-# 백엔드 실행
-cd backend && ./gradlew bootRun
+# 백엔드 실행 (반드시 저장소 루트에서 실행 — Gradle 루트 프로젝트가 여기 있음)
+./gradlew bootRun
 
 # 프론트엔드 실행
 cd frontend && npm install && npm run dev
