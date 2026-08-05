@@ -1,5 +1,8 @@
+import { openModal, closeModal } from "../default.js";
+
 export default function TutorCalendarView() {
 	return (
+		<>
 		<div id="admin-calendar" className="page active">
 			<div className="page-header">
 				<div className="page-label">Admin / Calendar</div>
@@ -401,7 +404,7 @@ export default function TutorCalendarView() {
 										>
 											출석
 										</button>
-										<button className="btn btn-sm btn-danger" onClick="openRequestModal()">
+										<button className="btn btn-sm btn-danger" onClick={() => openModal("requestModal")}>
 											변경 요청
 										</button>
 									</div>
@@ -604,7 +607,7 @@ export default function TutorCalendarView() {
 										>
 											출석
 										</button>
-										<button className="btn btn-sm btn-danger" onClick="openRequestModal()">
+										<button className="btn btn-sm btn-danger" onClick={() => openModal("requestModal")}>
 											변경 요청
 										</button>
 									</div>
@@ -615,10 +618,42 @@ export default function TutorCalendarView() {
 				</div>
 			</div>
 		</div>
-	);
 
-	function openRequestModal() {
-		window.showAdminPage("admin-request", document.querySelectorAll("#admin-sidebar .nav-item")[2]);
-		window.scrollTo({ top: 0, behavior: "smooth" });
-	}
+			{/* 일정 변경 요청 모달 */}
+			<div className="modal-overlay" id="requestModal">
+				<div className="modal-box">
+					<div className="modal-header">
+						<div className="modal-title">일정 변경 요청</div>
+						<button className="modal-close" onClick={() => closeModal("requestModal")}>✕</button>
+					</div>
+					<div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+						<div className="form-field">
+							<label>프로그램</label>
+							<select>
+								<option>1:1 개인 레슨</option>
+								<option>그룹반 A</option>
+								<option>그룹반 B</option>
+							</select>
+						</div>
+						<div className="form-field">
+							<label>기존 일정</label>
+							<input type="datetime-local" />
+						</div>
+						<div className="form-field">
+							<label>변경 희망 일정</label>
+							<input type="datetime-local" />
+						</div>
+						<div className="form-field">
+							<label>변경 사유</label>
+							<textarea placeholder="변경이 필요한 이유를 상세히 작성해주세요..."></textarea>
+						</div>
+						<div style={{ display: "flex", justifyContent: "flex-end", gap: "8px", marginTop: "8px" }}>
+							<button className="btn btn-ghost" onClick={() => closeModal("requestModal")}>취소</button>
+							<button className="btn btn-primary" onClick={() => closeModal("requestModal")}>제출</button>
+						</div>
+					</div>
+				</div>
+			</div>
+		</>
+	);
 }

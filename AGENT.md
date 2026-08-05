@@ -30,9 +30,9 @@ Backend   Spring Boot 3.x (Java 17)
 Database  PostgreSQL 16 (Primary)
           Redis 7 (캐시 · Pub/Sub fallback)
 
-Frontend  Vue 3 + Vite
-          Pinia (상태관리)
-          Tailwind CSS
+Frontend  React 19 + Vite
+          React Router
+          CSS (컴포넌트별 .css)
 
 Infra     Docker Compose (로컬)
           GitHub Actions (CI)
@@ -43,9 +43,9 @@ Infra     Docker Compose (로컬)
 ## 3. 역할 계층 (Role Hierarchy)
 
 ```
-SUPER        슈퍼관리자 (대표)
-  └─ SUB_SUPER   서브슈퍼관리자 (점주/사장)  ← 플랫폼 1개 고정
-       └─ TUTOR      일반관리자 (강사)       ← 복수 플랫폼 가능
+OWNER        오너 (대표)
+  └─ MANAGER     매니저 (점주/사장/관리자)
+       └─ TUTOR      일반관리자 (강사)       ← 옵션
             └─ USER      수강생
 ```
 
@@ -53,9 +53,9 @@ SUPER        슈퍼관리자 (대표)
 
 | 규칙 | 내용 |
 |------|------|
-| SUB_SUPER 플랫폼 제한 | **1개 플랫폼만 담당**. DB 트리거 + 앱 레이어 이중 검증 |
-| 플랫폼 생성 | SUPER만 가능 |
-| 승인 처리 | SUB_SUPER 이상만 가능. 처리 시 `action_logs` 필수 기록 |
+| MANAGER 플랫폼 제한 | **1개 플랫폼만 담당**. DB 트리거 + 앱 레이어 이중 검증 |
+| 플랫폼 생성 | OWNER만 가능 |
+| 승인 처리 | MANAGER 이상만 가능. 처리 시 `action_logs` 필수 기록 |
 | 타 플랫폼 데이터 조회 | 절대 불가. 모든 쿼리에 `platform_id` 필터 필수 |
 
 ---
@@ -132,15 +132,15 @@ public void approveRequest(UUID requestId, UUID actorId, String memo) {
 | `user.registered` | 회원가입 | 사용자 → 환영 메일 |
 | `reservation.confirmed` | 예약 확정 | 사용자 알림 |
 | `reservation.cancelled` | 예약 취소 | 사용자·강사 알림 |
-| `schedule_request.created` | 변경 요청 생성 | 서브슈퍼 알림 |
+| `schedule_request.created` | 변경 요청 생성 | 매니저 알림 |
 | `schedule_request.approved` | 승인 처리 | 강사·수강생 알림 |
 | `schedule_request.rejected` | 반려 처리 | 강사 알림 |
 | `order.paid` | 결제 완료 | 영수증·수강권 발급 |
 | `order.refunded` | 환불 완료 | 사용자 알림 |
 | `user_pass.expiring` | D-7 만료 예정 | 재결제 유도 알림 |
-| `calendar_event.shared` | 공유 일정 생성 | 해당 서브슈퍼 전원 |
+| `calendar_event.shared` | 공유 일정 생성 | 해당 매니저 전원 |
 | `calendar_event.hq_notice` | 본사 공지 | 전 플랫폼 |
-| `slot.conflict_detected` | 강사 일정 충돌 감지 | 서브슈퍼 알림 |
+| `slot.conflict_detected` | 강사 일정 충돌 감지 | 매니저 알림 |
 
 ---
 
@@ -149,7 +149,7 @@ public void approveRequest(UUID requestId, UUID actorId, String memo) {
 ```
 reservehub/
 ├── backend/
-│   └── src/main/java/com/reservehub/
+│   └── src/main/java/com/hub/reservehub/
 │       ├── domain/
 │       │   ├── user/
 │       │   ├── platform/
@@ -170,10 +170,9 @@ reservehub/
 │   └── src/
 │       ├── views/
 │       │   ├── user/
-│       │   ├── turor/          # 강사
-│       │   ├── subsup/         # 서브슈퍼
-│       │   └── super/          # 슈퍼관리자
-│       ├── stores/             # Pinia
+│       │   ├── tutor/          # 강사
+│       │   ├── manager/        # 매니저
+│       │   └── owner/          # 오너
 │       ├── components/
 │       └── api/                # Axios 인스턴스 · 엔드포인트
 └── db/
@@ -247,14 +246,14 @@ nativeQuery("SELECT * FROM vw_expiring_passes WHERE platform_id = :pid")
 nativeQuery("SELECT * FROM vw_instructor_monthly_stats WHERE platform_id = :pid AND month = :month")
 ```
 
-### Vue 3 (Frontend)
+### React (Frontend)
 
-```js
+```jsx
 // ✅ API 호출 시 플랫폼 헤더 자동 주입 (Axios interceptor)
 api.get('/passes')   // X-Platform-Id 자동 포함
 
 // ✅ 역할 기반 렌더링
-<template v-if="auth.role === 'SUB_SUPER'">...</template>
+{auth.role === 'MANAGER' && <ManagerPanel />}
 
 // ✅ 금액 포맷
 formatKRW(95000)  // → "95,000원"
@@ -270,7 +269,7 @@ formatKRW(95000)  // → "95,000원"
 | 승인 처리 후 action_logs 누락 | 항상 같은 트랜잭션에 INSERT |
 | Outbox 없이 직접 Kafka 발행 | `outboxRepository.save()` 후 Relay 발행 |
 | 금액 `BigDecimal` 사용 | `int` (원 단위 정수) |
-| SUB_SUPER 복수 플랫폼 허용 | DB 트리거 + 서비스 레이어 이중 검증 |
+| MANAGER 복수 플랫폼 허용 | DB 트리거 + 서비스 레이어 이중 검증 |
 | `DELETE FROM action_logs` | 절대 불가, 감사 로그는 영구 보존 |
 | 할인 단순 합산 (10%+8%=18%) | 순차 적용 (apply_order 순서로 복리 계산) |
 
@@ -301,6 +300,37 @@ cd frontend && npm install && npm run dev
 | `vw_expiring_passes` | 재결제 임박 고객 (D-7) — 대시보드 위젯 |
 | `vw_instructor_monthly_stats` | 강사별 월간 수업·출결 집계 — 수업 이력 페이지 |
 | `vw_platform_monthly_revenue` | 플랫폼별 월간 매출 — 대시보드·수익 통계 |
+
+---
+
+## 12. AI 에이전트 하네스 기법 (Ponytail 원칙)
+
+이 프로젝트에서 코드를 작성하는 AI 에이전트는 "게으른 시니어 개발자"처럼
+행동합니다. 게으르다는 것은 대충 하는 게 아니라, 필요한 것만 정확히
+만든다는 뜻입니다.
+
+### 우선순위 사다리 — 먼저 걸리는 단계에서 멈출 것
+1. 이 기능이 정말 필요한가? 추측성 요구면 생략 (YAGNI)
+2. 이미 이 코드베이스에 있는가? 있으면 재사용
+3. 표준 라이브러리로 되는가?
+4. 플랫폼 네이티브 기능으로 되는가? (DB 제약조건, HTML 기본 기능 등)
+5. 이미 설치된 의존성으로 되는가? 새 의존성 추가 금지
+6. 한 줄로 되는가?
+7. 그래도 안 되면 그때 최소한의 코드만 작성
+
+### 규칙
+- 구현체 1개짜리 인터페이스, 안 바뀌는 값의 설정 등 **추측성 추상화 금지**
+- "나중을 위한" 보일러플레이트 금지 — 나중은 나중에 만든다
+- 삭제 > 추가, 지루한 코드 > 영리한 코드
+- **버그 수정은 근본 원인 수정.** 수정 전 해당 함수의 모든 호출부를 확인하고,
+  공통 함수 한 곳에서 고쳐 형제 호출부가 계속 깨져 있지 않게 할 것
+- 의도적으로 단순화한 부분(전역 락, O(n²) 스캔 등)은
+  `// ponytail: 한계와 업그레이드 조건` 주석으로 남길 것
+
+### 생략하면 안 되는 것
+- 신뢰 경계의 입력 검증, 데이터 손실을 막는 에러 처리, 보안 조치, 접근성 기본 요소
+- 분기·반복문·파서·금액/보안 로직 등 비trivial 로직에는 최소 1개의
+  실행 가능한 체크(assert 기반 데모 또는 소규모 테스트)를 남길 것
 
 ---
 

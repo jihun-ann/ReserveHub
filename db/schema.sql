@@ -12,10 +12,10 @@ CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 -- 1. 계정 / 권한 도메인
 -- ============================================================
 
--- 역할 (SUPER > SUB_SUPER > ADMIN > USER)
+-- 역할 (OWNER > MANAGER > ADMIN > USER)
 CREATE TYPE user_role AS ENUM (
-    'SUPER',        -- 슈퍼관리자 (대표)
-    'SUB_SUPER',    -- 서브슈퍼관리자 (점주/사장)
+    'OWNER',        -- 오너 (대표)
+    'MANAGER',      -- 매니저 (점주/사장)
     'ADMIN',        -- 일반관리자 (강사)
     'USER'          -- 수강생
 );
@@ -35,7 +35,7 @@ CREATE TABLE users (
 );
 
 COMMENT ON TABLE  users              IS '전체 사용자 계정. role 컬럼으로 역할을 구분';
-COMMENT ON COLUMN users.role         IS 'SUPER/SUB_SUPER/ADMIN/USER — 계층 구조 반영';
+COMMENT ON COLUMN users.role         IS 'OWNER/MANAGER/ADMIN/USER — 계층 구조 반영';
 COMMENT ON COLUMN users.password_hash IS 'bcrypt hash (cost 12)';
 
 
@@ -61,12 +61,12 @@ CREATE TABLE platforms (
                            updated_at      TIMESTAMPTZ     NOT NULL DEFAULT NOW()
 );
 
-COMMENT ON TABLE platforms IS '플랫폼 (스튜디오/센터 단위). 슈퍼관리자만 생성 가능';
+COMMENT ON TABLE platforms IS '플랫폼 (스튜디오/센터 단위). 오너만 생성 가능';
 
 
--- 플랫폼 ↔ 스태프 N:M (서브슈퍼·강사 모두 이 테이블로 관리)
--- 서브슈퍼: 플랫폼 1개 고정 (UI 확정), 강사: 복수 플랫폼 가능
-CREATE TYPE staff_role AS ENUM ('SUB_SUPER', 'ADMIN');
+-- 플랫폼 ↔ 스태프 N:M (매니저·강사 모두 이 테이블로 관리)
+-- 매니저: 플랫폼 1개 고정 (UI 확정), 강사: 복수 플랫폼 가능
+CREATE TYPE staff_role AS ENUM ('MANAGER', 'ADMIN');
 
 CREATE TABLE platform_staff (
                                 id              UUID        PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -79,7 +79,7 @@ CREATE TABLE platform_staff (
                                 UNIQUE (platform_id, user_id)
 );
 
-COMMENT ON TABLE  platform_staff           IS '플랫폼-스태프 매핑. SUB_SUPER는 1개 플랫폼만 허용 (앱 레이어에서 검증)';
+COMMENT ON TABLE  platform_staff           IS '플랫폼-스태프 매핑. MANAGER는 1개 플랫폼만 허용 (앱 레이어에서 검증)';
 COMMENT ON COLUMN platform_staff.left_at   IS 'NULL이면 재직 중. Soft delete 방식으로 이력 보존';
 
 
@@ -174,7 +174,7 @@ CREATE TABLE discount_policies (
                                    updated_at      TIMESTAMPTZ     NOT NULL DEFAULT NOW()
 );
 
-COMMENT ON TABLE  discount_policies                IS '할인 정책 정의. 서브슈퍼가 플랫폼별로 설정';
+COMMENT ON TABLE  discount_policies                IS '할인 정책 정의. 매니저가 플랫폼별로 설정';
 COMMENT ON COLUMN discount_policies.condition_value IS 'LONG_TERM: 최소 개월수, FAMILY: 최소 인원수';
 COMMENT ON COLUMN discount_policies.rate            IS '할인율(%). 순차 적용 시 각 단계에서 독립 계산';
 
@@ -334,7 +334,7 @@ CREATE TABLE schedule_change_requests (
                                           updated_at      TIMESTAMPTZ     NOT NULL DEFAULT NOW()
 );
 
-COMMENT ON TABLE schedule_change_requests IS '강사가 제출한 일정 변경 요청. 서브슈퍼 또는 슈퍼가 승인';
+COMMENT ON TABLE schedule_change_requests IS '강사가 제출한 일정 변경 요청. 매니저 또는 오너가 승인';
 
 
 -- 처리 이력 (모든 승인/반려 행위 기록 — 담당자 추적)
@@ -358,7 +358,7 @@ CREATE TABLE action_logs (
 );
 
 COMMENT ON TABLE  action_logs         IS '모든 처리 이력. 담당자 + 시각 자동 기록. 삭제 불가';
-COMMENT ON COLUMN action_logs.actor_id IS '처리한 SUB_SUPER 또는 SUPER';
+COMMENT ON COLUMN action_logs.actor_id IS '처리한 MANAGER 또는 OWNER';
 COMMENT ON COLUMN action_logs.target_id IS '대상 레코드 UUID (target_type에 따라 다른 테이블 참조)';
 
 
@@ -382,15 +382,15 @@ COMMENT ON TABLE member_memos IS '수강생별 상담 및 처리 메모. 작성�
 CREATE TYPE event_type AS ENUM (
     'HOLIDAY',      -- 정기 휴무
     'NOTICE',       -- 플랫폼 공지
-    'HQ_NOTICE',    -- 본사(슈퍼) 공지
-    'SHARED',       -- 서브슈퍼 간 공유 이벤트
+    'HQ_NOTICE',    -- 본사(오너) 공지
+    'SHARED',       -- 매니저 간 공유 이벤트
     'CONFLICT'      -- 강사 일정 충돌 (시스템 자동 생성)
 );
 
 CREATE TYPE share_scope AS ENUM (
     'PLATFORM',         -- 해당 플랫폼 내
-    'ALL_SUB_SUPER',    -- 전체 서브슈퍼
-    'INCLUDE_SUPER',    -- 슈퍼 포함
+    'ALL_MANAGER',      -- 전체 매니저
+    'INCLUDE_OWNER',    -- 오너 포함
     'INCLUDE_ADMIN'     -- 강사 포함
 );
 
@@ -410,7 +410,7 @@ CREATE TABLE calendar_events (
 );
 
 COMMENT ON TABLE  calendar_events            IS '캘린더 이벤트. platform_id가 NULL이면 전 플랫폼 공통';
-COMMENT ON COLUMN calendar_events.event_type IS 'HQ_NOTICE는 슈퍼만 생성 가능 (앱 레이어 검증)';
+COMMENT ON COLUMN calendar_events.event_type IS 'HQ_NOTICE는 오너만 생성 가능 (앱 레이어 검증)';
 
 
 -- ============================================================
@@ -555,36 +555,36 @@ JOIN platforms p ON p.id = o.platform_id
 WHERE o.status = 'PAID'
 GROUP BY o.platform_id, p.name, DATE_TRUNC('month', o.paid_at);
 
-COMMENT ON VIEW vw_platform_monthly_revenue IS '플랫폼별 월간 매출 집계. 슈퍼/서브슈퍼 대시보드용';
+COMMENT ON VIEW vw_platform_monthly_revenue IS '플랫폼별 월간 매출 집계. 오너/매니저 대시보드용';
 
 
 -- ============================================================
 -- 10. 핵심 비즈니스 규칙 체크 함수
 -- ============================================================
 
--- 서브슈퍼는 1개 플랫폼만 담당 가능 (INSERT/UPDATE 시 검증)
-CREATE OR REPLACE FUNCTION check_subsup_single_platform()
+-- 매니저 한 명이 담당할 수 있는 플랫폼은 1개뿐 (한 플랫폼에 여러 매니저가 있는 것은 허용, INSERT/UPDATE 시 검증)
+CREATE OR REPLACE FUNCTION check_manager_single_platform()
 RETURNS TRIGGER AS $$
 BEGIN
-    IF NEW.staff_role = 'SUB_SUPER' THEN
+    IF NEW.staff_role = 'MANAGER' THEN
         IF EXISTS (
             SELECT 1 FROM platform_staff
             WHERE user_id    = NEW.user_id
-              AND staff_role = 'SUB_SUPER'
+              AND staff_role = 'MANAGER'
               AND is_active  = TRUE
               AND id         != NEW.id
         ) THEN
             RAISE EXCEPTION
-                '서브슈퍼관리자는 1개 플랫폼만 담당할 수 있습니다. (user_id: %)', NEW.user_id;
+                '매니저 한 명은 1개 플랫폼만 담당할 수 있습니다. (user_id: %)', NEW.user_id;
 END IF;
 END IF;
 RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
 
-CREATE TRIGGER trg_subsup_single_platform
+CREATE TRIGGER trg_manager_single_platform
     BEFORE INSERT OR UPDATE ON platform_staff
-                         FOR EACH ROW EXECUTE FUNCTION check_subsup_single_platform();
+                         FOR EACH ROW EXECUTE FUNCTION check_manager_single_platform();
 
 
 -- updated_at 자동 갱신
@@ -686,7 +686,7 @@ CREATE INDEX idx_outbox_created
 --   reservation.no_show     노쇼 처리           → 수강권 차감 이벤트
 --
 -- [일정 변경 요청]
---   schedule_request.created   요청 생성        → 서브슈퍼 알림
+--   schedule_request.created   요청 생성        → 매니저 알림
 --   schedule_request.approved  승인             → 강사/수강생 알림
 --   schedule_request.rejected  반려             → 강사 알림
 --
@@ -697,11 +697,11 @@ CREATE INDEX idx_outbox_created
 --   user_pass.expired       수강권 만료         → 상태 업데이트
 --
 -- [공유 이벤트]
---   calendar_event.shared   공유 일정 생성      → 해당 서브슈퍼 전원 알림
+--   calendar_event.shared   공유 일정 생성      → 해당 매니저 전원 알림
 --   calendar_event.hq_notice 본사 공지          → 전 플랫폼 알림
 --
 -- [시스템]
---   slot.conflict_detected  강사 일정 충돌 감지 → 서브슈퍼 알림
+--   slot.conflict_detected  강사 일정 충돌 감지 → 매니저 알림
 -- ─────────────────────────────────────────────────────────────
 
 

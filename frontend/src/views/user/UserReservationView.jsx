@@ -10,6 +10,7 @@ export default function UserReservationView() {
 	useEffect(() => {
 		window.selectProgram = selectProgram;
 		window.selectSlot = selectSlot;
+		window.selectDate = selectDate;
 		renderPrograms();
 	});
 
@@ -359,6 +360,12 @@ export default function UserReservationView() {
 		document.getElementById("confirmDate").textContent = mon + "월 " + day + "일";
 		document.getElementById("confirmTime").textContent = slot.time;
 		document.getElementById("confirmRemain").textContent = slot.max - slot.used + "석";
+	}
+
+	function selectDate(offset) {
+		selectedDateOffset = offset;
+		selectedSlotIdx = null;
+		renderSlotPanel();
 	}
 
 	function selectSlot(idx) {

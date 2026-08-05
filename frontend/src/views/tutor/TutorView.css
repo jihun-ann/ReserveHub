@@ -1281,14 +1281,14 @@
     }
 
 
-    /* ══ 슈퍼관리자 전용 ══ */
+    /* ══ 오너 전용 ══ */
 
-    .super-sidebar .nav-item.active {
+    .owner-sidebar .nav-item.active {
         background: rgba(246, 173, 85, 0.15);
         color: #f6ad55;
     }
 
-    .super-sidebar .collapse-btn:hover {
+    .owner-sidebar .collapse-btn:hover {
         border-color: #f6ad55;
         color: #f6ad55;
     }
@@ -1330,11 +1330,11 @@
     }
 
     @media (max-width: 900px) {
-        #super-platforms > div > div:first-child {
+        #owner-platforms > div > div:first-child {
             display: none;
         }
 
-        #super-platforms > div {
+        #owner-platforms > div {
             grid-template-columns:1fr;
         }
     }
@@ -1345,27 +1345,27 @@
     }
 
 
-    /* ══ 서브슈퍼관리자 전용 ══ */
+    /* ══ 매니저 전용 ══ */
 
-    .subsup-sidebar .nav-item.active {
+    .manager-sidebar .nav-item.active {
         background: rgba(79, 209, 197, 0.15);
         color: #4fd1c5;
     }
 
-    .subsup-sidebar .collapse-btn:hover {
+    .manager-sidebar .collapse-btn:hover {
         border-color: #4fd1c5;
         color: #4fd1c5;
     }
 
-    .subsup-plat-tab {
+    .manager-plat-tab {
         transition: all 0.15s;
     }
 
-    .subsup-plat-tab:hover {
+    .manager-plat-tab:hover {
         background: var(--surface2) !important;
     }
 
-    .subsup-plat-tab.active {
+    .manager-plat-tab.active {
         background: rgba(124, 106, 247, 0.15) !important;
     }
 
@@ -1667,15 +1667,6 @@
     .history-duration {
         font-size: 11px;
         color: var(--text-sub);
-    }
-
-    @keyframes userPulse {
-        0%, 100% {
-            opacity: 1
-        }
-        50% {
-            opacity: 0.3
-        }
     }
 
     .timer-running .timer-digits {
@@ -2175,5 +2166,64 @@
         .slot-panel {
             position: static;
         }
+    }
+
+    .modal-overlay {
+        display: none;
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, .7);
+        z-index: 500;
+        align-items: center;
+        justify-content: center;
+        backdrop-filter: blur(4px);
+    }
+
+    .modal-overlay.open {
+        display: flex;
+    }
+
+    .modal-box {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: var(--r);
+        padding: 28px;
+        width: min(480px, 90vw);
+        max-height: 80vh;
+        overflow-y: auto;
+    }
+
+    .modal-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 20px;
+    }
+
+    .modal-title {
+        font-size: 16px;
+        font-weight: 700;
+    }
+
+    .modal-close {
+        background: none;
+        border: none;
+        color: var(--text-sub);
+        font-size: 20px;
+        cursor: pointer;
+        padding: 4px;
+    }
+
+    .modal-close:hover {
+        color: var(--text);
+    }
+}
+
+@keyframes userPulse {
+    0%, 100% {
+        opacity: 1
+    }
+    50% {
+        opacity: 0.3
     }
 }

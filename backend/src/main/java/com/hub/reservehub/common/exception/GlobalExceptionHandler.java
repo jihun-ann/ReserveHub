@@ -29,6 +29,12 @@ public class GlobalExceptionHandler {
                 .body(ApiError.of("UNAUTHORIZED", "Invalid email or password"));
     }
 
+    @ExceptionHandler(PlatformAccessDeniedException.class)
+    public ResponseEntity<ApiError> handlePlatformAccessDenied(PlatformAccessDeniedException ex) {
+        return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                .body(ApiError.of("PLATFORM_ACCESS_DENIED", ex.getMessage()));
+    }
+
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ApiError> handleValidation(MethodArgumentNotValidException ex) {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)

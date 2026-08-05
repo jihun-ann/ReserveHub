@@ -4,6 +4,7 @@ export default function TutorAttendanceView() {
 	let [currentFilter, setCurrentFilter] = useState("all");
 
 	useEffect(() => {
+		window.setAttend = setAttend;
 		renderAttendance();
 	});
 
@@ -271,7 +272,10 @@ export default function TutorAttendanceView() {
 			</div>
 		</div>
 	);
-	function setAttend() {}
+	function setAttend(idx, status) {
+		SCHEDULE[idx].attendance = status;
+		renderAttendance();
+	}
 
 	function filterChip(cat) {
 		setCurrentFilter(cat);
@@ -313,13 +317,14 @@ export default function TutorAttendanceView() {
 			return currentFilter === "all" || m.plan_code === currentFilter;
 		});
 		tbody.innerHTML = filtered
-			.map((m, i) => {
+			.map((m) => {
+				const realIdx = SCHEDULE.indexOf(m);
 				const status = { present: "출석", late: "지각", absent: "결석" };
 				const attendStatus =
 					m.attendance === ""
-						? `<button class="atbtn" onClick="setAttend(this,'present')">출석</button>
-							 <button class="atbtn" onClick="setAttend(this,'late')">지각</button>
-							 <button class="atbtn" onClick="setAttend(this,'absent')">결석</button>`
+						? `<button class="atbtn" onclick="setAttend(${realIdx},'present')">출석</button>
+							 <button class="atbtn" onclick="setAttend(${realIdx},'late')">지각</button>
+							 <button class="atbtn" onclick="setAttend(${realIdx},'absent')">결석</button>`
 						: `<button class="atbtn ${m.attendance}">${status[m.attendance]}</button>`;
 				return `<tr>
 				<td>

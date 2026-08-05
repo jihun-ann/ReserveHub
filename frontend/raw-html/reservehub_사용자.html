@@ -434,9 +434,9 @@ body { font-family:'Pretendard',-apple-system,sans-serif; background:var(--bg); 
 }
 
 
-/* ══ 슈퍼관리자 전용 ══ */
-.super-sidebar .nav-item.active { background:rgba(246,173,85,0.15);color:#f6ad55; }
-.super-sidebar .collapse-btn:hover { border-color:#f6ad55;color:#f6ad55; }
+/* ══ 오너 전용 ══ */
+.owner-sidebar .nav-item.active { background:rgba(246,173,85,0.15);color:#f6ad55; }
+.owner-sidebar .collapse-btn:hover { border-color:#f6ad55;color:#f6ad55; }
 
 .plat-tab {
   padding:11px 18px;border:none;background:none;color:var(--text-sub);
@@ -451,20 +451,20 @@ body { font-family:'Pretendard',-apple-system,sans-serif; background:var(--bg); 
 .platform-list-item.active { background:rgba(124,106,247,0.08)!important; }
 
 @media(max-width:900px) {
-  #super-platforms > div > div:first-child { display:none; }
-  #super-platforms > div { grid-template-columns:1fr; }
+  #owner-platforms > div > div:first-child { display:none; }
+  #owner-platforms > div { grid-template-columns:1fr; }
 }
 @media(max-width:768px) {
   .today-summary { grid-template-columns:1fr 1fr; }
 }
 
 
-/* ══ 서브슈퍼관리자 전용 ══ */
-.subsup-sidebar .nav-item.active { background:rgba(79,209,197,0.15); color:#4fd1c5; }
-.subsup-sidebar .collapse-btn:hover { border-color:#4fd1c5; color:#4fd1c5; }
-.subsup-plat-tab { transition: all 0.15s; }
-.subsup-plat-tab:hover { background: var(--surface2) !important; }
-.subsup-plat-tab.active { background: rgba(124,106,247,0.15) !important; }
+/* ══ 서브오너 전용 ══ */
+.manager-sidebar .nav-item.active { background:rgba(79,209,197,0.15); color:#4fd1c5; }
+.manager-sidebar .collapse-btn:hover { border-color:#4fd1c5; color:#4fd1c5; }
+.manager-plat-tab { transition: all 0.15s; }
+.manager-plat-tab:hover { background: var(--surface2) !important; }
+.manager-plat-tab.active { background: rgba(124,106,247,0.15) !important; }
 
 
   /* ══ USER: 캘린더 ══ */

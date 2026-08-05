@@ -22,12 +22,12 @@ export default function HomeView() {
 					<strong>강사</strong>
 					<span>강사 업무 화면</span>
 				</Link>
-				<Link className="card" to="/subsup">
-					<strong>담당자</strong>
+				<Link className="card" to="/manager">
+					<strong>매니저</strong>
 					<span>플랫폼 운영</span>
 				</Link>
-				<Link className="card" to="/super">
-					<strong>플랫폼 대표</strong>
+				<Link className="card" to="/owner">
+					<strong>오너</strong>
 					<span>전체 플랫폼 통합 관리</span>
 				</Link>
 			</div>

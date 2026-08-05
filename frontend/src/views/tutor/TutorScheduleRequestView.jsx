@@ -4,7 +4,7 @@ export default function TutorScheduleRequestView() {
 			<div className="page-header">
 				<div className="page-label">Tutor / Schedule Request</div>
 				<div className="page-title">일정 변경 요청</div>
-				<div className="page-subtitle">슈퍼관리자에게 일정 변경을 요청하세요</div>
+				<div className="page-subtitle">매니저에게 일정 변경을 요청하세요</div>
 			</div>
 
 			<div className="card" style={{ marginBottom: "24px" }}>
