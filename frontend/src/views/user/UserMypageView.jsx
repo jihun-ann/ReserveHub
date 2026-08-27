@@ -1,5 +1,8 @@
+import { openModal, closeModal } from "../default.js";
+
 export default function UserMypageView() {
 	return (
+		<>
 		<div className="page" id="page-mypage">
 			<div className="page-header">
 				<div className="page-label">MY PAGE</div>
@@ -19,7 +22,7 @@ export default function UserMypageView() {
 						<span className="mypage-tag">일반회원</span>
 					</div>
 				</div>
-				<button className="btn btn-ghost btn-sm">프로필 수정</button>
+				<button className="btn btn-ghost btn-sm" onClick={() => openModal("editProfileModal")}>프로필 수정</button>
 			</div>
 
 			{/* 통계 */}
@@ -152,5 +155,24 @@ export default function UserMypageView() {
 				</div>
 			</div>
 		</div>
+
+		<div className="modal-overlay" id="editProfileModal">
+			<div className="modal-box">
+				<div className="modal-header">
+					<div className="modal-title">프로필 수정</div>
+					<button className="modal-close" onClick={() => closeModal("editProfileModal")}>✕</button>
+				</div>
+				<div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+					<div className="form-field"><label>이름</label><input type="text" readOnly value="김지수" style={{ opacity: .7 }} /></div>
+					<div className="form-field"><label>이메일</label><input type="email" defaultValue="jisu.kim@example.com" /></div>
+					<div className="form-field"><label>연락처</label><input type="tel" defaultValue="010-1234-5678" /></div>
+					<div style={{ display: "flex", justifyContent: "flex-end", gap: "8px", marginTop: "8px" }}>
+						<button className="btn btn-ghost" onClick={() => closeModal("editProfileModal")}>취소</button>
+						<button className="btn btn-primary" onClick={() => closeModal("editProfileModal")}>저장</button>
+					</div>
+				</div>
+			</div>
+		</div>
+		</>
 	);
 }

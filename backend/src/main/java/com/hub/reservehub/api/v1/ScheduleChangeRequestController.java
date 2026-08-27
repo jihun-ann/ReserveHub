@@ -50,6 +50,13 @@ public class ScheduleChangeRequestController {
                 .toList();
     }
 
+    @GetMapping("/api/v1/schedule-requests/me")
+    public List<ScheduleChangeRequestResponse> listMine() {
+        return scheduleChangeRequestService.listMine(currentAuthenticatedUser.get()).stream()
+                .map(ScheduleChangeRequestResponse::from)
+                .toList();
+    }
+
     @PostMapping("/api/v1/schedule-requests/{id}/approve")
     @PreAuthorize("hasAnyRole('OWNER', 'MANAGER')")
     public ScheduleChangeRequestResponse approve(@PathVariable UUID id, @RequestBody(required = false) DecisionRequest request) {
@@ -72,13 +79,14 @@ public class ScheduleChangeRequestController {
 
     public record ScheduleChangeRequestResponse(
             UUID id, UUID platformId, UUID requestedBy, UUID reservationId, LocalDate originalDate,
-            UUID originalSlot, LocalDate requestedDate, UUID requestedSlot, String reason, RequestStatus status
+            UUID originalSlot, LocalDate requestedDate, UUID requestedSlot, String reason, RequestStatus status,
+            String decisionMemo
     ) {
         public static ScheduleChangeRequestResponse from(ScheduleChangeRequest request) {
             return new ScheduleChangeRequestResponse(
                     request.getId(), request.getPlatformId(), request.getRequestedBy(), request.getReservationId(),
                     request.getOriginalDate(), request.getOriginalSlot(), request.getRequestedDate(),
-                    request.getRequestedSlot(), request.getReason(), request.getStatus()
+                    request.getRequestedSlot(), request.getReason(), request.getStatus(), request.getDecisionMemo()
             );
         }
     }

@@ -19,6 +19,12 @@ export function getCurrentUser() {
   return raw ? JSON.parse(raw) : null;
 }
 
+// User has no name field yet, so derive a display label from the email's local part.
+export function displayName(user) {
+  const local = user?.email?.split("@")[0];
+  return local ? local[0].toUpperCase() + local.slice(1) : "알 수 없음";
+}
+
 function buildHeaders() {
   const headers = { "Content-Type": "application/json" };
   const token = getAccessToken();
@@ -45,3 +51,16 @@ export const apiGet = (path) => request("GET", path);
 export const apiPost = (path, body) => request("POST", path, body);
 export const apiPatch = (path, body) => request("PATCH", path, body);
 export const apiDelete = (path) => request("DELETE", path);
+
+export const changePassword = (currentPassword, newPassword) =>
+  apiPatch("/api/v1/users/me/password", { currentPassword, newPassword });
+
+// 세션에 캐시된 user 정보(이름/연락처)도 같이 갱신해서, 재로그인 없이 사이드바 등에 바로 반영되게 한다.
+export async function updateProfile(name, phone) {
+  const updated = await apiPatch("/api/v1/users/me", { name, phone });
+  const current = getCurrentUser();
+  if (current) {
+    localStorage.setItem("user", JSON.stringify({ ...current, name: updated.name, phone: updated.phone }));
+  }
+  return updated;
+}

@@ -1,396 +1,216 @@
-import { useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { openModal, closeModal } from "../default.js";
+import { listCalendarEvents, createCalendarEvent, EVENT_TYPE_STYLE } from "../../api/common.js";
 
-export default function ManagerCalendarView() {
-	let calYear = 2026,
-		calMonth = 3,
-		calSelDay = 11;
-	const WEEKDAYS = ["일", "월", "화", "수", "목", "금", "토"];
+const WEEKDAYS = ["일", "월", "화", "수", "목", "금", "토"];
 
-	const CAL_EVENTS = {
-		"2026-3": {
-			3: [{ color: "#7c6af7", label: "그룹반 A" }],
-			5: [
-				{ color: "#7c6af7", label: "그룹반 A" },
-				{ color: "#4fd1c5", label: "1:1 레슨" }
-			],
-			7: [{ color: "#4fd1c5", label: "홍길동 1:1" }],
-			10: [
-				{ color: "#7c6af7", label: "그룹반 A" },
-				{ color: "#7c6af7", label: "그룹반 B" }
-			],
-			11: [
-				{ color: "#7c6af7", label: "그룹반 A" },
-				{ color: "#4fd1c5", label: "1:1 레슨" },
-				{ color: "#f6ad55", label: "플랫폼 공지" }
-			],
-			14: [{ color: "#7c6af7", label: "그룹반 A" }],
-			17: [
-				{ color: "#7c6af7", label: "그룹반 A" },
-				{ color: "#7c6af7", label: "그룹반 B" }
-			],
-			19: [{ color: "#4fd1c5", label: "박서준 1:1" }],
-			20: [{ color: "#f87171", label: "본사 공지" }],
-			21: [{ color: "#7c6af7", label: "그룹반 A" }],
-			24: [
-				{ color: "#7c6af7", label: "그룹반 A" },
-				{ color: "#4fd1c5", label: "1:1 레슨" }
-			],
-			26: [{ color: "#7c6af7", label: "그룹반 A" }],
-			28: [{ color: "#4fd1c5", label: "홍길동 1:1" }]
+function pad(n) {
+	return String(n).padStart(2, "0");
+}
+function isoDate(year, month, day) {
+	return `${year}-${pad(month)}-${pad(day)}`;
+}
+
+export default function ManagerCalendarView({ platformId }) {
+	const today0 = new Date();
+	const [calYear, setCalYear] = useState(today0.getFullYear());
+	const [calMonth, setCalMonth] = useState(today0.getMonth() + 1);
+	const [selDay, setSelDay] = useState(today0.getDate());
+	const [events, setEvents] = useState([]);
+	const [loading, setLoading] = useState(true);
+
+	const [newTitle, setNewTitle] = useState("");
+	const [newDate, setNewDate] = useState(isoDate(calYear, calMonth, selDay));
+	const [newScope, setNewScope] = useState("PLATFORM");
+	const [saveError, setSaveError] = useState("");
+
+	const refresh = useCallback(async () => {
+		if (!platformId) {
+			setEvents([]);
+			setLoading(false);
+			return;
 		}
-	};
-
-	const CAL_DETAIL = {
-		"2026-3": {
-			11: [
-				{ time: "09:00", label: "그룹반 A", color: "#7c6af7", inst: "이수진" },
-				{ time: "10:00", label: "홍길동 1:1", color: "#4fd1c5", inst: "이수진" },
-				{ time: "14:00", label: "플랫폼 공지", color: "#f6ad55", inst: "—" },
-				{ time: "16:00", label: "김민지 1:1", color: "#4fd1c5", inst: "이수진" }
-			]
-		}
-	};
+		setLoading(true);
+		const daysInMonth = new Date(calYear, calMonth, 0).getDate();
+		const from = isoDate(calYear, calMonth, 1);
+		const to = isoDate(calYear, calMonth, daysInMonth);
+		setEvents(await listCalendarEvents(platformId, from, to));
+		setLoading(false);
+	}, [platformId, calYear, calMonth]);
 
 	useEffect(() => {
-		renderCal();
+		refresh();
+	}, [refresh]);
+
+	function calNav(delta) {
+		let y = calYear, m = calMonth + delta;
+		if (m > 12) { m = 1; y++; }
+		if (m < 1) { m = 12; y--; }
+		setCalYear(y);
+		setCalMonth(m);
+		setSelDay(1);
+	}
+
+	async function submitEvent() {
+		if (!newTitle.trim() || !newDate || !platformId) return;
+		setSaveError("");
+		try {
+			await createCalendarEvent({
+				platformId, type: "SHARED", title: newTitle.trim(),
+				eventDate: newDate, allDay: true, shareScope: newScope
+			});
+			setNewTitle("");
+			closeModal("shareEventModal");
+			await refresh();
+		} catch (err) {
+			setSaveError(err.message || "이벤트 등록에 실패했습니다.");
+		}
+	}
+
+	const firstDow = new Date(calYear, calMonth - 1, 1).getDay();
+	const daysInMonth = new Date(calYear, calMonth, 0).getDate();
+	const daysInPrev = new Date(calYear, calMonth - 1, 0).getDate();
+	const isCurMonth = today0.getFullYear() === calYear && today0.getMonth() + 1 === calMonth;
+	const todayDay = isCurMonth ? today0.getDate() : -1;
+
+	const eventsByDay = {};
+	events.forEach((e) => {
+		const d = Number(e.eventDate.slice(-2));
+		(eventsByDay[d] = eventsByDay[d] || []).push(e);
 	});
+
+	const selDow = new Date(calYear, calMonth - 1, selDay).getDay();
+	const selEvents = eventsByDay[selDay] || [];
+	const selIsToday = isCurMonth && selDay === todayDay;
+
+	function openShareEventModal() {
+		setNewDate(isoDate(calYear, calMonth, selDay));
+		openModal("shareEventModal");
+	}
 
 	return (
 		<>
-		<div className="page" id="super-calendar">
-			{/* ══════════════ 캘린더 ══════════════ */}
+		<div className="page" id="manager-calendar">
 			<div className="page-header">
 				<div className="page-label">CALENDAR</div>
 				<div className="page-title">캘린더</div>
 				<div className="page-subtitle">플랫폼 전체 일정을 한눈에 확인하세요</div>
 			</div>
 
-			{/* 범례 */}
-			<div
-				style={{
-					display: "flex",
-					alignItems: "center",
-					gap: "14px",
-					flexWrap: "wrap",
-					padding: "10px 16px",
-					background: "var(--surface)",
-					border: "1px solid var(--border)",
-					borderRadius: "10px",
-					marginBottom: "20px"
-				}}
-			>
-				<span
-					style={{
-						fontSize: "10px",
-						color: "var(--text-dim)",
-						letterSpacing: "1px",
-						textTransform: "uppercase"
-					}}
-				>
-					범례
-				</span>
-				<div
-					style={{
-						display: "flex",
-						alignItems: "center",
-						gap: "5px",
-						fontSize: "11px",
-						fontWeight: "600",
-						color: "#7c6af7"
-					}}
-				>
-					<span
-						style={{
-							display: "inline-block",
-							width: "10px",
-							height: "4px",
-							background: "#7c6af7",
-							borderRadius: "2px"
-						}}
-					></span>
-					그룹 레슨
-				</div>
-				<div
-					style={{
-						display: "flex",
-						alignItems: "center",
-						gap: "5px",
-						fontSize: "11px",
-						fontWeight: "600",
-						color: "#4fd1c5"
-					}}
-				>
-					<span
-						style={{
-							display: "inline-block",
-							width: "10px",
-							height: "4px",
-							background: "#4fd1c5",
-							borderRadius: "2px"
-						}}
-					></span>
-					개인 레슨
-				</div>
-				<div
-					style={{
-						display: "flex",
-						alignItems: "center",
-						gap: "5px",
-						fontSize: "11px",
-						fontWeight: "600",
-						color: "#f6ad55"
-					}}
-				>
-					<span
-						style={{
-							display: "inline-block",
-							width: "10px",
-							height: "4px",
-							background: "#f6ad55",
-							borderRadius: "2px"
-						}}
-					></span>
-					플랫폼 공지/휴무
-				</div>
-				<div
-					style={{
-						display: "flex",
-						alignItems: "center",
-						gap: "5px",
-						fontSize: "11px",
-						fontWeight: "600",
-						color: "#f87171"
-					}}
-				>
-					<span
-						style={{
-							display: "inline-block",
-							width: "10px",
-							height: "4px",
-							background: "#f87171",
-							borderRadius: "2px"
-						}}
-					></span>
-					본사 공지
-				</div>
-				<button
-					className="btn btn-primary btn-sm"
-					style={{ marginLeft: "auto", background: "var(--accent)", color: "#0f0f13" }}
-					onClick={openShareEventModal}
-				>
+			<div style={{ display: "flex", alignItems: "center", gap: "14px", flexWrap: "wrap", padding: "10px 16px", background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "10px", marginBottom: "20px" }}>
+				<span style={{ fontSize: "10px", color: "var(--text-dim)", letterSpacing: "1px", textTransform: "uppercase" }}>범례</span>
+				{Object.entries(EVENT_TYPE_STYLE).map(([key, s]) => (
+					<div key={key} style={{ display: "flex", alignItems: "center", gap: "5px", fontSize: "11px", fontWeight: "600", color: s.color }}>
+						<span style={{ display: "inline-block", width: "10px", height: "4px", background: s.color, borderRadius: "2px" }}></span>
+						{s.label}
+					</div>
+				))}
+				<button className="btn btn-primary btn-sm" style={{ marginLeft: "auto", background: "var(--manager)", color: "#fff" }} onClick={openShareEventModal}>
 					+ 공유 이벤트 등록
 				</button>
 			</div>
 
-			<div
-				style={{
-					display: "grid",
-					gridTemplateColumns: "1fr 320px",
-					gap: "20px",
-					alignItems: "start"
-				}}
-			>
-				{/* 달력 */}
+			<div style={{ display: "grid", gridTemplateColumns: "1fr 320px", gap: "20px", alignItems: "start" }}>
 				<div className="card">
 					<div className="cal-nav-row">
-						<span className="cal-month-lbl" id="calLbl">
-							2026년 3월
-						</span>
+						<span className="cal-month-lbl">{calYear}년 {calMonth}월</span>
 						<div className="cal-nav-btns">
-							<button className="cal-nav-btn" onClick={() => calNav(-1)}>
-								‹
-							</button>
-							<button className="cal-nav-btn" onClick={() => calNav(1)}>
-								›
-							</button>
+							<button className="cal-nav-btn" onClick={() => calNav(-1)}>‹</button>
+							<button className="cal-nav-btn" onClick={() => calNav(1)}>›</button>
 						</div>
 					</div>
 					<div className="cal-dow">
-						<div className="cal-dow-lbl" style={{ color: "#f87171" }}>
-							일
-						</div>
+						<div className="cal-dow-lbl" style={{ color: "#f87171" }}>일</div>
 						<div className="cal-dow-lbl">월</div>
 						<div className="cal-dow-lbl">화</div>
 						<div className="cal-dow-lbl">수</div>
 						<div className="cal-dow-lbl">목</div>
 						<div className="cal-dow-lbl">금</div>
-						<div className="cal-dow-lbl" style={{ color: "#60a5fa" }}>
-							토
-						</div>
+						<div className="cal-dow-lbl" style={{ color: "#60a5fa" }}>토</div>
 					</div>
-					<div className="cal-grid-7" id="calDays"></div>
+					<div className="cal-grid-7">
+						{Array.from({ length: firstDow }, (_, i) => (
+							<div className="cal-cell dim" key={`prev${i}`}>{daysInPrev - firstDow + 1 + i}</div>
+						))}
+						{Array.from({ length: daysInMonth }, (_, i) => {
+							const d = i + 1;
+							const evs = eventsByDay[d] || [];
+							const seenColors = [...new Set(evs.map((e) => EVENT_TYPE_STYLE[e.type]?.color || "#888"))];
+							let cls = "cal-cell";
+							if (d === selDay) cls += " selected";
+							else if (d === todayDay) cls += " today";
+							return (
+								<div className={cls} key={d} onClick={() => setSelDay(d)}>
+									<div style={{ fontSize: "11px", fontWeight: 500, lineHeight: 1 }}>{d}</div>
+									{seenColors.map((c) => (
+										<div className="event-bar" style={{ background: c }} key={c}></div>
+									))}
+								</div>
+							);
+						})}
+					</div>
 				</div>
 
-				{/* 일별 상세 */}
 				<div>
 					<div className="card">
-						<div className="card-title" id="calDetailTitle">
-							3월 11일 화요일 — 오늘
+						<div className="card-title">
+							{calMonth}월 {selDay}일 {WEEKDAYS[selDow]}요일{selIsToday ? " — 오늘" : ""}
 						</div>
-						<div id="calDetailBody">
-							<div
-								style={{
-									fontSize: "13px",
-									color: "var(--text-dim)",
-									textAlign: "center",
-									padding: "24px 0"
-								}}
-							>
-								날짜를 선택하세요
-							</div>
-						</div>
+						{loading ? (
+							<div style={{ fontSize: "13px", color: "var(--text-dim)", textAlign: "center", padding: "24px 0" }}>불러오는 중...</div>
+						) : selEvents.length === 0 ? (
+							<div style={{ fontSize: "13px", color: "var(--text-dim)", textAlign: "center", padding: "24px 0" }}>이 날의 일정이 없습니다</div>
+						) : (
+							selEvents.map((e) => {
+								const style = EVENT_TYPE_STYLE[e.type] || { color: "#888", label: e.type };
+								return (
+									<div key={e.id} style={{ display: "flex", alignItems: "center", gap: "10px", padding: "10px 0", borderBottom: "1px solid var(--border)" }}>
+										<div style={{ width: "3px", height: "36px", borderRadius: "2px", background: style.color, flexShrink: 0 }}></div>
+										<div style={{ flex: 1 }}>
+											<div style={{ fontSize: "13px", fontWeight: 600 }}>{e.title}</div>
+											<div style={{ fontSize: "11px", color: "var(--text-dim)", marginTop: "2px" }}>{style.label}{e.description ? ` · ${e.description}` : ""}</div>
+										</div>
+									</div>
+								);
+							})
+						)}
 					</div>
 				</div>
 			</div>
 		</div>
 
-			{/* 공유 이벤트 등록 모달 */}
-			<div className="modal-overlay" id="shareEventModal">
-				<div className="modal-box">
-					<div className="modal-header">
-						<div className="modal-title">공유 이벤트 등록</div>
-						<button className="modal-close" onClick={() => closeModal("shareEventModal")}>✕</button>
+		<div className="modal-overlay" id="shareEventModal">
+			<div className="modal-box">
+				<div className="modal-header">
+					<div className="modal-title">공유 이벤트 등록</div>
+					<button className="modal-close" onClick={() => closeModal("shareEventModal")}>✕</button>
+				</div>
+				<div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+					<div className="form-field">
+						<label>이벤트명</label>
+						<input type="text" value={newTitle} onChange={(e) => setNewTitle(e.target.value)} placeholder="예: 본사 공지" />
 					</div>
-					<div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-						<div className="form-field">
-							<label>이벤트명</label>
-							<input type="text" placeholder="예: 본사 공지" />
-						</div>
-						<div className="form-field">
-							<label>날짜</label>
-							<input type="date" />
-						</div>
-						<div className="form-field">
-							<label>공유 범위</label>
-							<select>
-								<option value="PLATFORM">해당 플랫폼 내</option>
-								<option value="ALL_MANAGER">전체 매니저</option>
-								<option value="INCLUDE_OWNER">오너 포함</option>
-								<option value="INCLUDE_ADMIN">강사 포함</option>
-							</select>
-						</div>
-						<div style={{ display: "flex", justifyContent: "flex-end", gap: "8px", marginTop: "8px" }}>
-							<button className="btn btn-ghost" onClick={() => closeModal("shareEventModal")}>취소</button>
-							<button className="btn btn-primary" onClick={() => closeModal("shareEventModal")}>저장</button>
-						</div>
+					<div className="form-field">
+						<label>날짜</label>
+						<input type="date" value={newDate} onChange={(e) => setNewDate(e.target.value)} />
+					</div>
+					<div className="form-field">
+						<label>공유 범위</label>
+						<select value={newScope} onChange={(e) => setNewScope(e.target.value)}>
+							<option value="PLATFORM">해당 플랫폼 내</option>
+							<option value="ALL_MANAGER">전체 매니저</option>
+							<option value="INCLUDE_OWNER">오너 포함</option>
+							<option value="INCLUDE_ADMIN">강사 포함</option>
+						</select>
+					</div>
+					{saveError && <div style={{ color: "var(--red)", fontSize: "12px" }}>{saveError}</div>}
+					<div style={{ display: "flex", justifyContent: "flex-end", gap: "8px", marginTop: "8px" }}>
+						<button className="btn btn-ghost" onClick={() => closeModal("shareEventModal")}>취소</button>
+						<button className="btn btn-primary" onClick={submitEvent}>저장</button>
 					</div>
 				</div>
 			</div>
+		</div>
 		</>
 	);
-
-	function openShareEventModal() {
-		openModal("shareEventModal");
-	}
-
-	function calNav(delta) {
-		calMonth += delta;
-		if (calMonth > 12) {
-			calMonth = 1;
-			calYear++;
-		}
-		if (calMonth < 1) {
-			calMonth = 12;
-			calYear--;
-		}
-		calSelDay = 1;
-		renderCal();
-	}
-
-	function renderCal() {
-		const lbl = document.getElementById("calLbl");
-		if (lbl) lbl.textContent = calYear + "년 " + calMonth + "월";
-		const container = document.getElementById("calDays");
-		if (!container) return;
-		container.innerHTML = "";
-		const today = new Date();
-		const isCur = today.getFullYear() === calYear && today.getMonth() + 1 === calMonth;
-		const todayDay = isCur ? today.getDate() : -1;
-		const firstDow = new Date(calYear, calMonth - 1, 1).getDay();
-		const daysInMon = new Date(calYear, calMonth, 0).getDate();
-		const daysInPrev = new Date(calYear, calMonth - 1, 0).getDate();
-		const evData = CAL_EVENTS[calYear + "-" + calMonth] || {};
-
-		for (let i = 0; i < firstDow; i++) {
-			const c = document.createElement("div");
-			c.className = "cal-cell dim";
-			c.textContent = daysInPrev - firstDow + 1 + i;
-			container.appendChild(c);
-		}
-		for (let d = 1; d <= daysInMon; d++) {
-			const cell = document.createElement("div");
-			let cls = "cal-cell";
-			if (d === calSelDay) cls += " selected";
-			else if (d === todayDay) cls += " today";
-			cell.className = cls;
-			const numEl = document.createElement("div");
-			numEl.style.cssText = "font-size:11px;font-weight:500;line-height:1";
-			numEl.textContent = d;
-			cell.appendChild(numEl);
-			const evs = evData[d] || [];
-			if (evs.length > 0) {
-				const seen = new Set();
-				evs.forEach((e) => {
-					if (!seen.has(e.color)) {
-						seen.add(e.color);
-						const bar = document.createElement("div");
-						bar.className = "event-bar";
-						bar.style.background = e.color;
-						cell.appendChild(bar);
-					}
-				});
-			}
-			const _d = d;
-			cell.addEventListener("click", () => {
-				calSelDay = _d;
-				renderCal();
-				renderCalDetail(_d);
-			});
-			container.appendChild(cell);
-		}
-		const total = firstDow + daysInMon;
-		const remain = total % 7 === 0 ? 0 : 7 - (total % 7);
-		for (let i = 1; i <= remain; i++) {
-			const c = document.createElement("div");
-			c.className = "cal-cell dim";
-			c.textContent = i;
-			container.appendChild(c);
-		}
-		renderCalDetail(calSelDay);
-	}
-
-	function renderCalDetail(day) {
-		const title = document.getElementById("calDetailTitle");
-		const body = document.getElementById("calDetailBody");
-		if (!title || !body) return;
-		const dow = new Date(calYear, calMonth - 1, day).getDay();
-		const today = new Date();
-		const isToday =
-			today.getFullYear() === calYear &&
-			today.getMonth() + 1 === calMonth &&
-			today.getDate() === day;
-		title.textContent =
-			calMonth + "월 " + day + "일 " + WEEKDAYS[dow] + "요일" + (isToday ? " — 오늘" : "");
-		const evs =
-			(CAL_DETAIL[calYear + "-" + calMonth] || {})[day] ||
-			(CAL_EVENTS[calYear + "-" + calMonth] || {})[day] ||
-			[];
-		if (evs.length === 0) {
-			body.innerHTML =
-				'<div style="font-size:13px;color:var(--text-dim);text-align:center;padding:24px 0">이 날의 일정이 없습니다</div>';
-			return;
-		}
-		body.innerHTML = evs
-			.map((e) => {
-				const timeStr = e.time || "";
-				const instStr = e.inst ? ` · ${e.inst} 트레이너` : "";
-				return `<div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border)">
-      <div style="width:3px;height:36px;border-radius:2px;background:${e.color};flex-shrink:0"></div>
-      ${timeStr ? `<div style="font-family:'DM Mono',monospace;font-size:12px;color:var(--text-sub);min-width:40px">${timeStr}</div>` : ""}
-      <div style="flex:1"><div style="font-size:13px;font-weight:600">${e.label}</div><div style="font-size:11px;color:var(--text-dim);margin-top:2px">${instStr}</div></div>
-    </div>`;
-			})
-			.join("");
-	}
 }

@@ -5,6 +5,7 @@ import UserView from "./views/user/UserView.jsx";
 import TutorView from "./views/tutor/TutorView.jsx";
 import ManagerView from "./views/manager/ManagerView.jsx";
 import OwnerView from "./views/owner/OwnerView.jsx";
+import RequireAuth from "./components/RequireAuth.jsx";
 
 export default function App() {
 	return (
@@ -17,6 +18,10 @@ export default function App() {
 				<Route path="/tutor" element={<TutorView />} />
 				<Route path="/manager" element={<ManagerView />} />
 				<Route path="/owner" element={<OwnerView />} />
+				{/*<Route path="/user" element={<RequireAuth roles={["USER"]}><UserView /></RequireAuth>} />*/}
+				{/*<Route path="/tutor" element={<RequireAuth roles={["ADMIN"]}><TutorView /></RequireAuth>} />*/}
+				{/*<Route path="/manager" element={<RequireAuth roles={["MANAGER"]}><ManagerView /></RequireAuth>} />*/}
+				{/*<Route path="/owner" element={<RequireAuth roles={["OWNER"]}><OwnerView /></RequireAuth>} />*/}
 			</Routes>
 		</>
 	);

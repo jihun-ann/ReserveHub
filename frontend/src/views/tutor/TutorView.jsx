@@ -1,14 +1,40 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
 import "./TutorView.css";
 import { closeSidebar, toggleCollapse, openSidebar } from "../default.js";
+import { getTheme, toggleTheme } from "../../theme.js";
+import { getCurrentUser, clearSession, displayName } from "../../api/http.js";
+import { listPlatforms, hexAlpha } from "../../api/common.js";
 import TutorCalendarView from "./TutorCalendarView.jsx";
 import TutorAttendanceView from "./TutorAttendanceView.jsx";
 import TutorMypageView from "./TutorMypageView.jsx";
 import TutorScheduleRequestView from "./TutorScheduleRequestView.jsx";
 
 export default function TutorView() {
-	const [currentPlatform, setCurrentPlatform] = useState("pilates");
+	const navigate = useNavigate();
+	const user = getCurrentUser();
+
+	const [platforms, setPlatforms] = useState([]);
+	const [currentPlatformId, setCurrentPlatformId] = useState(null);
 	const [currentContext, setCurrentContext] = useState("calendar");
+	const [theme, setTheme] = useState(getTheme());
+
+	const refreshPlatforms = useCallback(async () => {
+		const data = await listPlatforms();
+		setPlatforms(data);
+		setCurrentPlatformId((prev) => prev ?? data[0]?.id ?? null);
+	}, []);
+
+	useEffect(() => {
+		refreshPlatforms();
+	}, [refreshPlatforms]);
+
+	const currentPlatform = platforms.find((p) => p.id === currentPlatformId) || null;
+
+	function handleLogout() {
+		clearSession();
+		navigate("/login");
+	}
 
 	return (
 		<div className="app" id="tutor-app">
@@ -22,37 +48,38 @@ export default function TutorView() {
 						<div className="logo-icon">🗓</div>
 						<span className="logo-text">ReserveHub</span>
 					</div>
-					<button className="collapse-btn" onClick={toggleCollapse}>
-						◀
-					</button>
+					<div className="sidebar-top-actions">
+						<button className="theme-toggle" title="테마 전환" onClick={() => setTheme(toggleTheme())}>
+							{theme === "dark" ? "☀️" : "🌙"}
+						</button>
+						<button className="collapse-btn" onClick={toggleCollapse}>
+							◀
+						</button>
+					</div>
 				</div>
 
 				{/* 플랫폼 전환 */}
 				<div className="plat-switch">
 					<div className="plat-switch-label">담당 플랫폼</div>
-					<button
-						className={`plat-tab-btn ${currentPlatform === "pilates" ? "active" : ""}`}
-						id="platTab-pilates"
-						onClick={() => switchPlat("pilates")}
-					>
-						<div className="plat-dot" style={{ background: "#7c6af7" }}></div>
-						<span>스튜디오 필라테스 강남</span>
-					</button>
-					<button
-						className={`plat-tab-btn ${currentPlatform === "yoga" ? "active" : ""}`}
-						id="platTab-yoga"
-						onClick={() => switchPlat("yoga")}
-					>
-						<div className="plat-dot" style={{ background: "#4fd1c5" }}></div>
-						<span>요가라운지 홍대</span>
-					</button>
+					{platforms.length === 0 && (
+						<div style={{ fontSize: "11px", color: "var(--text-dim)", padding: "4px 2px" }}>배정된 플랫폼이 없습니다</div>
+					)}
+					{platforms.map((p) => (
+						<button
+							key={p.id}
+							className={`plat-tab-btn ${currentPlatformId === p.id ? "active" : ""}`}
+							onClick={() => setCurrentPlatformId(p.id)}
+						>
+							<div className="plat-dot" style={{ background: p.colorHex }}></div>
+							<span>{p.name}</span>
+						</button>
+					))}
 				</div>
 
-				{/*로그인 데이터를 받아 처리할 항목*/}
 				<div className="user-card">
-					<div className="avatar">이</div>
+					<div className="avatar">{(user?.name || displayName(user))[0]}</div>
 					<div className="user-info">
-						<div className="user-name">이수진</div>
+						<div className="user-name">{user?.name || displayName(user)}</div>
 						<div className="user-role">트레이너</div>
 					</div>
 				</div>
@@ -89,7 +116,7 @@ export default function TutorView() {
 				</div>
 
 				<div className="sidebar-bottom">
-					<button className="btn-logout">
+					<button className="btn-logout" onClick={handleLogout}>
 						🚪 <span>로그아웃</span>
 					</button>
 				</div>
@@ -102,9 +129,15 @@ export default function TutorView() {
 						☰
 					</button>
 					<div className="topbar-title" id="topbar-title"></div>
-					<span className="topbar-plat" id="topbar-plat">
-						🤸 필라테스 강남
-					</span>
+					{currentPlatform && (
+						<span
+							className="topbar-plat"
+							id="topbar-plat"
+							style={{ background: hexAlpha(currentPlatform.colorHex, 0.12), color: currentPlatform.colorHex }}
+						>
+							{currentPlatform.emoji} {currentPlatform.name}
+						</span>
+					)}
 					<div className="topbar-right">
 						<button className="notif-btn" title="알림">
 							🔔<span className="notif-dot"></span>
@@ -113,7 +146,7 @@ export default function TutorView() {
 				</div>
 
 				<div className="content">
-					<RenderContext currentContext={currentContext} currentPlatform={currentPlatform} />
+					<RenderContext currentContext={currentContext} currentPlatformId={currentPlatformId} />
 				</div>
 			</div>
 		</div>
@@ -123,20 +156,16 @@ export default function TutorView() {
 		setCurrentContext(context);
 	}
 
-	function switchPlat(parm) {
-		setCurrentPlatform(parm);
-	}
-
-	function RenderContext({ currentContext, currentPlatform }) {
+	function RenderContext({ currentContext, currentPlatformId }) {
 		switch (currentContext) {
 			case "calendar":
-				return <TutorCalendarView />;
+				return <TutorCalendarView platformId={currentPlatformId} />;
 			case "attendance":
-				return <TutorAttendanceView />;
+				return <TutorAttendanceView platformId={currentPlatformId} />;
 			case "schedule":
-				return <TutorScheduleRequestView />;
+				return <TutorScheduleRequestView platformId={currentPlatformId} />;
 			case "mypage":
-				return <TutorMypageView />;
+				return <TutorMypageView platformId={currentPlatformId} currentPlatform={currentPlatform} />;
 		}
 	}
 }

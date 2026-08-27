@@ -137,6 +137,12 @@ public class OrderService {
     }
 
     @Transactional(readOnly = true)
+    public List<Order> listByPlatform(UUID platformId, AuthenticatedUser actor) {
+        platformAccessGuard.verify(platformId, actor);
+        return orderRepository.findByPlatformId(platformId);
+    }
+
+    @Transactional(readOnly = true)
     public List<OrderItem> getItems(UUID orderId) {
         return orderItemRepository.findByOrderId(orderId);
     }

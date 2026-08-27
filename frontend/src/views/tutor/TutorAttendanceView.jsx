@@ -1,356 +1,235 @@
-import { useEffect, useState } from "react";
+import { useState, useEffect, useCallback } from "react";
+import {
+	listMySlots, listMyLessons, listLessonAttendance, recordAttendance, startLesson, endLesson,
+	listMembers, listPlatforms
+} from "../../api/common.js";
+
+const DAY_KEYS = ["MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"];
+const DAY_LABELS = { MON: "월", TUE: "화", WED: "수", THU: "목", FRI: "금", SAT: "토", SUN: "일" };
+const JS_DAY_TO_KEY = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"];
+const STATUS_LABEL = { PRESENT: "출석", LATE: "지각", ABSENT: "결석", EXCUSED: "사유결석" };
+
+function pad(n) {
+	return String(n).padStart(2, "0");
+}
+function isoDate(d) {
+	return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
 
 export default function TutorAttendanceView() {
-	let [currentFilter, setCurrentFilter] = useState("all");
+	const today = new Date();
+	const todayIso = isoDate(today);
+	const todayKey = JS_DAY_TO_KEY[today.getDay()];
+
+	const [slots, setSlots] = useState([]);
+	const [platformsById, setPlatformsById] = useState({});
+	const [todayLessons, setTodayLessons] = useState([]);
+	const [attendanceByLesson, setAttendanceByLesson] = useState({});
+	const [membersByPlatform, setMembersByPlatform] = useState({});
+	const [monthLessons, setMonthLessons] = useState([]);
+	const [loading, setLoading] = useState(true);
+
+	const refresh = useCallback(async () => {
+		setLoading(true);
+		const monthStart = isoDate(new Date(today.getFullYear(), today.getMonth(), 1));
+		const monthEnd = isoDate(new Date(today.getFullYear(), today.getMonth() + 1, 0));
+		const [mySlots, platforms, todaysLessons, monthly] = await Promise.all([
+			listMySlots(),
+			listPlatforms(),
+			listMyLessons(todayIso, todayIso),
+			listMyLessons(monthStart, monthEnd)
+		]);
+		setSlots(mySlots);
+		setPlatformsById(Object.fromEntries(platforms.map((p) => [p.id, p.name])));
+		setTodayLessons(todaysLessons);
+		setMonthLessons(monthly);
+
+		const attendanceEntries = await Promise.all(todaysLessons.map((l) => listLessonAttendance(l.id)));
+		setAttendanceByLesson(Object.fromEntries(todaysLessons.map((l, i) => [l.id, attendanceEntries[i]])));
+
+		const platformIds = [...new Set(todaysLessons.map((l) => l.platformId))];
+		const memberLists = await Promise.all(platformIds.map((id) => listMembers(id)));
+		const membersMap = {};
+		platformIds.forEach((id, i) => {
+			const seen = new Set();
+			membersMap[id] = memberLists[i].filter((m) => (seen.has(m.userId) ? false : seen.add(m.userId)));
+		});
+		setMembersByPlatform(membersMap);
+
+		setLoading(false);
+	}, [todayIso]);
 
 	useEffect(() => {
-		window.setAttend = setAttend;
-		renderAttendance();
-	});
+		refresh();
+	}, [refresh]);
 
-	let SCHEDULE = [
-		{
-			name: "박서준",
-			phone: "010-5555-4444",
-			plan: "개인 레슨",
-			plan_code: "private",
-			platform_name: "스튜디오 필라테스 강남",
-			platform_id: "platform1",
-			time: "10:00",
-			attendance: "present"
-		},
-		{
-			name: "김민지",
-			phone: "010-9876-5432",
-			plan: "그룹 레슨 A",
-			plan_code: "groupA",
-			platform_name: "스튜디오 필라테스 강남",
-			platform_id: "platform1",
-			time: "09:00",
-			attendance: "late"
-		},
-		{
-			name: "정하준",
-			phone: "010-7777-8888",
-			plan: "그룹 레슨 A",
-			plan_code: "groupA",
-			platform_name: "스튜디오 필라테스 강남",
-			platform_id: "platform1",
-			time: "09:00",
-			attendance: "absent"
-		},
-		{
-			name: "홍길동",
-			phone: "010-1234-5678",
-			plan: "개인 레슨",
-			plan_code: "private",
-			platform_name: "요가 라운지",
-			platform_id: "platform2",
-			time: "11:00",
-			attendance: "present"
-		},
-		{
-			name: "최유나",
-			phone: "010-2020-3030",
-			plan: "그룹 레슨 B",
-			plan_code: "groupB",
-			platform_name: "요가 라운지",
-			platform_id: "platform2",
-			time: "10:00",
-			attendance: ""
-		},
-		{
-			name: "이지은",
-			phone: "010-2222-3333",
-			plan: "그룹 레슨 B",
-			plan_code: "groupB",
-			platform_name: "요가 라운지",
-			platform_id: "platform2",
-			time: "10:00",
-			attendance: ""
-		}
-	];
+	async function mark(lessonId, userId, status) {
+		await recordAttendance(lessonId, userId, status);
+		setAttendanceByLesson((prev) => ({ ...prev, [lessonId]: [...prev[lessonId], { userId, status }] }));
+	}
+	async function begin(lessonId) {
+		await startLesson(lessonId);
+		await refresh();
+	}
+	async function finish(lessonId) {
+		await endLesson(lessonId);
+		await refresh();
+	}
+
+	const slotsByDay = {};
+	slots.forEach((s) => { (slotsByDay[s.dayOfWeek] = slotsByDay[s.dayOfWeek] || []).push(s); });
+
+	const allAttendance = Object.values(attendanceByLesson).flat();
+	const countByStatus = (status) => allAttendance.filter((a) => a.status === status).length;
+
+	const monthTotal = monthLessons.reduce((sum, l) => sum + l.totalAttendance, 0);
+	const monthPresent = monthLessons.reduce((sum, l) => sum + l.presentCount, 0);
+	const monthRate = monthTotal === 0 ? 0 : Math.round((monthPresent / monthTotal) * 100);
 
 	return (
 		<div id="tutor-attend" className="page">
 			<div className="page-header">
 				<div className="page-label">Tutor / Attendance</div>
 				<div className="page-title">출석 관리</div>
-				<div className="page-subtitle">수강생 출석을 확인하고 처리하세요</div>
+				<div className="page-subtitle">고정된 주간 수업 계획을 확인하고 오늘 출석을 처리하세요</div>
 			</div>
 
 			<div className="attend-layout">
 				<div>
-					<div
-						style={{
-							display: "flex",
-							alignItems: "center",
-							gap: "10px",
-							marginBottom: "18px",
-							flexWrap: "wrap"
-						}}
-					>
-						<span style={{ fontSize: "15px", fontWeight: 700, flex: 1 }}>
-							2026년 2월 26일 목요일
-						</span>
-						<button
-							className={`filter-chip ${currentFilter === "all" ? "active" : ""}`}
-							onClick={() => filterChip("all")}
-						>
-							전체
-						</button>
-						<button
-							className={`filter-chip ${currentFilter === "groupA" ? "active" : ""}`}
-							onClick={() => filterChip("groupA")}
-						>
-							그룹반 A
-						</button>
-						<button
-							className={`filter-chip ${currentFilter === "groupB" ? "active" : ""}`}
-							onClick={() => filterChip("groupB")}
-						>
-							그룹반 B
-						</button>
-						<button
-							className={`filter-chip ${currentFilter === "private" ? "active" : ""}`}
-							onClick={() => filterChip("private")}
-						>
-							개인레슨
-						</button>
-					</div>
-
-					<div className="card" style={{ padding: 0, overflow: "hidden" }}>
+					<div className="card" style={{ padding: 0, overflow: "hidden", marginBottom: "20px" }}>
 						<div style={{ overflowX: "auto" }}>
-							<table className="attend-table">
+							<table className="attend-table" style={{ tableLayout: "fixed", width: "100%" }}>
 								<thead>
 									<tr>
-										<th>수강생</th>
-										<th>프로그램</th>
-										<th>플랫폼</th>
-										<th>시간</th>
-										<th>출결</th>
+										{DAY_KEYS.map((key) => (
+											<th key={key} style={{ color: key === todayKey ? "var(--tutor)" : undefined }}>
+												{DAY_LABELS[key]}{key === todayKey ? " (오늘)" : ""}
+											</th>
+										))}
 									</tr>
 								</thead>
-								<tbody id="attendTbody"></tbody>
+								<tbody>
+									<tr>
+										{DAY_KEYS.map((key) => (
+											<td key={key} style={{ verticalAlign: "top", padding: "8px", background: key === todayKey ? "rgba(var(--tutor-rgb),.06)" : undefined }}>
+												{loading ? (
+													<span style={{ fontSize: "11px", color: "var(--text-dim)" }}>-</span>
+												) : (slotsByDay[key] || []).length === 0 ? (
+													<span style={{ fontSize: "11px", color: "var(--text-dim)" }}>수업 없음</span>
+												) : (
+													slotsByDay[key].map((s) => (
+														<div key={s.id} style={{ background: "var(--surface2)", borderRadius: "var(--radius-sm)", padding: "8px", marginBottom: "6px" }}>
+															<div style={{ fontSize: "12px", fontWeight: 700 }}>{s.programName}</div>
+															<div style={{ fontSize: "10px", color: "var(--text-sub)", marginTop: "2px" }}>{platformsById[s.platformId]}</div>
+															<div style={{ fontSize: "11px", fontFamily: "'DM Mono',monospace", color: "var(--tutor)", marginTop: "4px" }}>
+																{s.startTime?.slice(0, 5)}-{s.endTime?.slice(0, 5)}
+															</div>
+														</div>
+													))
+												)}
+											</td>
+										))}
+									</tr>
+								</tbody>
 							</table>
 						</div>
 					</div>
+
+					<div className="card-title" style={{ marginBottom: "12px" }}>오늘 출석 처리</div>
+					{loading ? (
+						<div className="card" style={{ padding: "24px", textAlign: "center", color: "var(--text-dim)" }}>불러오는 중...</div>
+					) : todayLessons.length === 0 ? (
+						<div className="card" style={{ padding: "24px", textAlign: "center", color: "var(--text-dim)" }}>오늘 예정된 수업이 없습니다</div>
+					) : (
+						todayLessons.map((lesson) => {
+							const members = membersByPlatform[lesson.platformId] || [];
+							const recorded = attendanceByLesson[lesson.id] || [];
+							const recordedByUser = Object.fromEntries(recorded.map((a) => [a.userId, a.status]));
+							return (
+								<div className="card" key={lesson.id} style={{ padding: 0, overflow: "hidden", marginBottom: "16px" }}>
+									<div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "14px 16px", borderBottom: "1px solid var(--border)" }}>
+										<div>
+											<div style={{ fontWeight: 700, fontSize: "14px" }}>{lesson.programName}</div>
+											<div style={{ fontSize: "11px", color: "var(--text-sub)" }}>{platformsById[lesson.platformId]}</div>
+										</div>
+										{!lesson.startedAt ? (
+											<button className="btn btn-sm" style={{ background: "rgba(74,222,128,.12)", color: "var(--green)", border: "1px solid rgba(74,222,128,.3)" }} onClick={() => begin(lesson.id)}>
+												수업 시작
+											</button>
+										) : !lesson.endedAt ? (
+											<button className="btn btn-sm btn-danger" onClick={() => finish(lesson.id)}>수업 종료</button>
+										) : (
+											<span style={{ fontSize: "11px", color: "var(--text-dim)" }}>종료됨</span>
+										)}
+									</div>
+									<div style={{ overflowX: "auto" }}>
+										<table className="attend-table">
+											<thead>
+												<tr><th>수강생</th><th>연락처</th><th>출결</th></tr>
+											</thead>
+											<tbody>
+												{members.length === 0 ? (
+													<tr><td colSpan={3} style={{ textAlign: "center", padding: "16px", color: "var(--text-dim)" }}>등록된 회원이 없습니다</td></tr>
+												) : (
+													members.map((m) => (
+														<tr key={m.userId}>
+															<td style={{ fontWeight: 600 }}>{m.name}</td>
+															<td style={{ fontSize: "12px", color: "var(--text-sub)" }}>{m.phone || "-"}</td>
+															<td>
+																{recordedByUser[m.userId] ? (
+																	<button className={`atbtn ${recordedByUser[m.userId].toLowerCase()}`}>{STATUS_LABEL[recordedByUser[m.userId]]}</button>
+																) : (
+																	<div style={{ display: "flex", gap: "4px", justifyContent: "center" }}>
+																		<button className="atbtn" onClick={() => mark(lesson.id, m.userId, "PRESENT")}>출석</button>
+																		<button className="atbtn" onClick={() => mark(lesson.id, m.userId, "LATE")}>지각</button>
+																		<button className="atbtn" onClick={() => mark(lesson.id, m.userId, "ABSENT")}>결석</button>
+																	</div>
+																)}
+															</td>
+														</tr>
+													))
+												)}
+											</tbody>
+										</table>
+									</div>
+								</div>
+							);
+						})
+					)}
 				</div>
 
 				<div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
 					<div className="card">
 						<div className="card-title">오늘 출결 현황</div>
 						<div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
-							<div
-								style={{
-									display: "flex",
-									justifyContent: "space-between",
-									alignItems: "center",
-									padding: "10px 0",
-									borderBottom: "1px solid var(--border)"
-								}}
-							>
+							<div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 0", borderBottom: "1px solid var(--border)" }}>
 								<span style={{ fontSize: "13px", color: "var(--text-sub)" }}>출석</span>
-								<span
-									style={{
-										fontFamily: "'DM Mono',monospace",
-										fontSize: "14px",
-										fontWeight: 500,
-										color: "var(--green)"
-									}}
-								>
-									12명
-								</span>
+								<span style={{ fontFamily: "'DM Mono',monospace", fontSize: "14px", fontWeight: 500, color: "var(--green)" }}>{countByStatus("PRESENT")}명</span>
 							</div>
-							<div
-								style={{
-									display: "flex",
-									justifyContent: "space-between",
-									alignItems: "center",
-									padding: "10px 0",
-									borderBottom: "1px solid var(--border)"
-								}}
-							>
+							<div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 0", borderBottom: "1px solid var(--border)" }}>
 								<span style={{ fontSize: "13px", color: "var(--text-sub)" }}>지각</span>
-								<span
-									style={{
-										fontFamily: "'DM Mono',monospace",
-										fontSize: "14px",
-										fontWeight: 500,
-										color: "var(--accent3)"
-									}}
-								>
-									2명
-								</span>
+								<span style={{ fontFamily: "'DM Mono',monospace", fontSize: "14px", fontWeight: 500, color: "var(--accent3)" }}>{countByStatus("LATE")}명</span>
 							</div>
-							<div
-								style={{
-									display: "flex",
-									justifyContent: "space-between",
-									alignItems: "center",
-									padding: "10px 0",
-									borderBottom: "1px solid var(--border)"
-								}}
-							>
+							<div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 0" }}>
 								<span style={{ fontSize: "13px", color: "var(--text-sub)" }}>결석</span>
-								<span
-									style={{
-										fontFamily: "'DM Mono',monospace",
-										fontSize: "14px",
-										fontWeight: 500,
-										color: "var(--red)"
-									}}
-								>
-									1명
-								</span>
-							</div>
-							<div
-								style={{
-									display: "flex",
-									justifyContent: "space-between",
-									alignItems: "center",
-									padding: "10px 0"
-								}}
-							>
-								<span style={{ fontSize: "13px", color: "var(--text-sub)" }}>미처리</span>
-								<span
-									style={{
-										fontFamily: "'DM Mono',monospace",
-										fontSize: "14px",
-										fontWeight: 500,
-										color: "var(--text-sub)"
-									}}
-								>
-									3명
-								</span>
+								<span style={{ fontFamily: "'DM Mono',monospace", fontSize: "14px", fontWeight: 500, color: "var(--red)" }}>{countByStatus("ABSENT")}명</span>
 							</div>
 						</div>
 					</div>
 					<div className="card">
 						<div className="card-title">이번 달 출결률</div>
 						<div style={{ textAlign: "center", padding: "14px 0" }}>
-							<div
-								style={{
-									fontFamily: "'DM Mono',monospace",
-									fontSize: "36px",
-									fontWeight: 500,
-									color: "var(--accent2)"
-								}}
-							>
-								91<span style={{ fontSize: "18px", color: "var(--text-sub)" }}>%</span>
+							<div style={{ fontFamily: "'DM Mono',monospace", fontSize: "36px", fontWeight: 500, color: "var(--accent2)" }}>
+								{loading ? "-" : monthRate}<span style={{ fontSize: "18px", color: "var(--text-sub)" }}>%</span>
 							</div>
-							<div
-								style={{
-									fontSize: "10px",
-									color: "var(--text-dim)",
-									marginTop: "4px",
-									letterSpacing: "1px"
-								}}
-							>
-								ATTENDANCE RATE
-							</div>
+							<div style={{ fontSize: "10px", color: "var(--text-dim)", marginTop: "4px", letterSpacing: "1px" }}>ATTENDANCE RATE</div>
 						</div>
-						<div
-							style={{
-								height: "6px",
-								background: "var(--border)",
-								borderRadius: "3px",
-								overflow: "hidden"
-							}}
-						>
-							<div
-								style={{
-									width: "91%",
-									height: "100%",
-									background: "var(--accent2)",
-									borderRadius: "3px"
-								}}
-							></div>
+						<div style={{ height: "6px", background: "var(--border)", borderRadius: "3px", overflow: "hidden" }}>
+							<div style={{ width: `${monthRate}%`, height: "100%", background: "var(--accent2)", borderRadius: "3px" }}></div>
 						</div>
 					</div>
 				</div>
 			</div>
 		</div>
 	);
-	function setAttend(idx, status) {
-		SCHEDULE[idx].attendance = status;
-		renderAttendance();
-	}
-
-	function filterChip(cat) {
-		setCurrentFilter(cat);
-		renderAttendance();
-	}
-
-	function renderAttendance() {
-		const platformStyles = {
-			platform1: {
-				background: "rgba(79,209,197,0.12)",
-				color: "#4fd1c5",
-				borderColor: "rgba(79,209,197,0.3)"
-			},
-			platform2: {
-				background: "rgba(66,133,244,0.12)",
-				color: "#4285f4",
-				borderColor: "rgba(66,133,244,0.3)"
-			},
-			platform3: {
-				background: "rgba(98,100,167,0.12)",
-				color: "#6264a7",
-				borderColor: "rgba(98,100,167,0.3)"
-			},
-			platform4: {
-				background: "rgba(88,101,242,0.12)",
-				color: "#5865f2",
-				borderColor: "rgba(88,101,242,0.3)"
-			},
-			platform5: {
-				background: "rgba(160,174,192,0.12)",
-				color: "#a0aec0",
-				borderColor: "rgba(160,174,192,0.3)"
-			}
-		};
-
-		const tbody = document.getElementById("attendTbody");
-		if (!tbody) return;
-		const filtered = SCHEDULE.filter((m) => {
-			return currentFilter === "all" || m.plan_code === currentFilter;
-		});
-		tbody.innerHTML = filtered
-			.map((m) => {
-				const realIdx = SCHEDULE.indexOf(m);
-				const status = { present: "출석", late: "지각", absent: "결석" };
-				const attendStatus =
-					m.attendance === ""
-						? `<button class="atbtn" onclick="setAttend(${realIdx},'present')">출석</button>
-							 <button class="atbtn" onclick="setAttend(${realIdx},'late')">지각</button>
-							 <button class="atbtn" onclick="setAttend(${realIdx},'absent')">결석</button>`
-						: `<button class="atbtn ${m.attendance}">${status[m.attendance]}</button>`;
-				return `<tr>
-				<td>
-					<div style="font-weight: 600">${m.name}</div>
-					<div style="font-size: 11px; color: var(--text-sub)">${m.phone}</div>
-				</td>
-				<td>${m.plan}</td>
-				<td>
-					<span class="plat-chip" style="background : ${platformStyles[m.platform_id].background};
-																				 color : ${platformStyles[m.platform_id].color};
-																				 border-color:${platformStyles[m.platform_id].borderColor}">
-						${m.platform_name}
-					</span>
-				</td>
-				<td>
-					<span style="font-family: 'DM Mono',monospace; font-size: 12px">
-						${m.time}
-					</span>
-				</td>
-				<td>
-					<div style="display: flex; gap: 4px; justify-content: center;">
-						${attendStatus}
-					</div>
-				</td>
-			</tr>`;
-			})
-			.join("");
-	}
 }

@@ -31,45 +31,68 @@ export default function LoginView() {
 		}
 	}
 
+	const inputStyle = {
+		padding: "10px 12px",
+		background: "var(--surface2)",
+		border: "1px solid var(--border)",
+		borderRadius: "var(--radius-sm)",
+		color: "var(--text)",
+		fontSize: "14px",
+		outline: "none"
+	};
+
 	return (
-		<div style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "100vh" }}>
+		<div style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "100vh", background: "var(--bg)" }}>
 			<form
 				onSubmit={handleSubmit}
-				style={{ width: "min(360px, 90vw)", display: "flex", flexDirection: "column", gap: "14px" }}
+				style={{
+					width: "min(360px, 90vw)",
+					display: "flex",
+					flexDirection: "column",
+					gap: "16px",
+					background: "var(--surface)",
+					border: "1px solid var(--border)",
+					borderRadius: "var(--radius)",
+					padding: "28px"
+				}}
 			>
-				<h1 style={{ fontSize: "20px", fontWeight: 700, marginBottom: "4px" }}>ReserveHub 로그인</h1>
+				<div>
+					<div style={{ fontSize: "11px", fontWeight: 600, color: "var(--accent)", letterSpacing: "2px", textTransform: "uppercase", marginBottom: "6px" }}>ReserveHub</div>
+					<h1 style={{ fontSize: "20px", fontWeight: 700, color: "var(--text)" }}>로그인</h1>
+				</div>
 				<div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
-					<label style={{ fontSize: "12px", color: "#666" }}>이메일</label>
+					<label style={{ fontSize: "12px", color: "var(--text-sub)" }}>이메일</label>
 					<input
 						type="email"
 						value={email}
 						onChange={(e) => setEmail(e.target.value)}
 						required
-						style={{ padding: "10px 12px", border: "1px solid #ccc", borderRadius: "8px", fontSize: "14px" }}
+						style={inputStyle}
 					/>
 				</div>
 				<div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
-					<label style={{ fontSize: "12px", color: "#666" }}>비밀번호</label>
+					<label style={{ fontSize: "12px", color: "var(--text-sub)" }}>비밀번호</label>
 					<input
 						type="password"
 						value={password}
 						onChange={(e) => setPassword(e.target.value)}
 						required
-						style={{ padding: "10px 12px", border: "1px solid #ccc", borderRadius: "8px", fontSize: "14px" }}
+						style={inputStyle}
 					/>
 				</div>
-				{error && <div style={{ color: "#e11d48", fontSize: "13px" }}>{error}</div>}
+				{error && <div style={{ color: "var(--red)", fontSize: "13px" }}>{error}</div>}
 				<button
 					type="submit"
 					disabled={loading}
 					style={{
 						padding: "11px",
 						border: "none",
-						borderRadius: "8px",
-						background: "#7c6af7",
+						borderRadius: "var(--radius-sm)",
+						background: "var(--accent)",
 						color: "white",
 						fontWeight: 600,
 						fontSize: "14px",
+						fontFamily: "'Pretendard', sans-serif",
 						cursor: loading ? "default" : "pointer",
 						opacity: loading ? 0.7 : 1
 					}}

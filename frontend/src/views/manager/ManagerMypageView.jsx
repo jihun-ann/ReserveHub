@@ -1,8 +1,85 @@
-export default function ManagerMypageView() {
+import { useState, useEffect, useCallback } from "react";
+import { openModal, closeModal } from "../default.js";
+import { getCurrentUser, displayName, changePassword, updateProfile } from "../../api/http.js";
+import { listMembers, listStaff } from "../../api/common.js";
+
+export default function ManagerMypageView({ platformId, currentPlatform }) {
+	const user = getCurrentUser();
+	const [memberCount, setMemberCount] = useState(0);
+	const [tutorCount, setTutorCount] = useState(0);
+	const [loading, setLoading] = useState(true);
+
+	const [currentPassword, setCurrentPassword] = useState("");
+	const [newPassword, setNewPassword] = useState("");
+	const [confirmPassword, setConfirmPassword] = useState("");
+	const [pwError, setPwError] = useState("");
+	const [pwSuccess, setPwSuccess] = useState("");
+	const [saving, setSaving] = useState(false);
+
+	const [profileName, setProfileName] = useState(user?.name || "");
+	const [profilePhone, setProfilePhone] = useState(user?.phone || "");
+	const [profileError, setProfileError] = useState("");
+	const [profileSuccess, setProfileSuccess] = useState("");
+	const [savingProfile, setSavingProfile] = useState(false);
+
+	const refresh = useCallback(async () => {
+		if (!platformId) {
+			setMemberCount(0);
+			setTutorCount(0);
+			setLoading(false);
+			return;
+		}
+		setLoading(true);
+		const [members, staff] = await Promise.all([listMembers(platformId), listStaff(platformId)]);
+		setMemberCount(new Set(members.map((m) => m.userId)).size);
+		setTutorCount(staff.filter((s) => s.staffRole === "ADMIN").length);
+		setLoading(false);
+	}, [platformId]);
+
+	useEffect(() => {
+		refresh();
+	}, [refresh]);
+
+	async function submitPasswordChange() {
+		setPwError("");
+		setPwSuccess("");
+		if (!currentPassword || !newPassword || !confirmPassword) return;
+		if (newPassword !== confirmPassword) {
+			setPwError("새 비밀번호가 일치하지 않습니다.");
+			return;
+		}
+		setSaving(true);
+		try {
+			await changePassword(currentPassword, newPassword);
+			setCurrentPassword("");
+			setNewPassword("");
+			setConfirmPassword("");
+			setPwSuccess("비밀번호가 변경되었습니다.");
+		} catch (err) {
+			setPwError(err.message || "비밀번호 변경에 실패했습니다.");
+		} finally {
+			setSaving(false);
+		}
+	}
+
+	async function submitProfile() {
+		setProfileError("");
+		setProfileSuccess("");
+		if (!profileName.trim()) return;
+		setSavingProfile(true);
+		try {
+			await updateProfile(profileName.trim(), profilePhone.trim() || null);
+			setProfileSuccess("정보가 저장되었습니다.");
+		} catch (err) {
+			setProfileError(err.message || "정보 저장에 실패했습니다.");
+		} finally {
+			setSavingProfile(false);
+		}
+	}
+
 	return (
 		<>
 		<div className="page" id="manager-mypage">
-			{/* ══════════════ 마이페이지 ══════════════ */}
 			<div className="page-header">
 				<div className="page-label">MY PAGE</div>
 				<div className="page-title">내 정보</div>
@@ -10,253 +87,118 @@ export default function ManagerMypageView() {
 			</div>
 
 			<div className="hero">
-				<div className="hero-avatar">정</div>
+				<div className="hero-avatar">{(user?.name || displayName(user))[0]}</div>
 				<div className="hero-info">
-					<div className="hero-name">정미래 점장</div>
-					<div className="hero-email">jung.mirae@reservehub.kr · 010-9999-1234</div>
+					<div className="hero-name">{user?.name || displayName(user)}</div>
+					<div className="hero-email">{user?.email}</div>
+					{user?.phone && <div className="hero-email" style={{ marginTop: "2px" }}>{user.phone}</div>}
 				</div>
 				<div className="hero-stats">
 					<div className="hstat">
-						<div className="hstat-val">2</div>
+						<div className="hstat-val">{platformId ? 1 : 0}</div>
 						<div className="hstat-key">담당 플랫폼</div>
 					</div>
 					<div className="hstat">
-						<div className="hstat-val" style={{ color: "var(--green)" }}>
-							228
-						</div>
+						<div className="hstat-val" style={{ color: "var(--green)" }}>{loading ? "-" : memberCount}</div>
 						<div className="hstat-key">전체 회원</div>
 					</div>
 					<div className="hstat">
-						<div className="hstat-val" style={{ color: "var(--accent3)" }}>
-							6
-						</div>
+						<div className="hstat-val" style={{ color: "var(--accent3)" }}>{loading ? "-" : tutorCount}</div>
 						<div className="hstat-key">소속 강사</div>
 					</div>
-					<div className="hstat">
-						<div className="hstat-val" style={{ color: "var(--green)" }}>
-							15만
-						</div>
-						<div className="hstat-key">이번달 매출</div>
-					</div>
 				</div>
-				<button className="btn btn-ghost btn-sm">✏️ 정보 수정</button>
+				<div style={{ display: "flex", flexDirection: "column", gap: "6px", marginLeft: "auto" }}>
+					<button className="btn btn-ghost btn-sm" onClick={() => openModal("managerAccountModal")}>✏️ 계정 정보</button>
+					<button className="btn btn-ghost btn-sm" onClick={() => openModal("managerPasswordModal")}>🔒 비밀번호 변경</button>
+				</div>
 			</div>
 
-			<div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "18px" }}>
-				<div className="card">
-					<div className="card-title">담당 플랫폼</div>
-					<div style={{ display: "flex", flexDirection: "column", gap: "0" }}>
-						<div
-							style={{
-								display: "flex",
-								alignItems: "center",
-								gap: "12px",
-								padding: "14px 0",
-								borderBottom: "1px solid var(--border)"
-							}}
-						>
-							<div
-								style={{
-									width: "38px",
-									height: "38px",
-									borderRadius: "10px",
-									background: "rgba(124,106,247,.12)",
-									display: "flex",
-									alignItems: "center",
-									justifyContent: "center",
-									fontSize: "18px",
-									flexShrink: "0"
-								}}
-							>
-								🤸
-							</div>
-							<div style={{ flex: "1" }}>
-								<div style={{ fontSize: "14px", fontWeight: "600" }}>스튜디오 필라테스 강남</div>
-								<div style={{ fontSize: "11px", color: "var(--text-sub)", marginTop: "3px" }}>
-									회원 142명 · 강사 4명 · 매출 9.8만
-								</div>
-							</div>
-							<span className="badge bs-active" style={{ fontSize: "10px" }}>
-								담당 중
-							</span>
+			<div className="card">
+				<div className="card-title">담당 플랫폼</div>
+				{!currentPlatform ? (
+					<div style={{ fontSize: "12px", color: "var(--text-dim)", padding: "8px 0" }}>배정된 플랫폼이 없습니다</div>
+				) : (
+					<div style={{ display: "flex", alignItems: "center", gap: "12px", padding: "14px 0" }}>
+						<div style={{ width: "38px", height: "38px", borderRadius: "10px", background: "rgba(124,106,247,.12)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "18px", flexShrink: "0" }}>
+							{currentPlatform.emoji}
 						</div>
-						<div style={{ display: "flex", alignItems: "center", gap: "12px", padding: "14px 0" }}>
-							<div
-								style={{
-									width: "38px",
-									height: "38px",
-									borderRadius: "10px",
-									background: "rgba(79,209,197,.12)",
-									display: "flex",
-									alignItems: "center",
-									justifyContent: "center",
-									fontSize: "18px",
-									flexShrink: "0"
-								}}
-							>
-								🧘
+						<div style={{ flex: "1" }}>
+							<div style={{ fontSize: "14px", fontWeight: "600" }}>{currentPlatform.name}</div>
+							<div style={{ fontSize: "11px", color: "var(--text-sub)", marginTop: "3px" }}>
+								회원 {loading ? "-" : memberCount}명 · 강사 {loading ? "-" : tutorCount}명
 							</div>
-							<div style={{ flex: "1" }}>
-								<div style={{ fontSize: "14px", fontWeight: "600" }}>요가라운지 홍대</div>
-								<div style={{ fontSize: "11px", color: "var(--text-sub)", marginTop: "3px" }}>
-									회원 86명 · 강사 2명 · 매출 5.2만
-								</div>
-							</div>
-							<span className="badge bs-active" style={{ fontSize: "10px" }}>
-								담당 중
-							</span>
 						</div>
+						<span className="badge bs-active" style={{ fontSize: "10px" }}>담당 중</span>
 					</div>
+				)}
+			</div>
+		</div>
+
+		<div className="modal-overlay" id="managerAccountModal">
+			<div className="modal-box">
+				<div className="modal-header">
+					<div className="modal-title">계정 정보</div>
+					<button className="modal-close" onClick={() => closeModal("managerAccountModal")}>✕</button>
 				</div>
-				<div className="card">
-					<div className="card-title">이번달 처리 이력</div>
-					<div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
-						<div
-							style={{
-								background: "var(--surface2)",
-								borderRadius: "var(--rs)",
-								padding: "14px",
-								textAlign: "center"
-							}}
-						>
-							<div
-								style={{
-									fontFamily: "'DM Mono',monospace",
-									fontSize: "22px",
-									color: "var(--green)"
-								}}
-							>
-								8
-							</div>
-							<div style={{ fontSize: "10px", color: "var(--text-dim)", marginTop: "3px" }}>
-								승인 처리
-							</div>
-						</div>
-						<div
-							style={{
-								background: "var(--surface2)",
-								borderRadius: "var(--rs)",
-								padding: "14px",
-								textAlign: "center"
-							}}
-						>
-							<div
-								style={{ fontFamily: "'DM Mono',monospace", fontSize: "22px", color: "var(--red)" }}
-							>
-								2
-							</div>
-							<div style={{ fontSize: "10px", color: "var(--text-dim)", marginTop: "3px" }}>
-								반려 처리
-							</div>
-						</div>
-						<div
-							style={{
-								background: "var(--surface2)",
-								borderRadius: "var(--rs)",
-								padding: "14px",
-								textAlign: "center"
-							}}
-						>
-							<div
-								style={{
-									fontFamily: "'DM Mono',monospace",
-									fontSize: "22px",
-									color: "var(--accent)"
-								}}
-							>
-								5
-							</div>
-							<div style={{ fontSize: "10px", color: "var(--text-dim)", marginTop: "3px" }}>
-								상담 기록
-							</div>
-						</div>
-						<div
-							style={{
-								background: "var(--surface2)",
-								borderRadius: "var(--rs)",
-								padding: "14px",
-								textAlign: "center"
-							}}
-						>
-							<div
-								style={{
-									fontFamily: "'DM Mono',monospace",
-									fontSize: "22px",
-									color: "var(--accent3)"
-								}}
-							>
-								3
-							</div>
-							<div style={{ fontSize: "10px", color: "var(--text-dim)", marginTop: "3px" }}>
-								회원 등록
-							</div>
-						</div>
+				<div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+					<div className="form-field">
+						<label>이름</label>
+						<input type="text" value={profileName} onChange={(e) => setProfileName(e.target.value)} placeholder="이름" />
 					</div>
-				</div>
-				<div className="card">
-					<div className="card-title">계정 정보</div>
-					<div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-						<div className="form-field">
-							<label>이름</label>
-							<input
-								type="text"
-								value="정미래"
-								readOnly
-								style={{ opacity: ".7", cursor: "default" }}
-							/>
-						</div>
-						<div className="form-field">
-							<label>이메일</label>
-							<input type="email" value="jung.mirae@reservehub.kr" />
-						</div>
-						<div className="form-field">
-							<label>연락처</label>
-							<input type="tel" value="010-9999-1234" />
-						</div>
-						<button
-							className="btn btn-primary"
-							style={{ alignSelf: "flex-end", background: "var(--accent)", color: "#0f0f13" }}
-							onClick={() => showToast("정보가 저장되었습니다.")}
-						>
-							저장
-						</button>
+					<div className="form-field">
+						<label>연락처</label>
+						<input type="tel" value={profilePhone} onChange={(e) => setProfilePhone(e.target.value)} placeholder="010-0000-0000" />
 					</div>
-				</div>
-				<div className="card">
-					<div className="card-title">비밀번호 변경</div>
-					<div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-						<div className="form-field">
-							<label>현재 비밀번호</label>
-							<input type="password" placeholder="••••••••" />
-						</div>
-						<div className="form-field">
-							<label>새 비밀번호</label>
-							<input type="password" placeholder="8자 이상" />
-						</div>
-						<div className="form-field">
-							<label>새 비밀번호 확인</label>
-							<input type="password" placeholder="동일하게 입력" />
-						</div>
-						<button
-							className="btn btn-ghost"
-							style={{ alignSelf: "flex-end" }}
-							onClick={() => showToast("비밀번호가 변경되었습니다.")}
-						>
-							변경하기
+					<div className="form-field">
+						<label>이메일</label>
+						<input type="email" value={user?.email || ""} readOnly style={{ opacity: ".7", cursor: "default" }} />
+					</div>
+					<div className="form-field">
+						<label>역할</label>
+						<input type="text" value="매니저" readOnly style={{ opacity: ".7", cursor: "default" }} />
+					</div>
+					{profileError && <div style={{ color: "var(--red)", fontSize: "12px" }}>{profileError}</div>}
+					{profileSuccess && <div style={{ color: "var(--green)", fontSize: "12px" }}>{profileSuccess}</div>}
+					<div style={{ display: "flex", justifyContent: "flex-end", gap: "8px", marginTop: "8px" }}>
+						<button className="btn btn-ghost" onClick={() => closeModal("managerAccountModal")}>닫기</button>
+						<button className="btn btn-primary" disabled={savingProfile} onClick={submitProfile}>
+							{savingProfile ? "저장 중..." : "저장"}
 						</button>
 					</div>
 				</div>
 			</div>
 		</div>
-		<div className="toast" id="toast"></div>
+
+		<div className="modal-overlay" id="managerPasswordModal">
+			<div className="modal-box">
+				<div className="modal-header">
+					<div className="modal-title">비밀번호 변경</div>
+					<button className="modal-close" onClick={() => closeModal("managerPasswordModal")}>✕</button>
+				</div>
+				<div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+					<div className="form-field">
+						<label>현재 비밀번호</label>
+						<input type="password" value={currentPassword} onChange={(e) => setCurrentPassword(e.target.value)} placeholder="••••••••" />
+					</div>
+					<div className="form-field">
+						<label>새 비밀번호</label>
+						<input type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} placeholder="8자 이상" />
+					</div>
+					<div className="form-field">
+						<label>새 비밀번호 확인</label>
+						<input type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} placeholder="동일하게 입력" />
+					</div>
+					{pwError && <div style={{ color: "var(--red)", fontSize: "12px" }}>{pwError}</div>}
+					{pwSuccess && <div style={{ color: "var(--green)", fontSize: "12px" }}>{pwSuccess}</div>}
+					<div style={{ display: "flex", justifyContent: "flex-end", gap: "8px", marginTop: "8px" }}>
+						<button className="btn btn-ghost" onClick={() => closeModal("managerPasswordModal")}>닫기</button>
+						<button className="btn btn-primary" disabled={saving} onClick={submitPasswordChange}>
+							{saving ? "변경 중..." : "변경하기"}
+						</button>
+					</div>
+				</div>
+			</div>
+		</div>
 		</>
 	);
-
-	function showToast(msg) {
-		const t = document.getElementById("toast");
-		if (!t) return;
-		t.textContent = msg;
-		t.classList.add("show");
-		setTimeout(() => t.classList.remove("show"), 3000);
-	}
 }

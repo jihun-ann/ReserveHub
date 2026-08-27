@@ -85,6 +85,13 @@ public class ProgramController {
                 .toList();
     }
 
+    @GetMapping("/api/v1/slots/mine")
+    public List<MySlotResponse> listMySlots() {
+        return programService.listMySlots(currentAuthenticatedUser.get()).stream()
+                .map(MySlotResponse::from)
+                .toList();
+    }
+
     @DeleteMapping("/api/v1/programs/{id}/slots/{slotId}")
     @PreAuthorize("hasAnyRole('OWNER', 'MANAGER')")
     public ResponseEntity<Void> deactivateSlot(@PathVariable UUID id, @PathVariable UUID slotId) {
@@ -131,6 +138,20 @@ public class ProgramController {
             return new SlotResponse(
                     slot.getId(), slot.getProgramId(), slot.getInstructorId(), slot.getDayOfWeek(),
                     slot.getStartTime(), slot.getEndTime(), slot.getValidFrom(), slot.getValidUntil(), slot.isActive()
+            );
+        }
+    }
+
+    public record MySlotResponse(
+            UUID id, UUID platformId, UUID programId, String programName, ProgramType programType,
+            short capacity, DayOfWeek dayOfWeek, LocalTime startTime, LocalTime endTime
+    ) {
+        static MySlotResponse from(ProgramService.SlotWithProgram sp) {
+            return new MySlotResponse(
+                    sp.slot().getId(), sp.program() != null ? sp.program().getPlatformId() : null,
+                    sp.slot().getProgramId(), sp.program() != null ? sp.program().getName() : "-",
+                    sp.program() != null ? sp.program().getType() : null, sp.program() != null ? sp.program().getCapacity() : 0,
+                    sp.slot().getDayOfWeek(), sp.slot().getStartTime(), sp.slot().getEndTime()
             );
         }
     }

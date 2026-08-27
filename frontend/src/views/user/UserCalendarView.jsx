@@ -8,9 +8,10 @@ export default function UserCalendarView() {
 	let timerInterval = null,
 		timerSec = 0,
 		timerRunning = false;
-	let calYear = 2026,
-		calMonth = 3,
-		calSelectedDay = 11;
+	const today0 = new Date();
+	let calYear = today0.getFullYear(),
+		calMonth = today0.getMonth() + 1,
+		calSelectedDay = today0.getDate();
 	const WEEKDAYS_KO = ["일", "월", "화", "수", "목", "금", "토"];
 
 	//예약 예제
@@ -124,7 +125,7 @@ export default function UserCalendarView() {
 						</div>
 					</div>
 					<div className="cal-dow">
-						<div className="cal-dow-label" style={{ color: "#f87171" }}>
+						<div className="cal-dow-label" style={{ color: "var(--red)" }}>
 							일
 						</div>
 						<div className="cal-dow-label">월</div>

@@ -78,11 +78,18 @@ public class ScheduleChangeRequestService {
         return requestRepository.findByPlatformIdAndStatus(platformId, status);
     }
 
+    @Transactional(readOnly = true)
+    // A tutor's own submitted requests, across every platform — self-scoped, no guard needed.
+    // 강사 본인이 제출한 요청 전체(소속 플랫폼 무관) — 본인 데이터라 가드가 필요 없다.
+    public List<ScheduleChangeRequest> listMine(AuthenticatedUser actor) {
+        return requestRepository.findByRequestedBy(actor.getId());
+    }
+
     @Transactional
     public ScheduleChangeRequest approve(UUID requestId, AuthenticatedUser actor, @Nullable String memo) {
         ScheduleChangeRequest request = findRequest(requestId);
         platformAccessGuard.verify(request.getPlatformId(), actor);
-        request.approve();
+        request.approve(memo);
 
         actionLogRepository.save(ActionLog.of(request.getPlatformId(), actor.getId(), ActionTarget.SCHEDULE_REQUEST, request.getId(), "APPROVE", memo));
         outboxEventRepository.save(OutboxEvent.of(
@@ -97,7 +104,7 @@ public class ScheduleChangeRequestService {
     public ScheduleChangeRequest reject(UUID requestId, AuthenticatedUser actor, @Nullable String memo) {
         ScheduleChangeRequest request = findRequest(requestId);
         platformAccessGuard.verify(request.getPlatformId(), actor);
-        request.reject();
+        request.reject(memo);
 
         actionLogRepository.save(ActionLog.of(request.getPlatformId(), actor.getId(), ActionTarget.SCHEDULE_REQUEST, request.getId(), "REJECT", memo));
         outboxEventRepository.save(OutboxEvent.of(

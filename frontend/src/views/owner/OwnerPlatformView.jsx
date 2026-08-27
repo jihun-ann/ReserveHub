@@ -1,24 +1,103 @@
-import { useState } from "react";
-
-const PLATFORMS = {
-	pilates: { emoji: "🤸", name: "스튜디오 필라테스", nameFull: "스튜디오 필라테스 강남", sub: "필라테스 · 강남구 역삼동", members: "142명" },
-	yoga: { emoji: "🧘", name: "요가라운지", nameFull: "요가라운지 홍대", sub: "요가 · 마포구 서교동", members: "86명" },
-	music: { emoji: "🎵", name: "뮤직하우스", nameFull: "뮤직하우스 홍대", sub: "음악 · 마포구 서교동", members: "56명" }
-};
+import { useEffect, useState } from "react";
+import { apiGet } from "../../api/http.js";
+import {
+	BUSINESS_TYPES,
+	businessTypeLabel,
+	createPlatform,
+	createProgram,
+	hexAlpha,
+	listPrograms,
+	listStaff,
+	setPlatformSuspended
+} from "../../api/common.js";
 
 const TABS = [
 	{ key: "info", label: "기본 정보" },
 	{ key: "programs", label: "프로그램/슬롯" },
-	{ key: "members", label: "사용자" },
 	{ key: "instructors", label: "일반관리자" },
+	{ key: "members", label: "사용자" },
 	{ key: "billing", label: "수강권/결제" },
 	{ key: "stats", label: "수익/통계" }
 ];
 
-export default function OwnerPlatformView() {
-	const [selectedId, setSelectedId] = useState("pilates");
+const NOT_CONNECTED_TABS = { members: true, billing: true, stats: true };
+
+const EMPTY_FORM = { name: "", businessType: "PILATES", phone: "", address: "", description: "" };
+const EMPTY_PROGRAM = { name: "", type: "GROUP", capacity: 8, durationMin: 60, description: "" };
+
+export default function OwnerPlatformView({ platforms, currentPlatformId, onSelectPlatform, onPlatformsChanged }) {
 	const [activeTab, setActiveTab] = useState("info");
-	const plat = PLATFORMS[selectedId];
+	const [showCreate, setShowCreate] = useState(false);
+	const [form, setForm] = useState(EMPTY_FORM);
+	const [saving, setSaving] = useState(false);
+
+	const [programs, setPrograms] = useState([]);
+	const [showProgramForm, setShowProgramForm] = useState(false);
+	const [programForm, setProgramForm] = useState(EMPTY_PROGRAM);
+
+	const [staff, setStaff] = useState([]);
+
+	const plat = platforms.find((p) => p.id === currentPlatformId) || null;
+
+	useEffect(() => {
+		if (!plat) return;
+		listPrograms(plat.id).then(setPrograms).catch(() => setPrograms([]));
+		listStaff(plat.id)
+			.then(async (rows) => {
+				const withEmail = await Promise.all(
+					rows.map(async (s) => {
+						try {
+							const u = await apiGet(`/api/v1/users/${s.userId}`);
+							return { ...s, email: u.email };
+						} catch {
+							return { ...s, email: s.userId };
+						}
+					})
+				);
+				setStaff(withEmail);
+			})
+			.catch(() => setStaff([]));
+	}, [plat?.id]);
+
+	async function submitCreate(e) {
+		e.preventDefault();
+		setSaving(true);
+		try {
+			await createPlatform(form);
+			setForm(EMPTY_FORM);
+			setShowCreate(false);
+			await onPlatformsChanged();
+		} catch (err) {
+			alert(err.message || "플랫폼 생성에 실패했습니다.");
+		} finally {
+			setSaving(false);
+		}
+	}
+
+	async function toggleSuspend() {
+		if (!plat) return;
+		try {
+			await setPlatformSuspended(plat.id, plat.status === "ACTIVE");
+			await onPlatformsChanged();
+		} catch (err) {
+			alert(err.message || "상태 변경에 실패했습니다.");
+		}
+	}
+
+	async function submitProgram(e) {
+		e.preventDefault();
+		setSaving(true);
+		try {
+			await createProgram(plat.id, programForm);
+			setProgramForm(EMPTY_PROGRAM);
+			setShowProgramForm(false);
+			setPrograms(await listPrograms(plat.id));
+		} catch (err) {
+			alert(err.message || "프로그램 생성에 실패했습니다.");
+		} finally {
+			setSaving(false);
+		}
+	}
 
 	return (
 		<div id="owner-platforms" className="page">
@@ -28,7 +107,6 @@ export default function OwnerPlatformView() {
 				<div className="page-subtitle">플랫폼을 선택해 상세 정보를 관리하세요</div>
 			</div>
 
-			{/* 플랫폼 목록 + 상세 */}
 			<div style={{ display: "grid", gridTemplateColumns: "260px 1fr", gap: "20px", alignItems: "start" }}>
 
 				{/* 플랫폼 목록 */}
@@ -36,203 +114,160 @@ export default function OwnerPlatformView() {
 					<div className="card" style={{ padding: 0, overflow: "hidden" }}>
 						<div style={{ padding: "14px 16px", borderBottom: "1px solid var(--border)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
 							<span style={{ fontSize: "11px", fontWeight: 600, color: "var(--text-sub)", letterSpacing: "1px", textTransform: "uppercase" }}>플랫폼 목록</span>
-							<button className="btn btn-sm btn-primary" style={{ padding: "5px 10px", fontSize: "11px" }}>+ 추가</button>
+							<button className="btn btn-sm btn-primary" style={{ padding: "5px 10px", fontSize: "11px" }} onClick={() => setShowCreate((v) => !v)}>+ 추가</button>
 						</div>
-						<div id="platformList">
-							{Object.entries(PLATFORMS).map(([id, p]) => (
-								<div
-									key={id}
-									className={`platform-list-item ${selectedId === id ? "active" : ""}`}
-									onClick={() => setSelectedId(id)}
-									style={{
-										display: "flex",
-										alignItems: "center",
-										gap: "10px",
-										padding: "14px 16px",
-										cursor: "pointer",
-										borderBottom: "1px solid var(--border)",
-										background: selectedId === id ? "rgba(124,106,247,0.08)" : "transparent",
-										borderLeft: `3px solid ${selectedId === id ? "#7c6af7" : "transparent"}`
-									}}
-								>
-									<span style={{ fontSize: "18px" }}>{p.emoji}</span>
-									<div style={{ flex: 1, minWidth: 0 }}>
-										<div style={{ fontSize: "13px", fontWeight: 700 }}>{p.name}</div>
-										<div style={{ fontSize: "11px", color: "var(--text-sub)" }}>회원 {p.members}</div>
-									</div>
-									<span className="plat-status ps-active" style={{ fontSize: "10px", flexShrink: 0 }}>운영</span>
+						{platforms.map((p) => (
+							<div
+								key={p.id}
+								className={`platform-list-item ${currentPlatformId === p.id ? "active" : ""}`}
+								onClick={() => onSelectPlatform(p.id)}
+								style={{
+									display: "flex",
+									alignItems: "center",
+									gap: "10px",
+									padding: "14px 16px",
+									cursor: "pointer",
+									borderBottom: "1px solid var(--border)",
+									background: currentPlatformId === p.id ? hexAlpha(p.colorHex, 0.08) : "transparent",
+									borderLeft: `3px solid ${currentPlatformId === p.id ? p.colorHex : "transparent"}`
+								}}
+							>
+								<span style={{ fontSize: "18px" }}>{p.emoji}</span>
+								<div style={{ flex: 1, minWidth: 0 }}>
+									<div style={{ fontSize: "13px", fontWeight: 700 }}>{p.name}</div>
+									<div style={{ fontSize: "11px", color: "var(--text-sub)" }}>{businessTypeLabel(p.businessType)}</div>
 								</div>
+								<span className={`plat-status ${p.status === "ACTIVE" ? "ps-active" : "ps-expired"}`} style={{ fontSize: "10px", flexShrink: 0 }}>{p.status === "ACTIVE" ? "운영" : p.status}</span>
+							</div>
+						))}
+						{platforms.length === 0 && (
+							<div style={{ padding: "16px", fontSize: "12px", color: "var(--text-dim)", textAlign: "center" }}>등록된 플랫폼이 없습니다</div>
+						)}
+					</div>
+
+					{showCreate && (
+						<form onSubmit={submitCreate} className="card" style={{ marginTop: "12px", display: "flex", flexDirection: "column", gap: "10px" }}>
+							<div className="form-field"><label>플랫폼명</label><input required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} /></div>
+							<div className="form-field">
+								<label>업종</label>
+								<select value={form.businessType} onChange={(e) => setForm({ ...form, businessType: e.target.value })}>
+									{BUSINESS_TYPES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
+								</select>
+							</div>
+							<div className="form-field"><label>대표 전화</label><input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} /></div>
+							<div className="form-field"><label>주소</label><input value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} /></div>
+							<div className="form-field"><label>소개</label><textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} /></div>
+							<button className="btn btn-primary btn-sm" type="submit" disabled={saving}>{saving ? "생성 중..." : "생성"}</button>
+						</form>
+					)}
+				</div>
+
+				{/* 플랫폼 상세 */}
+				{!plat ? (
+					<div className="card" style={{ textAlign: "center", padding: "40px", color: "var(--text-dim)" }}>플랫폼을 선택하거나 새로 추가하세요</div>
+				) : (
+					<div className="card" style={{ padding: 0, overflow: "hidden" }}>
+						<div style={{ padding: "18px 20px", borderBottom: "1px solid var(--border)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+							<div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+								<span style={{ fontSize: "22px" }}>{plat.emoji}</span>
+								<div>
+									<div style={{ fontSize: "16px", fontWeight: 700 }}>{plat.name}</div>
+									<div style={{ fontSize: "11px", color: "var(--text-sub)" }}>{businessTypeLabel(plat.businessType)}{plat.address ? ` · ${plat.address}` : ""}</div>
+								</div>
+							</div>
+							<button className="btn btn-sm btn-danger" onClick={toggleSuspend}>{plat.status === "ACTIVE" ? "비활성화" : "활성화"}</button>
+						</div>
+
+						<div style={{ display: "flex", borderBottom: "1px solid var(--border)", overflowX: "auto" }}>
+							{TABS.map((t) => (
+								<button key={t.key} className={`plat-tab ${activeTab === t.key ? "active" : ""}`} onClick={() => setActiveTab(t.key)}>{t.label}</button>
 							))}
 						</div>
-					</div>
-				</div>
 
-				{/* 플랫폼 상세 (탭) */}
-				<div className="card" style={{ padding: 0, overflow: "hidden" }}>
-					{/* 상단 헤더 */}
-					<div style={{ padding: "18px 20px", borderBottom: "1px solid var(--border)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-						<div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-							<span style={{ fontSize: "22px" }}>{plat.emoji}</span>
-							<div>
-								<div style={{ fontSize: "16px", fontWeight: 700 }}>{plat.nameFull}</div>
-								<div style={{ fontSize: "11px", color: "var(--text-sub)" }}>{plat.sub}</div>
-							</div>
-						</div>
-						<div style={{ display: "flex", gap: "8px" }}>
-							<button className="btn btn-ghost btn-sm">수정</button>
-							<button className="btn btn-sm btn-danger">비활성화</button>
-						</div>
-					</div>
+						<div style={{ padding: "20px" }}>
 
-					{/* 탭 */}
-					<div style={{ display: "flex", borderBottom: "1px solid var(--border)", overflowX: "auto" }}>
-						{TABS.map((t) => (
-							<button
-								key={t.key}
-								className={`plat-tab ${activeTab === t.key ? "active" : ""}`}
-								onClick={() => setActiveTab(t.key)}
-							>
-								{t.label}
-							</button>
-						))}
-					</div>
+							{activeTab === "info" && (
+								<div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px" }}>
+									<div className="form-field"><label>플랫폼명</label><input readOnly value={plat.name} /></div>
+									<div className="form-field"><label>업종</label><input readOnly value={businessTypeLabel(plat.businessType)} /></div>
+									<div className="form-field"><label>대표 전화</label><input readOnly value={plat.phone || "-"} /></div>
+									<div className="form-field"><label>주소</label><input readOnly value={plat.address || "-"} /></div>
+									<div className="form-field" style={{ gridColumn: "1/-1" }}><label>소개</label><textarea readOnly style={{ minHeight: "60px" }} value={plat.description || "-"} /></div>
+									<div style={{ gridColumn: "1/-1", fontSize: "11px", color: "var(--text-dim)" }}>* 정보 수정 API는 아직 백엔드에 없습니다 (운영 상태 전환만 지원).</div>
+								</div>
+							)}
 
-					{/* 탭 컨텐츠 */}
-					<div style={{ padding: "20px" }}>
-
-						{/* 기본 정보 */}
-						<div style={{ display: activeTab === "info" ? "block" : "none" }}>
-							<div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px" }}>
-								<div className="form-field"><label>플랫폼명</label><input type="text" defaultValue={plat.nameFull} /></div>
-								<div className="form-field"><label>업종</label><select defaultValue="필라테스"><option>필라테스</option><option>요가</option><option>음악</option><option>헬스</option></select></div>
-								<div className="form-field"><label>대표 전화</label><input type="text" defaultValue="02-1234-5678" /></div>
-								<div className="form-field"><label>주소</label><input type="text" defaultValue="서울시 강남구 역삼동 123-45" /></div>
-								<div className="form-field" style={{ gridColumn: "1/-1" }}><label>소개</label><textarea style={{ minHeight: "60px" }} defaultValue="강남 최고의 필라테스 스튜디오입니다." /></div>
-							</div>
-							<div style={{ display: "flex", justifyContent: "flex-end", marginTop: "14px" }}>
-								<button className="btn btn-primary" style={{ background: "#f6ad55", color: "#0f0f13" }}>저장</button>
-							</div>
-						</div>
-
-						{/* 프로그램/슬롯 */}
-						<div style={{ display: activeTab === "programs" ? "block" : "none" }}>
-							<div style={{ display: "flex", justifyContent: "flex-end", marginBottom: "14px" }}>
-								<button className="btn btn-primary btn-sm" style={{ background: "#f6ad55", color: "#0f0f13" }}>+ 프로그램 추가</button>
-							</div>
-							<div style={{ overflowX: "auto" }}>
-								<table className="attend-table">
-									<thead><tr><th>프로그램명</th><th>유형</th><th>정원</th><th>시간</th><th>상태</th><th></th></tr></thead>
-									<tbody>
-									<tr><td style={{ fontWeight: 600 }}>그룹반 A — 기초</td><td><span className="plat-chip" style={{ background: "rgba(124,106,247,0.12)", color: "#7c6af7", borderColor: "rgba(124,106,247,0.3)" }}>그룹레슨</span></td><td>8명</td><td>60분</td><td><span className="plat-status ps-active" style={{ fontSize: "10px" }}>운영</span></td><td><button className="btn btn-ghost btn-sm">수정</button></td></tr>
-									<tr><td style={{ fontWeight: 600 }}>그룹반 B — 심화</td><td><span className="plat-chip" style={{ background: "rgba(124,106,247,0.12)", color: "#7c6af7", borderColor: "rgba(124,106,247,0.3)" }}>그룹레슨</span></td><td>8명</td><td>60분</td><td><span className="plat-status ps-active" style={{ fontSize: "10px" }}>운영</span></td><td><button className="btn btn-ghost btn-sm">수정</button></td></tr>
-									<tr><td style={{ fontWeight: 600 }}>1:1 개인레슨</td><td><span className="plat-chip" style={{ background: "rgba(79,209,197,0.12)", color: "#4fd1c5", borderColor: "rgba(79,209,197,0.3)" }}>개인레슨</span></td><td>1명</td><td>50분</td><td><span className="plat-status ps-active" style={{ fontSize: "10px" }}>운영</span></td><td><button className="btn btn-ghost btn-sm">수정</button></td></tr>
-									</tbody>
-								</table>
-							</div>
-						</div>
-
-						{/* 사용자 */}
-						<div style={{ display: activeTab === "members" ? "block" : "none" }}>
-							<div style={{ display: "flex", gap: "8px", marginBottom: "14px" }}>
-								<input type="text" placeholder="이름 / 연락처 검색..." style={{ flex: 1, padding: "8px 12px", background: "var(--surface2)", border: "1px solid var(--border)", borderRadius: "var(--radius-sm)", color: "var(--text)", fontSize: "13px", outline: "none" }} />
-								<button className="btn btn-primary btn-sm" style={{ background: "#f6ad55", color: "#0f0f13" }}>+ 회원 등록</button>
-							</div>
-							<div style={{ overflowX: "auto" }}>
-								<table className="attend-table">
-									<thead><tr><th>이름</th><th>연락처</th><th>등록일</th><th>다음 결제</th><th>상태</th><th></th></tr></thead>
-									<tbody>
-									<tr><td style={{ fontWeight: 600 }}>홍길동</td><td style={{ fontFamily: "'DM Mono',monospace", fontSize: "12px" }}>010-1234-5678</td><td>2025.10.01</td><td style={{ color: "#f6ad55", fontFamily: "'DM Mono',monospace", fontSize: "12px" }}>2026.03.01</td><td><span className="plat-status ps-active" style={{ fontSize: "10px" }}>활성</span></td><td><button className="btn btn-ghost btn-sm">상세</button></td></tr>
-									<tr><td style={{ fontWeight: 600 }}>김민지</td><td style={{ fontFamily: "'DM Mono',monospace", fontSize: "12px" }}>010-9876-5432</td><td>2025.11.15</td><td style={{ color: "#f6ad55", fontFamily: "'DM Mono',monospace", fontSize: "12px" }}>2026.03.15</td><td><span className="plat-status ps-active" style={{ fontSize: "10px" }}>활성</span></td><td><button className="btn btn-ghost btn-sm">상세</button></td></tr>
-									<tr><td style={{ fontWeight: 600 }}>박서준</td><td style={{ fontFamily: "'DM Mono',monospace", fontSize: "12px" }}>010-5555-4444</td><td>2025.09.01</td><td style={{ color: "#f87171", fontFamily: "'DM Mono',monospace", fontSize: "12px" }}>2026.02.28</td><td><span className="plat-status ps-active" style={{ fontSize: "10px" }}>활성</span></td><td><button className="btn btn-ghost btn-sm">상세</button></td></tr>
-									<tr><td style={{ fontWeight: 600 }}>이지은</td><td style={{ fontFamily: "'DM Mono',monospace", fontSize: "12px" }}>010-2222-3333</td><td>2024.06.01</td><td style={{ color: "var(--text-dim)", fontSize: "12px" }}>만료</td><td><span className="plat-status ps-expired" style={{ fontSize: "10px" }}>만료</span></td><td><button className="btn btn-ghost btn-sm">상세</button></td></tr>
-									</tbody>
-								</table>
-							</div>
-						</div>
-
-						{/* 일반관리자 */}
-						<div style={{ display: activeTab === "instructors" ? "block" : "none" }}>
-							<div style={{ display: "flex", justifyContent: "flex-end", marginBottom: "14px" }}>
-								<button className="btn btn-primary btn-sm" style={{ background: "#f6ad55", color: "#0f0f13" }}>+ 관리자 등록</button>
-							</div>
-							<div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
-								<div style={{ background: "var(--surface2)", border: "1px solid var(--border)", borderRadius: "var(--radius-sm)", padding: "14px", display: "flex", alignItems: "center", gap: "14px" }}>
-									<div className="avatar" style={{ background: "linear-gradient(135deg,var(--accent2),#667eea)", width: "38px", height: "38px", fontSize: "15px" }}>이</div>
-									<div style={{ flex: 1 }}>
-										<div style={{ fontSize: "14px", fontWeight: 700 }}>이수진 트레이너</div>
-										<div style={{ fontSize: "11px", color: "var(--text-sub)", marginTop: "2px" }}>그룹반 A · 그룹반 B · 1:1 개인레슨 담당 · 수강생 18명</div>
+							{activeTab === "programs" && (
+								<div>
+									<div style={{ display: "flex", justifyContent: "flex-end", marginBottom: "14px" }}>
+										<button className="btn btn-primary btn-sm" onClick={() => setShowProgramForm((v) => !v)}>+ 프로그램 추가</button>
 									</div>
-									<span className="plat-status ps-active" style={{ fontSize: "10px" }}>재직</span>
-									<button className="btn btn-ghost btn-sm">수정</button>
-								</div>
-								<div style={{ background: "var(--surface2)", border: "1px solid var(--border)", borderRadius: "var(--radius-sm)", padding: "14px", display: "flex", alignItems: "center", gap: "14px" }}>
-									<div className="avatar" style={{ background: "linear-gradient(135deg,#f6ad55,#ed8936)", width: "38px", height: "38px", fontSize: "15px" }}>김</div>
-									<div style={{ flex: 1 }}>
-										<div style={{ fontSize: "14px", fontWeight: 700 }}>김현우 트레이너</div>
-										<div style={{ fontSize: "11px", color: "var(--text-sub)", marginTop: "2px" }}>그룹반 A 보조 · 수강생 12명</div>
+									{showProgramForm && (
+										<form onSubmit={submitProgram} style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px", marginBottom: "16px" }}>
+											<div className="form-field"><label>프로그램명</label><input required value={programForm.name} onChange={(e) => setProgramForm({ ...programForm, name: e.target.value })} /></div>
+											<div className="form-field">
+												<label>유형</label>
+												<select value={programForm.type} onChange={(e) => setProgramForm({ ...programForm, type: e.target.value })}>
+													<option value="GROUP">그룹레슨</option>
+													<option value="PRIVATE">개인레슨</option>
+													<option value="SEMIPRIVATE">반개인레슨</option>
+												</select>
+											</div>
+											<div className="form-field"><label>정원</label><input type="number" min="1" required value={programForm.capacity} onChange={(e) => setProgramForm({ ...programForm, capacity: Number(e.target.value) })} /></div>
+											<div className="form-field"><label>시간(분)</label><input type="number" min="1" required value={programForm.durationMin} onChange={(e) => setProgramForm({ ...programForm, durationMin: Number(e.target.value) })} /></div>
+											<div className="form-field" style={{ gridColumn: "1/-1" }}><label>설명</label><textarea value={programForm.description} onChange={(e) => setProgramForm({ ...programForm, description: e.target.value })} /></div>
+											<button className="btn btn-primary btn-sm" style={{ gridColumn: "1/-1" }} type="submit" disabled={saving}>{saving ? "생성 중..." : "저장"}</button>
+										</form>
+									)}
+									<div style={{ overflowX: "auto" }}>
+										<table className="data-table">
+											<thead><tr><th>프로그램명</th><th>유형</th><th>정원</th><th>시간</th><th>상태</th></tr></thead>
+											<tbody>
+											{programs.map((pr) => (
+												<tr key={pr.id}>
+													<td style={{ fontWeight: 600 }}>{pr.name}</td>
+													<td><span className="plat-chip" style={{ background: "var(--surface2)", color: "var(--text-sub)", borderColor: "var(--border)" }}>{pr.type}</span></td>
+													<td>{pr.capacity}명</td>
+													<td>{pr.durationMin}분</td>
+													<td><span className={`plat-status ${pr.isActive ? "ps-active" : "ps-expired"}`} style={{ fontSize: "10px" }}>{pr.isActive ? "운영" : "중단"}</span></td>
+												</tr>
+											))}
+											{programs.length === 0 && (
+												<tr><td colSpan={5} style={{ textAlign: "center", color: "var(--text-dim)", padding: "16px" }}>등록된 프로그램이 없습니다</td></tr>
+											)}
+											</tbody>
+										</table>
 									</div>
-									<span className="plat-status ps-active" style={{ fontSize: "10px" }}>재직</span>
-									<button className="btn btn-ghost btn-sm">수정</button>
 								</div>
-							</div>
-						</div>
+							)}
 
-						{/* 수강권/결제 */}
-						<div style={{ display: activeTab === "billing" ? "block" : "none" }}>
-							<div style={{ display: "flex", justifyContent: "flex-end", marginBottom: "14px" }}>
-								<button className="btn btn-primary btn-sm" style={{ background: "#f6ad55", color: "#0f0f13" }}>+ 수강권 추가</button>
-							</div>
-							<div style={{ overflowX: "auto" }}>
-								<table className="attend-table">
-									<thead><tr><th>수강권명</th><th>금액</th><th>기간</th><th>가입자</th><th>상태</th></tr></thead>
-									<tbody>
-									<tr><td style={{ fontWeight: 600 }}>그룹 월정액</td><td style={{ fontFamily: "'DM Mono',monospace", color: "#4fd1c5" }}>95,000원</td><td>30일</td><td>98명</td><td><span className="plat-status ps-active" style={{ fontSize: "10px" }}>판매중</span></td></tr>
-									<tr><td style={{ fontWeight: 600 }}>개인 10회권</td><td style={{ fontFamily: "'DM Mono',monospace", color: "#4fd1c5" }}>350,000원</td><td>60일</td><td>24명</td><td><span className="plat-status ps-active" style={{ fontSize: "10px" }}>판매중</span></td></tr>
-									<tr><td style={{ fontWeight: 600 }}>체험 1회권</td><td style={{ fontFamily: "'DM Mono',monospace", color: "#4fd1c5" }}>30,000원</td><td>1일</td><td>20명</td><td><span className="plat-status ps-expired" style={{ fontSize: "10px" }}>중단</span></td></tr>
-									</tbody>
-								</table>
-							</div>
-						</div>
-
-						{/* 수익/통계 */}
-						<div style={{ display: activeTab === "stats" ? "block" : "none" }}>
-							<div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: "12px", marginBottom: "20px" }}>
-								<div style={{ background: "var(--surface2)", borderRadius: "var(--radius-sm)", padding: "14px", textAlign: "center", border: "1px solid var(--border)" }}>
-									<div style={{ fontSize: "10px", color: "var(--text-dim)", letterSpacing: "1px", marginBottom: "6px" }}>이번 달 매출</div>
-									<div style={{ fontFamily: "'DM Mono',monospace", fontSize: "22px", fontWeight: 500, color: "#4fd1c5" }}>9.8만</div>
-								</div>
-								<div style={{ background: "var(--surface2)", borderRadius: "var(--radius-sm)", padding: "14px", textAlign: "center", border: "1px solid var(--border)" }}>
-									<div style={{ fontSize: "10px", color: "var(--text-dim)", letterSpacing: "1px", marginBottom: "6px" }}>신규 가입</div>
-									<div style={{ fontFamily: "'DM Mono',monospace", fontSize: "22px", fontWeight: 500, color: "#7c6af7" }}>8명</div>
-								</div>
-								<div style={{ background: "var(--surface2)", borderRadius: "var(--radius-sm)", padding: "14px", textAlign: "center", border: "1px solid var(--border)" }}>
-									<div style={{ fontSize: "10px", color: "var(--text-dim)", letterSpacing: "1px", marginBottom: "6px" }}>재등록률</div>
-									<div style={{ fontFamily: "'DM Mono',monospace", fontSize: "22px", fontWeight: 500, color: "#f6ad55" }}>78%</div>
-								</div>
-							</div>
-							{/* 월별 매출 바 */}
-							<div style={{ fontSize: "11px", color: "var(--text-sub)", marginBottom: "12px", letterSpacing: "1px", textTransform: "uppercase" }}>월별 매출 추이</div>
-							<div style={{ display: "flex", alignItems: "flex-end", gap: "8px", height: "80px" }}>
-								{[
-									{ label: "10월", height: "60%", opacity: 0.6, color: "#7c6af7" },
-									{ label: "11월", height: "70%", opacity: 0.7, color: "#7c6af7" },
-									{ label: "12월", height: "75%", opacity: 0.8, color: "#7c6af7" },
-									{ label: "1월", height: "80%", opacity: 0.9, color: "#7c6af7" },
-									{ label: "2월", height: "100%", opacity: 1, color: "#4fd1c5" }
-								].map((bar) => (
-									<div key={bar.label} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: "4px", height: "100%" }}>
-										<div style={{ flex: 1, width: "100%", display: "flex", alignItems: "flex-end" }}>
-											<div style={{ width: "100%", background: bar.color, borderRadius: "3px 3px 0 0", height: bar.height, opacity: bar.opacity }}></div>
+							{activeTab === "instructors" && (
+								<div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+									{staff.filter((s) => s.staffRole === "ADMIN").map((s) => (
+										<div key={s.id} style={{ background: "var(--surface2)", border: "1px solid var(--border)", borderRadius: "var(--radius-sm)", padding: "14px", display: "flex", alignItems: "center", gap: "14px" }}>
+											<div className="avatar" style={{ background: "linear-gradient(135deg,var(--accent2),#667eea)", width: "38px", height: "38px", fontSize: "15px" }}>{s.email?.[0]?.toUpperCase() || "?"}</div>
+											<div style={{ flex: 1 }}>
+												<div style={{ fontSize: "14px", fontWeight: 700 }}>{s.email}</div>
+											</div>
+											<span className="plat-status ps-active" style={{ fontSize: "10px" }}>재직</span>
 										</div>
-										<span style={{ fontSize: "9px", color: bar.label === "2월" ? "var(--accent2)" : "var(--text-dim)" }}>{bar.label}</span>
-									</div>
-								))}
-							</div>
-							<div style={{ height: "1px", background: "var(--border)", marginTop: "2px" }}></div>
-						</div>
+									))}
+									{staff.filter((s) => s.staffRole === "ADMIN").length === 0 && (
+										<div style={{ fontSize: "12px", color: "var(--text-dim)", textAlign: "center", padding: "16px 0" }}>배정된 일반관리자가 없습니다</div>
+									)}
+									<div style={{ fontSize: "11px", color: "var(--text-dim)" }}>* 이메일로 사용자를 검색해 배정하는 API가 아직 없어 등록 UI는 제공하지 않습니다.</div>
+								</div>
+							)}
 
+							{NOT_CONNECTED_TABS[activeTab] && (
+								<div style={{ textAlign: "center", padding: "40px", color: "var(--text-dim)", fontSize: "13px" }}>
+									이 탭에 대응하는 백엔드 API가 아직 없어 연동하지 않았습니다.
+								</div>
+							)}
+
+						</div>
 					</div>
-				</div>
+				)}
 			</div>
 		</div>
 	);

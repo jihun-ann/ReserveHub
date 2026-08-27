@@ -1,0 +1,310 @@
+package com.hub.reservehub.config;
+
+import com.hub.reservehub.api.v1.auth.service.AuthService;
+import com.hub.reservehub.domain.approval.ScheduleChangeRequest;
+import com.hub.reservehub.domain.approval.ScheduleChangeRequestRepository;
+import com.hub.reservehub.domain.approval.ScheduleChangeRequestService;
+import com.hub.reservehub.domain.platform.BusinessType;
+import com.hub.reservehub.domain.platform.Platform;
+import com.hub.reservehub.domain.platform.PlatformService;
+import com.hub.reservehub.domain.platform.StaffRole;
+import com.hub.reservehub.domain.program.DayOfWeek;
+import com.hub.reservehub.domain.program.Program;
+import com.hub.reservehub.domain.program.ProgramService;
+import com.hub.reservehub.domain.program.ProgramType;
+import com.hub.reservehub.domain.program.Slot;
+import com.hub.reservehub.domain.calendar.CalendarEventService;
+import com.hub.reservehub.domain.calendar.EventType;
+import com.hub.reservehub.domain.calendar.ShareScope;
+import com.hub.reservehub.domain.lesson.AttendStatus;
+import com.hub.reservehub.domain.lesson.Lesson;
+import com.hub.reservehub.domain.lesson.LessonService;
+import com.hub.reservehub.domain.pass.DiscountPolicy;
+import com.hub.reservehub.domain.pass.DiscountPolicyService;
+import com.hub.reservehub.domain.pass.DiscountType;
+import com.hub.reservehub.domain.pass.OrderService;
+import com.hub.reservehub.domain.pass.Pass;
+import com.hub.reservehub.domain.pass.PassService;
+import com.hub.reservehub.domain.pass.PassType;
+import com.hub.reservehub.domain.pass.UserPass;
+import com.hub.reservehub.domain.pass.UserPassRepository;
+import com.hub.reservehub.domain.reservation.Reservation;
+import com.hub.reservehub.domain.reservation.ReservationService;
+import com.hub.reservehub.domain.user.Role;
+import com.hub.reservehub.domain.user.User;
+import com.hub.reservehub.security.AuthenticatedUser;
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.time.LocalTime;
+import java.util.List;
+import java.util.UUID;
+import org.springframework.boot.CommandLineRunner;
+import org.springframework.stereotype.Component;
+
+/**
+ * Seeds one test account per role plus a platform linking them, so the frontend can be
+ * exercised end-to-end against the local H2 datasource configured in application.properties.
+ */
+@Component
+public class DummyDataSeeder implements CommandLineRunner {
+
+    private static final String PASSWORD = "test";
+
+    private final AuthService authService;
+    private final PlatformService platformService;
+    private final ScheduleChangeRequestRepository scheduleChangeRequestRepository;
+    private final PassService passService;
+    private final UserPassRepository userPassRepository;
+    private final OrderService orderService;
+    private final DiscountPolicyService discountPolicyService;
+    private final CalendarEventService calendarEventService;
+    private final ProgramService programService;
+    private final LessonService lessonService;
+    private final ReservationService reservationService;
+    private final ScheduleChangeRequestService scheduleChangeRequestService;
+
+    public DummyDataSeeder(
+            AuthService authService, PlatformService platformService,
+            ScheduleChangeRequestRepository scheduleChangeRequestRepository,
+            PassService passService, UserPassRepository userPassRepository,
+            OrderService orderService, DiscountPolicyService discountPolicyService,
+            CalendarEventService calendarEventService, ProgramService programService,
+            LessonService lessonService, ReservationService reservationService,
+            ScheduleChangeRequestService scheduleChangeRequestService
+    ) {
+        this.authService = authService;
+        this.platformService = platformService;
+        this.scheduleChangeRequestRepository = scheduleChangeRequestRepository;
+        this.passService = passService;
+        this.userPassRepository = userPassRepository;
+        this.orderService = orderService;
+        this.discountPolicyService = discountPolicyService;
+        this.calendarEventService = calendarEventService;
+        this.programService = programService;
+        this.lessonService = lessonService;
+        this.reservationService = reservationService;
+        this.scheduleChangeRequestService = scheduleChangeRequestService;
+    }
+
+    @Override
+    public void run(String... args) {
+        System.out.println("[DummyDataSeeder] seeding start");
+        User owner = authService.register("owner@test.com", PASSWORD, Role.OWNER, "김도윤", "010-1111-2222").user();
+        User manager = authService.register("manager@test.com", PASSWORD, Role.MANAGER, "이서연", "010-2222-3333").user();
+        User tutor = authService.register("tutor@test.com", PASSWORD, Role.ADMIN, "박지훈", "010-3333-4444").user();
+        authService.register("user@test.com", PASSWORD, Role.USER, "최민서", "010-4444-5555");
+
+        AuthenticatedUser ownerPrincipal = AuthenticatedUser.from(owner);
+        Platform platform = platformService.create(
+                ownerPrincipal, "ReserveHub 테스트 스튜디오", BusinessType.PILATES,
+                "02-1234-5678", "서울시 강남구", "더미 데이터용 테스트 플랫폼"
+        );
+        platformService.assignStaff(platform.getId(), ownerPrincipal, manager.getId(), StaffRole.MANAGER);
+        platformService.assignStaff(platform.getId(), ownerPrincipal, tutor.getId(), StaffRole.ADMIN);
+        seedScheduleChangeRequests(platform.getId(), tutor.getId());
+        List<User> members = seedMembers(platform.getId(), ownerPrincipal);
+        seedCalendarEvents(platform.getId(), ownerPrincipal);
+        Slot slot = seedLessonsForSlot(platform.getId(), ownerPrincipal, "그룹반 A", DayOfWeek.MON, tutor.getId(), members);
+        seedReservationAndRequest(platform.getId(), ownerPrincipal, tutor, slot, members.get(0), "수강생 요청으로 다음 그룹반 일정을 조정합니다.");
+
+        // 같은 owner가 소유한 플랫폼이 여러 개일 때의 목록/전환 UI를 테스트하기 위한 추가 플랫폼.
+        // 강사는 두 플랫폼(필라테스 스튜디오 + 요가 스튜디오)에 동시 소속되어 요일이 겹치지 않는
+        // 고정 주간 시간표를 테스트할 수 있다.
+        Platform platform2 = platformService.create(
+                ownerPrincipal, "홍대 요가 스튜디오", BusinessType.YOGA,
+                "02-2345-6789", "서울시 마포구", "더미 데이터용 테스트 플랫폼 2"
+        );
+        platformService.assignStaff(platform2.getId(), ownerPrincipal, tutor.getId(), StaffRole.ADMIN);
+        List<User> members2 = seedSimpleMembers(platform2.getId(), ownerPrincipal);
+        Slot slot2 = seedLessonsForSlot(platform2.getId(), ownerPrincipal, "요가 기초반", DayOfWeek.WED, tutor.getId(), members2);
+        seedReservationAndRequest(platform2.getId(), ownerPrincipal, tutor, slot2, members2.get(0), "수강생 사정으로 요가 기초반 일정을 조정합니다.");
+
+        platformService.create(
+                ownerPrincipal, "잠실 댄스 아카데미", BusinessType.DANCE,
+                "02-3456-7890", "서울시 송파구", "더미 데이터용 테스트 플랫폼 3"
+        );
+    }
+
+    // reservationId/originalSlot은 실제 예약 없이 승인 관리 화면을 테스트하기 위한 더미 UUID (FK 강제 없음).
+    private void seedScheduleChangeRequests(UUID platformId, UUID tutorId) {
+        LocalDate today = LocalDate.now();
+
+        ScheduleChangeRequest pending1 = new ScheduleChangeRequest(
+                platformId, tutorId, UUID.randomUUID(), today.plusDays(2),
+                UUID.randomUUID(), today.plusDays(5), UUID.randomUUID(), "수강생 개인 사정으로 인한 일정 조정 요청입니다."
+        );
+        ScheduleChangeRequest pending2 = new ScheduleChangeRequest(
+                platformId, tutorId, UUID.randomUUID(), today.plusDays(3),
+                UUID.randomUUID(), today.plusDays(4), UUID.randomUUID(), "강사 일정으로 인한 수업 조정 요청입니다."
+        );
+        ScheduleChangeRequest approved = new ScheduleChangeRequest(
+                platformId, tutorId, UUID.randomUUID(), today.minusDays(3),
+                UUID.randomUUID(), today.minusDays(1), UUID.randomUUID(), "수강생 요청으로 인한 일정 변경입니다."
+        );
+        approved.approve();
+        ScheduleChangeRequest rejected = new ScheduleChangeRequest(
+                platformId, tutorId, UUID.randomUUID(), today.minusDays(5),
+                UUID.randomUUID(), today.minusDays(4), null, "수강생 해외 출장으로 인한 레슨 취소 요청입니다."
+        );
+        rejected.reject();
+
+        scheduleChangeRequestRepository.save(pending1);
+        scheduleChangeRequestRepository.save(pending2);
+        scheduleChangeRequestRepository.save(approved);
+        scheduleChangeRequestRepository.save(rejected);
+    }
+
+    private List<User> seedMembers(UUID platformId, AuthenticatedUser ownerPrincipal) {
+        Pass groupPass = passService.create(
+                platformId, ownerPrincipal, "그룹 월정액", PassType.MONTHLY, 150000, null, (short) 30
+        );
+        Pass personalPass = passService.create(
+                platformId, ownerPrincipal, "개인 10회권", PassType.SESSION, 500000, (short) 10, (short) 60
+        );
+        // validDays를 짧게 잡아 결제 즉시 "만료 임박" 상태를 자연스럽게 재현한다 (날짜 조작 없이).
+        Pass trialPass = passService.create(
+                platformId, ownerPrincipal, "체험 3일권", PassType.DAILY, 30000, null, (short) 3
+        );
+
+        DiscountPolicy longTermDiscount = discountPolicyService.create(
+                platformId, ownerPrincipal, "장기 등록 할인", DiscountType.LONG_TERM, BigDecimal.valueOf(10),
+                3, null, null, "3개월 이상 등록 시 10% 할인"
+        );
+
+        User member1 = authService.register("member1@test.com", PASSWORD, Role.USER, "정하은", "010-5555-6666").user();
+        User member2 = authService.register("member2@test.com", PASSWORD, Role.USER, "강태윤", "010-6666-7777").user();
+        User member3 = authService.register("member3@test.com", PASSWORD, Role.USER, "윤서아", "010-7777-8888").user();
+
+        // member1: 할인 없이 그룹 월정액 결제 → 활성 상태.
+        var order1 = orderService.createOrder(
+                platformId, ownerPrincipal, member1.getId(),
+                List.of(new OrderService.PassSelection(groupPass.getId(), (short) 1)), List.of(), null
+        );
+        orderService.pay(order1.getId(), ownerPrincipal);
+
+        // member2: 할인 정책을 적용해 체험권 결제 → 만료 임박 상태 + 결제 현황에 할인 내역 노출.
+        var order2 = orderService.createOrder(
+                platformId, ownerPrincipal, member2.getId(),
+                List.of(new OrderService.PassSelection(trialPass.getId(), (short) 1)),
+                List.of(longTermDiscount.getId()), "장기 등록 할인 적용"
+        );
+        orderService.pay(order2.getId(), ownerPrincipal);
+
+        // member3: 실제 주문 API는 항상 오늘 기준으로 시작일을 잡기 때문에 과거에 만료된 건은
+        // 재현할 수 없다 — 만료 상태 화면 테스트용으로 UserPass만 직접 과거 날짜로 만든다
+        // (orderItemId는 대응하는 주문이 없는 더미 UUID라 결제 현황 목록엔 나타나지 않는다).
+        LocalDate today = LocalDate.now();
+        userPassRepository.save(new UserPass(
+                member3.getId(), UUID.randomUUID(), personalPass.getId(), platformId, 5, today.minusDays(90), today.minusDays(10)
+        ));
+
+        return List.of(member1, member2, member3);
+    }
+
+    private void seedCalendarEvents(UUID platformId, AuthenticatedUser ownerPrincipal) {
+        LocalDate today = LocalDate.now();
+        calendarEventService.create(
+                platformId, ownerPrincipal, EventType.SHARED, "그룹반 A 정기 공지",
+                "이번 주 그룹반 시간표 변경 안내", today.plusDays(2), null, true, ShareScope.PLATFORM
+        );
+        calendarEventService.create(
+                platformId, ownerPrincipal, EventType.NOTICE, "플랫폼 휴관일",
+                "시설 점검으로 하루 휴관합니다", today.plusDays(5), null, true, ShareScope.PLATFORM
+        );
+        // platformId == null: 전사 공지, OWNER만 생성 가능.
+        calendarEventService.create(
+                null, ownerPrincipal, EventType.HQ_NOTICE, "본사 정책 공지",
+                "전 플랫폼 공통 정책 업데이트 안내", today.plusDays(3), null, true, ShareScope.INCLUDE_OWNER
+        );
+    }
+
+    // 출결의 reservationId는 null로 남긴다 — 세션 차감 로직은 실제 예약이 있을 때만 타므로
+    // 예약 체인 없이도 출결 이력만 안전하게 재현할 수 있다.
+    // 슬롯 요일마다 이번 달 전체에 걸쳐 수업을 생성해 캘린더/고정 시간표가 매주 반복되는 패턴을 보여주도록 한다.
+    private Slot seedLessonsForSlot(
+            UUID platformId, AuthenticatedUser ownerPrincipal, String programName,
+            DayOfWeek dayOfWeek, UUID tutorId, List<User> members
+    ) {
+        Program program = programService.create(
+                platformId, ownerPrincipal, programName, ProgramType.GROUP, (short) 8, (short) 60, null
+        );
+        Slot slot = programService.addSlot(
+                program.getId(), ownerPrincipal, tutorId, dayOfWeek,
+                LocalTime.of(9, 0), LocalTime.of(10, 0), LocalDate.now().withDayOfMonth(1).minusMonths(1), null
+        );
+        java.time.DayOfWeek jdkDayOfWeek = toJavaDayOfWeek(dayOfWeek);
+
+        LocalDate today = LocalDate.now();
+        LocalDate monthStart = today.withDayOfMonth(1);
+        LocalDate monthEnd = today.withDayOfMonth(today.lengthOfMonth());
+        boolean seededToday = false;
+
+        for (LocalDate date = monthStart; !date.isAfter(monthEnd); date = date.plusDays(1)) {
+            if (date.getDayOfWeek() != jdkDayOfWeek) continue;
+            Lesson lesson = lessonService.create(slot.getId(), ownerPrincipal, date);
+            if (date.isBefore(today)) {
+                lessonService.start(lesson.getId(), ownerPrincipal);
+                lessonService.end(lesson.getId(), ownerPrincipal);
+                for (int i = 0; i < members.size(); i++) {
+                    AttendStatus status = i == members.size() - 1 ? AttendStatus.ABSENT : AttendStatus.PRESENT;
+                    lessonService.recordAttendance(lesson.getId(), ownerPrincipal, members.get(i).getId(), status, null, null);
+                }
+            }
+            if (date.isEqual(today)) seededToday = true;
+        }
+
+        // 오늘이 슬롯 요일이 아니어도 강사 화면에서 바로 출석 처리를 테스트할 수 있도록 오늘 날짜 수업을 보장한다.
+        if (!seededToday) {
+            lessonService.create(slot.getId(), ownerPrincipal, today);
+        }
+
+        return slot;
+    }
+
+    private static java.time.DayOfWeek toJavaDayOfWeek(DayOfWeek domain) {
+        return java.time.DayOfWeek.MONDAY.plus(domain.ordinal());
+    }
+
+    // 강사가 실제로 "일정 변경 요청"을 제출할 수 있음을 보여주기 위해, 진짜 예약 하나와
+    // 그 예약을 참조하는 실제 ScheduleChangeRequest를 하나 만들어둔다 (나머지 더미 UUID 기반 요청들과 별개).
+    private void seedReservationAndRequest(UUID platformId, AuthenticatedUser ownerPrincipal, User tutor, Slot slot, User member, String reason) {
+        UserPass memberPass = userPassRepository.findByUserId(member.getId()).stream()
+                .filter(p -> p.getPlatformId().equals(platformId))
+                .findFirst()
+                .orElseThrow();
+
+        java.time.DayOfWeek jdkDayOfWeek = toJavaDayOfWeek(slot.getDayOfWeek());
+        LocalDate nextOccurrence = LocalDate.now();
+        while (nextOccurrence.getDayOfWeek() != jdkDayOfWeek) {
+            nextOccurrence = nextOccurrence.plusDays(1);
+        }
+
+        AuthenticatedUser memberPrincipal = AuthenticatedUser.from(member);
+        Reservation reservation = reservationService.create(slot.getId(), memberPrincipal, nextOccurrence, memberPass.getId());
+
+        AuthenticatedUser tutorPrincipal = AuthenticatedUser.from(tutor);
+        scheduleChangeRequestService.create(
+                platformId, tutorPrincipal, reservation.getId(), nextOccurrence.plusDays(2), null, reason
+        );
+    }
+
+    // 결제/할인 시나리오 없이, 강사가 두 번째 플랫폼에서도 고정 시간표·출석 화면을 테스트할 수 있도록 회원만 간단히 채운다.
+    private List<User> seedSimpleMembers(UUID platformId, AuthenticatedUser ownerPrincipal) {
+        Pass yogaPass = passService.create(
+                platformId, ownerPrincipal, "요가 월정액", PassType.MONTHLY, 120000, null, (short) 30
+        );
+
+        User member4 = authService.register("member4@test.com", PASSWORD, Role.USER, "전다인", "010-8888-9999").user();
+        User member5 = authService.register("member5@test.com", PASSWORD, Role.USER, "한서준", "010-9999-0000").user();
+
+        for (User member : List.of(member4, member5)) {
+            var order = orderService.createOrder(
+                    platformId, ownerPrincipal, member.getId(),
+                    List.of(new OrderService.PassSelection(yogaPass.getId(), (short) 1)), List.of(), null
+            );
+            orderService.pay(order.getId(), ownerPrincipal);
+        }
+
+        return List.of(member4, member5);
+    }
+}

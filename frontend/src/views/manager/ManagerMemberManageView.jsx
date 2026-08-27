@@ -1,113 +1,119 @@
-import { useEffect, useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { openModal, closeModal } from "../default.js";
+import { listMembers, listMemberMemos, createMemberMemo, deleteMemberMemo, listPasses, enrollMember } from "../../api/common.js";
 
-export default function ManagerMemberManageView() {
-	let MEMBERS = [
-		{
-			name: "박서준",
-			phone: "010-5555-4444",
-			pass: "개인 10회권",
-			exp: "2026.03.12",
-			dday: 1,
-			status: "soon",
-			notes: []
-		},
-		{
-			name: "홍길동",
-			phone: "010-1234-5678",
-			pass: "그룹 월정액",
-			exp: "2026.03.14",
-			dday: 3,
-			status: "soon",
-			notes: []
-		},
-		{
-			name: "김민지",
-			phone: "010-9876-5432",
-			pass: "그룹 월정액",
-			exp: "2026.04.10",
-			dday: 30,
-			status: "active",
-			notes: []
-		},
-		{
-			name: "이나은",
-			phone: "010-3333-2222",
-			pass: "개인 5회권",
-			exp: "2026.03.16",
-			dday: 5,
-			status: "soon",
-			notes: []
-		},
-		{
-			name: "정하준",
-			phone: "010-7777-8888",
-			pass: "그룹 월정액",
-			exp: "2026.04.20",
-			dday: 40,
-			status: "active",
-			notes: []
-		},
-		{
-			name: "오지현",
-			phone: "010-1111-9999",
-			pass: "그룹 월정액",
-			exp: "2026.04.01",
-			dday: 21,
-			status: "active",
-			notes: []
-		},
-		{
-			name: "최유나",
-			phone: "010-2020-3030",
-			pass: "그룹 월정액",
-			exp: "2026.04.15",
-			dday: 35,
-			status: "active",
-			notes: []
-		},
-		{
-			name: "이지은",
-			phone: "010-2222-3333",
-			pass: "—",
-			exp: "만료",
-			dday: null,
-			status: "expired",
-			notes: []
+function deriveStatus(expiresAt) {
+	const days = Math.ceil((new Date(expiresAt) - new Date()) / (1000 * 60 * 60 * 24));
+	if (days < 0) return { key: "expired", label: "만료", cls: "bs-expired", days };
+	if (days <= 7) return { key: "soon", label: "임박", cls: "bs-soon", days };
+	return { key: "active", label: "활성", cls: "bs-active", days };
+}
+
+export default function ManagerMemberManageView({ platformId }) {
+	const [members, setMembers] = useState([]);
+	const [loading, setLoading] = useState(true);
+	const [search, setSearch] = useState("");
+	const [statusFilter, setStatusFilter] = useState("all");
+	const [expandedKey, setExpandedKey] = useState(null);
+	const [expandedMember, setExpandedMember] = useState(null);
+	const [memos, setMemos] = useState([]);
+	const [memoText, setMemoText] = useState("");
+
+	const [passes, setPasses] = useState([]);
+	const [newName, setNewName] = useState("");
+	const [newPhone, setNewPhone] = useState("");
+	const [newEmail, setNewEmail] = useState("");
+	const [newPassword, setNewPassword] = useState("");
+	const [newPassId, setNewPassId] = useState("");
+	const [enrolling, setEnrolling] = useState(false);
+	const [enrollError, setEnrollError] = useState("");
+
+	const refresh = useCallback(async () => {
+		if (!platformId) {
+			setMembers([]);
+			setPasses([]);
+			setLoading(false);
+			return;
 		}
-	];
+		setLoading(true);
+		const [memberList, passList] = await Promise.all([listMembers(platformId), listPasses(platformId)]);
+		setMembers(memberList);
+		setPasses(passList);
+		setNewPassId((prev) => prev || passList[0]?.id || "");
+		setLoading(false);
+	}, [platformId]);
 
 	useEffect(() => {
-		window.showMemberDetail = showMemberDetail;
-		window.addMemo = addMemo;
-		renderMembers();
-	});
+		refresh();
+	}, [refresh]);
 
-	const [currentMemberStatusFilter, setCurrentMemberStatusFilter] = useState("all");
+	async function submitEnroll() {
+		if (!newName.trim() || !newEmail.trim() || !newPassword.trim() || !newPassId) return;
+		setEnrolling(true);
+		setEnrollError("");
+		try {
+			await enrollMember(platformId, newEmail.trim(), newPassword.trim(), newName.trim(), newPhone.trim() || null, newPassId);
+			setNewName("");
+			setNewPhone("");
+			setNewEmail("");
+			setNewPassword("");
+			closeModal("addMemberModal");
+			await refresh();
+		} catch (err) {
+			setEnrollError(err.message || "회원 등록에 실패했습니다.");
+		} finally {
+			setEnrolling(false);
+		}
+	}
+
+	async function toggleDetail(member) {
+		const key = member.userId + "::" + member.passName;
+		if (expandedKey === key) {
+			setExpandedKey(null);
+			setExpandedMember(null);
+			return;
+		}
+		setExpandedKey(key);
+		setExpandedMember(member);
+		setMemoText("");
+		setMemos(await listMemberMemos(platformId, member.userId));
+	}
+
+	async function addMemo() {
+		if (!memoText.trim() || !expandedMember) return;
+		await createMemberMemo(platformId, expandedMember.userId, memoText.trim());
+		setMemoText("");
+		setMemos(await listMemberMemos(platformId, expandedMember.userId));
+	}
+
+	async function removeMemo(memoId) {
+		if (!expandedMember) return;
+		await deleteMemberMemo(platformId, expandedMember.userId, memoId);
+		setMemos(await listMemberMemos(platformId, expandedMember.userId));
+	}
+
+	const filtered = members.filter((m) => {
+		const st = deriveStatus(m.expiresAt);
+		const matchStatus = statusFilter === "all" || st.key === statusFilter;
+		const matchSearch = !search || m.name?.includes(search) || m.email.toLowerCase().includes(search.toLowerCase());
+		return matchStatus && matchSearch;
+	});
 
 	return (
 		<>
-		<div className="page" id="super-members">
-			{/* ══════════════ 회원 관리 ══════════════ */}
+		<div className="page" id="manager-members">
 			<div className="page-header">
 				<div className="page-label">MEMBERS</div>
 				<div className="page-title">회원 관리</div>
 				<div className="page-subtitle">플랫폼 회원을 조회하고 관리하세요</div>
 			</div>
-			<div
-				style={{
-					display: "flex",
-					gap: "8px",
-					marginBottom: "16px",
-					flexWrap: "wrap",
-					alignItems: "center"
-				}}
-			>
+
+			<div style={{ display: "flex", gap: "8px", marginBottom: "16px", flexWrap: "wrap", alignItems: "center" }}>
 				<input
 					type="text"
-					id="memberSearch"
-					placeholder="이름 / 연락처 검색..."
-					onInput={renderMembers}
+					placeholder="이름 / 이메일 검색..."
+					value={search}
+					onChange={(e) => setSearch(e.target.value)}
 					style={{
 						flex: "1",
 						minWidth: "160px",
@@ -120,89 +126,162 @@ export default function ManagerMemberManageView() {
 						outline: "none"
 					}}
 				/>
-				<button
-					className={`filter-chip ${currentMemberStatusFilter === "all" ? "active" : ""}`}
-					onClick={() => memberFilter("all")}
-				>
-					전체
-				</button>
-				<button
-					className={`filter-chip ${currentMemberStatusFilter === "active" ? "active" : ""}`}
-					onClick={() => memberFilter("active")}
-				>
-					활성
-				</button>
-				<button
-					className={`filter-chip ${currentMemberStatusFilter === "soon" ? "active" : ""}`}
-					onClick={() => memberFilter("soon")}
-				>
-					만료 임박
-				</button>
-				<button
-					className={`filter-chip ${currentMemberStatusFilter === "expired" ? "active" : ""}`}
-					onClick={() => memberFilter("expired")}
-				>
-					만료
-				</button>
+				{["all", "active", "soon", "expired"].map((s) => (
+					<button
+						key={s}
+						className={`filter-chip ${statusFilter === s ? "active" : ""}`}
+						onClick={() => setStatusFilter(s)}
+					>
+						{s === "all" ? "전체" : s === "active" ? "활성" : s === "soon" ? "만료 임박" : "만료"}
+					</button>
+				))}
 				<button className="btn btn-primary btn-sm" onClick={() => openModal("addMemberModal")}>
 					+ 회원 등록
 				</button>
 			</div>
+
 			<div className="card" style={{ padding: "0", overflow: "hidden", marginBottom: "16px" }}>
 				<div style={{ overflowX: "auto" }}>
-					<table className="data-table" id="memberTable">
+					<table className="data-table">
 						<thead>
 							<tr>
 								<th>이름</th>
 								<th>연락처</th>
+								<th>이메일</th>
 								<th>수강권</th>
+								<th>사용</th>
 								<th>만료일</th>
 								<th>D-day</th>
 								<th>상태</th>
 								<th></th>
 							</tr>
 						</thead>
-						<tbody id="memberTbody">{/* JS 렌더 */}</tbody>
+						<tbody>
+							{loading ? (
+								<tr><td colSpan={9} style={{ textAlign: "center", padding: "24px", color: "var(--text-dim)" }}>불러오는 중...</td></tr>
+							) : filtered.length === 0 ? (
+								<tr><td colSpan={9} style={{ textAlign: "center", padding: "24px", color: "var(--text-dim)" }}>회원이 없습니다</td></tr>
+							) : (
+								filtered.map((m) => {
+									const st = deriveStatus(m.expiresAt);
+									const key = m.userId + "::" + m.passName;
+									const isOpen = expandedKey === key;
+									return (
+										<>
+										<tr key={key} onClick={() => toggleDetail(m)} style={{ cursor: "pointer" }}>
+											<td style={{ fontWeight: 600 }}>{m.name}</td>
+											<td style={{ fontFamily: "'DM Mono',monospace", fontSize: "12px" }}>{m.phone || "-"}</td>
+											<td>{m.email}</td>
+											<td>{m.passName}</td>
+											<td style={{ fontFamily: "'DM Mono',monospace", fontSize: "12px" }}>
+												{m.sessionsTotal != null ? `${m.sessionsUsed}/${m.sessionsTotal}` : `${m.sessionsUsed}회`}
+											</td>
+											<td style={{ fontFamily: "'DM Mono',monospace", fontSize: "12px" }}>{m.expiresAt}</td>
+											<td>
+												{st.key === "expired" ? (
+													<span className="badge bs-expired" style={{ fontSize: "10px" }}>만료</span>
+												) : st.days <= 7 ? (
+													<span className={`badge ${st.cls}`} style={{ fontSize: "10px" }}>D-{st.days}</span>
+												) : (
+													<span style={{ fontSize: "12px", fontFamily: "'DM Mono',monospace", color: "var(--accent2)" }}>D-{st.days}</span>
+												)}
+											</td>
+											<td><span className={`badge ${st.cls}`} style={{ fontSize: "10px" }}>{st.label}</span></td>
+											<td>{isOpen ? "▾" : "▸"}</td>
+										</tr>
+										{isOpen && (
+											<tr>
+												<td colSpan={9} style={{ padding: 0 }}>
+													<div className="member-detail" style={{ margin: "8px 12px" }}>
+														<div style={{ fontSize: "11px", color: "var(--text-sub)", marginBottom: "8px", fontWeight: 600, letterSpacing: ".5px" }}>
+															CONSULTATION NOTES
+														</div>
+														<div style={{ display: "flex", flexDirection: "column", gap: "6px", marginBottom: "10px", minHeight: "40px" }}>
+															{memos.length === 0 ? (
+																<div style={{ fontSize: "12px", color: "var(--text-dim)", padding: "8px 0" }}>상담 메모가 없습니다</div>
+															) : (
+																memos.map((n) => (
+																	<div className="memo-item" key={n.id} onClick={(e) => e.stopPropagation()}>
+																		<span className="memo-date">{new Date(n.createdAt).toLocaleDateString()}</span>
+																		<div style={{ flex: 1, fontSize: "12px" }}>{n.content}</div>
+																		<button
+																			className="btn btn-ghost btn-sm"
+																			style={{ padding: "2px 6px", fontSize: "11px" }}
+																			onClick={() => removeMemo(n.id)}
+																		>
+																			삭제
+																		</button>
+																	</div>
+																))
+															)}
+														</div>
+														<div style={{ display: "flex", gap: "8px" }} onClick={(e) => e.stopPropagation()}>
+															<input
+																type="text"
+																placeholder="상담 메모 입력..."
+																value={memoText}
+																onChange={(e) => setMemoText(e.target.value)}
+																style={{
+																	flex: 1, padding: "8px 12px", background: "var(--surface2)", border: "1px solid var(--border)",
+																	borderRadius: "var(--rs)", color: "var(--text)", fontSize: "13px", outline: "none",
+																	fontFamily: "'Pretendard',sans-serif"
+																}}
+															/>
+															<button className="btn btn-primary btn-sm" style={{ background: "var(--manager)", color: "#fff" }} onClick={addMemo}>
+																추가
+															</button>
+														</div>
+													</div>
+												</td>
+											</tr>
+										)}
+										</>
+									);
+								})
+							)}
+						</tbody>
 					</table>
 				</div>
 			</div>
-			<div id="memberDetailPanel" style={{ display: "none" }}>
-				{/* JS 렌더 */}
-			</div>
 		</div>
 
-		{/* 회원 등록 모달 */}
 		<div className="modal-overlay" id="addMemberModal">
 			<div className="modal-box">
 				<div className="modal-header">
 					<div className="modal-title">회원 등록</div>
-					<button className="modal-close" onClick={() => closeModal("addMemberModal")}>
-						✕
-					</button>
+					<button className="modal-close" onClick={() => closeModal("addMemberModal")}>✕</button>
 				</div>
 				<div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
 					<div className="form-field">
 						<label>이름</label>
-						<input type="text" id="newMemberName" placeholder="회원 이름" />
+						<input type="text" value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="회원 이름" />
 					</div>
 					<div className="form-field">
 						<label>연락처</label>
-						<input type="tel" id="newMemberPhone" placeholder="010-0000-0000" />
+						<input type="tel" value={newPhone} onChange={(e) => setNewPhone(e.target.value)} placeholder="010-0000-0000" />
+					</div>
+					<div className="form-field">
+						<label>이메일</label>
+						<input type="email" value={newEmail} onChange={(e) => setNewEmail(e.target.value)} placeholder="member@example.com" />
+					</div>
+					<div className="form-field">
+						<label>초기 비밀번호</label>
+						<input type="text" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} placeholder="회원에게 안내할 비밀번호" />
 					</div>
 					<div className="form-field">
 						<label>수강권</label>
-						<input type="text" id="newMemberPass" placeholder="예: 그룹 월정액" />
+						<select value={newPassId} onChange={(e) => setNewPassId(e.target.value)}>
+							{passes.length === 0 && <option value="">등록된 수강권이 없습니다</option>}
+							{passes.map((p) => (
+								<option key={p.id} value={p.id}>{p.name}</option>
+							))}
+						</select>
 					</div>
-					<div className="form-field">
-						<label>만료일</label>
-						<input type="date" id="newMemberExp" />
-					</div>
+					{enrollError && <div style={{ color: "var(--red)", fontSize: "12px" }}>{enrollError}</div>}
 					<div style={{ display: "flex", justifyContent: "flex-end", gap: "8px", marginTop: "8px" }}>
-						<button className="btn btn-ghost" onClick={() => closeModal("addMemberModal")}>
-							취소
-						</button>
-						<button className="btn btn-primary" onClick={addMember}>
-							저장
+						<button className="btn btn-ghost" onClick={() => closeModal("addMemberModal")}>취소</button>
+						<button className="btn btn-primary" disabled={enrolling} onClick={submitEnroll}>
+							{enrolling ? "등록 중..." : "저장"}
 						</button>
 					</div>
 				</div>
@@ -210,111 +289,4 @@ export default function ManagerMemberManageView() {
 		</div>
 		</>
 	);
-
-	function memberFilter(status) {
-		setCurrentMemberStatusFilter(status);
-	}
-
-	function addMember() {
-		const name = document.getElementById("newMemberName").value.trim();
-		const phone = document.getElementById("newMemberPhone").value.trim();
-		const pass = document.getElementById("newMemberPass").value.trim();
-		const exp = document.getElementById("newMemberExp").value;
-		if (!name) return;
-		MEMBERS.push({ name, phone, pass: pass || "—", exp: exp || "—", dday: null, status: "active", notes: [] });
-		document.getElementById("newMemberName").value = "";
-		document.getElementById("newMemberPhone").value = "";
-		document.getElementById("newMemberPass").value = "";
-		document.getElementById("newMemberExp").value = "";
-		renderMembers();
-		closeModal("addMemberModal");
-	}
-
-	function renderMembers() {
-		const search = (document.getElementById("memberSearch")?.value || "").trim().toLowerCase();
-		const tbody = document.getElementById("memberTbody");
-		if (!tbody) return;
-		const filtered = MEMBERS.filter((m) => {
-			const matchFilter =
-				currentMemberStatusFilter === "all" || m.status === currentMemberStatusFilter;
-			const matchSearch = !search || m.name.includes(search) || m.phone.includes(search);
-			return matchFilter && matchSearch;
-		});
-		tbody.innerHTML = filtered
-			.map((m, i) => {
-				const realIdx = MEMBERS.indexOf(m);
-				const ddayEl =
-					m.dday === null
-						? "—"
-						: m.status === "expired"
-							? `<span class="badge bs-expired" style="font-size:10px">만료</span>`
-							: m.dday <= 3
-								? `<span class="badge bs-expired" style="font-size:10px">D-${m.dday}</span>`
-								: m.dday <= 7
-									? `<span class="badge bs-soon" style="font-size:10px">D-${m.dday}</span>`
-									: `<span style="font-size:12px;font-family:'DM Mono',monospace;color:var(--accent2)">D-${m.dday}</span>`;
-				const stMap = { active: "bs-active", soon: "bs-soon", expired: "bs-expired" };
-				const stLbl = { active: "활성", soon: "임박", expired: "만료" };
-				return `<tr>
-      <td style="font-weight:600">${m.name}</td>
-      <td style="font-family:'DM Mono',monospace;font-size:12px">${m.phone}</td>
-      <td>${m.pass}</td>
-      <td style="font-family:'DM Mono',monospace;font-size:12px">${m.exp}</td>
-      <td>${ddayEl}</td>
-      <td><span class="badge ${stMap[m.status]}" style="font-size:10px">${stLbl[m.status]}</span></td>
-      <td><button class="btn btn-ghost btn-sm" onclick="showMemberDetail(${realIdx})">상세</button></td>
-    </tr>`;
-			})
-			.join("");
-	}
-
-	function showMemberDetail(idx) {
-		let memberDetailIdx = idx;
-		const m = MEMBERS[idx];
-		const panel = document.getElementById("memberDetailPanel");
-		if (!panel) return;
-		panel.style.display = "block";
-		panel.innerHTML = `
-    <div class="member-detail">
-      <div class="member-detail-header">
-        <div style="font-size:16px;font-weight:700">${m.name} 상세 정보</div>
-        <button class="btn btn-ghost btn-sm" onclick="document.getElementById('memberDetailPanel').style.display='none'">닫기</button>
-      </div>
-      <div class="member-detail-grid" style="margin-bottom:16px">
-        <div class="detail-stat"><div class="detail-stat-val" style="color:var(--accent2)">${m.pass}</div><div class="detail-stat-key">현재 수강권</div></div>
-        <div class="detail-stat"><div class="detail-stat-val" style="color:${m.status === "expired" ? "var(--red)" : "var(--accent3)"}">${m.exp}</div><div class="detail-stat-key">만료일</div></div>
-        <div class="detail-stat"><div class="detail-stat-val" style="color:var(--green)">18회</div><div class="detail-stat-key">이번달 출석</div></div>
-        <div class="detail-stat"><div class="detail-stat-val" style="color:var(--accent)">92%</div><div class="detail-stat-key">출결률</div></div>
-      </div>
-      <!-- 메모 -->
-      <div style="font-size:11px;color:var(--text-sub);margin-bottom:8px;font-weight:600;letter-spacing:.5px">CONSULTATION NOTES</div>
-      <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:10px;min-height:40px" id="memoList-${idx}">
-        ${
-					m.notes.length === 0
-						? '<div style="font-size:12px;color:var(--text-dim);padding:8px 0">상담 메모가 없습니다</div>'
-						: m.notes
-								.map(
-									(n) =>
-										`<div class="memo-item"><span class="memo-date">${n.date}</span><div style="flex:1;font-size:12px">${n.text}</div><span class="memo-author">${n.author}</span></div>`
-								)
-								.join("")
-				}
-      </div>
-      <div style="display:flex;gap:8px">
-        <input type="text" id="memoInput-${idx}" placeholder="상담 메모 입력..." style="flex:1;padding:8px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--rs);color:var(--text);font-size:13px;outline:none;font-family:'Pretendard',sans-serif;">
-        <button class="btn btn-primary btn-sm" style="background:var(--accent);color:#0f0f13" onclick="addMemo(${idx})">추가</button>
-      </div>
-    </div>`;
-		panel.scrollIntoView({ behavior: "smooth", block: "nearest" });
-	}
-
-	function addMemo(idx) {
-		const input = document.getElementById(`memoInput-${idx}`);
-		const text = input.value.trim();
-		if (!text) return;
-		const now = new Date();
-		const date = `${now.getFullYear()}.${String(now.getMonth() + 1).padStart(2, "0")}.${String(now.getDate()).padStart(2, "0")}`;
-		MEMBERS[idx].notes.push({ date, text, author: "정미래 점장" });
-		showMemberDetail(idx);
-	}
 }

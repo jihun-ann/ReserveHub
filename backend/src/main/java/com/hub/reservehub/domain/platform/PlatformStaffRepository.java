@@ -10,6 +10,8 @@ public interface PlatformStaffRepository extends JpaRepository<PlatformStaff, UU
 
     List<PlatformStaff> findByPlatformIdAndIsActiveTrue(UUID platformId);
 
+    List<PlatformStaff> findByPlatformId(UUID platformId);
+
     List<PlatformStaff> findByUserIdAndIsActiveTrue(UUID userId);
 
     boolean existsByPlatformIdAndUserIdAndIsActiveTrue(UUID platformId, UUID userId);

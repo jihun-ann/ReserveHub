@@ -79,9 +79,11 @@ public class PlatformService {
     }
 
     @Transactional(readOnly = true)
-    public List<PlatformStaff> listStaff(UUID platformId, AuthenticatedUser user) {
+    public List<PlatformStaff> listStaff(UUID platformId, AuthenticatedUser user, boolean includeInactive) {
         platformAccessGuard.verify(platformId, user);
-        return platformStaffRepository.findByPlatformIdAndIsActiveTrue(platformId);
+        return includeInactive
+                ? platformStaffRepository.findByPlatformId(platformId)
+                : platformStaffRepository.findByPlatformIdAndIsActiveTrue(platformId);
     }
 
     @Transactional

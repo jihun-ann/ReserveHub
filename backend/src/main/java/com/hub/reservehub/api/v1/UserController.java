@@ -3,6 +3,7 @@ package com.hub.reservehub.api.v1;
 import com.hub.reservehub.domain.user.Role;
 import com.hub.reservehub.domain.user.User;
 import com.hub.reservehub.domain.user.UserService;
+import com.hub.reservehub.security.CurrentAuthenticatedUser;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -13,6 +14,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -26,10 +28,30 @@ public class UserController {
 
     private final UserService userService;
     private final PasswordEncoder passwordEncoder;
+    private final CurrentAuthenticatedUser currentAuthenticatedUser;
 
-    public UserController(UserService userService, PasswordEncoder passwordEncoder) {
+    public UserController(UserService userService, PasswordEncoder passwordEncoder, CurrentAuthenticatedUser currentAuthenticatedUser) {
         this.userService = userService;
         this.passwordEncoder = passwordEncoder;
+        this.currentAuthenticatedUser = currentAuthenticatedUser;
+    }
+
+    @PatchMapping("/me/password")
+    public ResponseEntity<Void> changePassword(@Valid @RequestBody ChangePasswordRequest request) {
+        userService.changePassword(currentAuthenticatedUser.get().getId(), request.currentPassword(), request.newPassword());
+        return ResponseEntity.noContent().build();
+    }
+
+    public record ChangePasswordRequest(@NotBlank String currentPassword, @NotBlank String newPassword) {
+    }
+
+    @PatchMapping("/me")
+    public UserResponse updateProfile(@Valid @RequestBody UpdateProfileRequest request) {
+        User user = userService.updateProfile(currentAuthenticatedUser.get().getId(), request.name(), request.phone());
+        return UserResponse.from(user);
+    }
+
+    public record UpdateProfileRequest(@NotBlank String name, String phone) {
     }
 
     @GetMapping("/{id}")
@@ -47,7 +69,9 @@ public class UserController {
         User user = userService.create(
                 request.email(),
                 passwordEncoder.encode(request.password()),
-                request.role()
+                request.role(),
+                request.name(),
+                request.phone()
         );
         return ResponseEntity.status(HttpStatus.CREATED).body(UserResponse.from(user));
     }
@@ -55,14 +79,16 @@ public class UserController {
     public record CreateUserRequest(
             @Email @NotBlank String email,
             @NotBlank String password,
-            @NotNull Role role
+            @NotNull Role role,
+            @NotBlank String name,
+            String phone
     ) {
     }
 
-    public record UserResponse(UUID id, String email, Role role) {
+    public record UserResponse(UUID id, String email, Role role, String name, String phone) {
 
         public static UserResponse from(User user) {
-            return new UserResponse(user.getId(), user.getEmail(), user.getRole());
+            return new UserResponse(user.getId(), user.getEmail(), user.getRole(), user.getName(), user.getPhone());
         }
     }
 }

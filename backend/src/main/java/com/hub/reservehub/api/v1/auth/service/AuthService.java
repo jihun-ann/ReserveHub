@@ -42,7 +42,7 @@ public class AuthService {
     @Transactional
     // Persists a new user with a hashed password and issues a token without requiring a second login call.
     // 비밀번호 해시와 함께 사용자를 저장하고, 다시 로그인하지 않아도 되도록 토큰을 즉시 발급한다.
-    public AuthResult register(String email, String rawPassword, Role role) {
+    public AuthResult register(String email, String rawPassword, Role role, String name, String phone) {
         if (role == null) {
             throw new IllegalArgumentException("Role is required");
         }
@@ -50,7 +50,7 @@ public class AuthService {
             throw new IllegalStateException("Email already exists");
         }
 
-        User user = userRepository.save(new User(email, passwordEncoder.encode(rawPassword), role));
+        User user = userRepository.save(new User(email, passwordEncoder.encode(rawPassword), role, name, phone));
         AuthenticatedUser principal = AuthenticatedUser.from(user);
         return new AuthResult(jwtTokenProvider.createAccessToken(principal), user);
     }

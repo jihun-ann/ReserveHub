@@ -8,4 +8,6 @@ public interface UserPassRepository extends JpaRepository<UserPass, UUID> {
     List<UserPass> findByUserId(UUID userId);
 
     List<UserPass> findByOrderItemId(UUID orderItemId);
+
+    List<UserPass> findByPlatformId(UUID platformId);
 }

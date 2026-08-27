@@ -1,5 +1,8 @@
 #manager-app {
 
+    --manager: #0e7c74;
+    --manager-rgb: 14, 124, 116;
+
     /* 플랫폼 전환 탭 */
 
     .plat-switch {
@@ -43,9 +46,20 @@
     }
 
     .plat-tab-btn.active {
-        background: rgba(79, 209, 197, .12);
-        color: var(--accent);
+        background: rgba(var(--manager-rgb), .12);
+        color: var(--manager);
         font-weight: 700;
+    }
+
+    .nav-item.active {
+        background: rgba(var(--manager-rgb), .15);
+        color: var(--manager);
+        font-weight: 600;
+    }
+
+    .theme-toggle:hover,
+    .collapse-btn:hover {
+        color: var(--manager);
     }
 
     .plat-tab-btn .plat-dot {
@@ -101,10 +115,10 @@
 
     .topbar-plat {
         font-size: 12px;
-        color: var(--accent);
+        color: var(--manager);
         font-weight: 600;
         padding: 3px 10px;
-        background: rgba(79, 209, 197, .1);
+        background: rgba(var(--manager-rgb), .1);
         border-radius: 20px;
     }
 
@@ -153,7 +167,7 @@
 
     .page-label {
         font-size: 10px;
-        color: var(--accent);
+        color: var(--manager);
         letter-spacing: 2px;
         font-weight: 600;
         margin-bottom: 4px;
@@ -202,8 +216,8 @@
     }
 
     .btn-primary {
-        background: var(--accent);
-        color: #0f0f13;
+        background: var(--manager);
+        color: #fff;
     }
 
     .btn-primary:hover {
@@ -217,8 +231,8 @@
     }
 
     .btn-ghost:hover {
-        border-color: var(--accent);
-        color: var(--accent);
+        border-color: var(--manager);
+        color: var(--manager);
     }
 
     .btn-danger {
@@ -252,14 +266,14 @@
     }
 
     .filter-chip:hover {
-        border-color: var(--accent);
-        color: var(--accent);
+        border-color: var(--manager);
+        color: var(--manager);
     }
 
     .filter-chip.active {
-        background: rgba(79, 209, 197, .15);
-        border-color: var(--accent);
-        color: var(--accent);
+        background: rgba(var(--manager-rgb), .15);
+        border-color: var(--manager);
+        color: var(--manager);
     }
 
     /* ── 테이블 ── */
@@ -370,7 +384,7 @@
     }
 
     .form-field input:focus, .form-field select:focus, .form-field textarea:focus {
-        border-color: var(--accent);
+        border-color: var(--manager);
     }
 
     .form-field textarea {
@@ -383,11 +397,6 @@
     }
 
     /* ── KPI ── */
-
-    .kpi-row {
-        display: grid;
-        gap: 12px;
-    }
 
     .kpi-card {
         background: var(--surface);
@@ -443,8 +452,8 @@
     }
 
     .tab-btn.active {
-        color: var(--accent);
-        border-bottom-color: var(--accent);
+        color: var(--manager);
+        border-bottom-color: var(--manager);
     }
 
     .tab-pane {
@@ -470,46 +479,6 @@
         display: grid;
         grid-template-columns:1fr 1fr 280px;
         gap: 18px;
-    }
-
-    .renewal-item {
-        display: flex;
-        align-items: center;
-        gap: 12px;
-        padding: 11px 0;
-        border-bottom: 1px solid var(--border);
-    }
-
-    .renewal-item:last-child {
-        border-bottom: none;
-    }
-
-    .renewal-dday {
-        width: 34px;
-        height: 34px;
-        border-radius: 8px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 12px;
-        font-weight: 700;
-        flex-shrink: 0;
-    }
-
-    .renewal-body {
-        flex: 1;
-        min-width: 0;
-    }
-
-    .renewal-name {
-        font-size: 13px;
-        font-weight: 700;
-    }
-
-    .renewal-meta {
-        font-size: 11px;
-        color: var(--text-sub);
-        margin-top: 2px;
     }
 
     .pending-item {
@@ -668,7 +637,7 @@
     }
 
     .req-memo:focus {
-        border-color: var(--accent);
+        border-color: var(--manager);
     }
 
     .req-footer {
@@ -691,7 +660,7 @@
 
     .member-detail {
         background: var(--surface);
-        border: 1px solid rgba(79, 209, 197, .3);
+        border: 1px solid rgba(var(--manager-rgb), .3);
         border-radius: var(--r);
         padding: 20px;
         margin-top: 14px;
@@ -734,8 +703,8 @@
         gap: 10px;
         align-items: flex-start;
         padding: 9px 12px;
-        background: rgba(79, 209, 197, .07);
-        border: 1px solid rgba(79, 209, 197, .2);
+        background: rgba(var(--manager-rgb), .07);
+        border: 1px solid rgba(var(--manager-rgb), .2);
         border-radius: var(--rs);
     }
 
@@ -749,7 +718,7 @@
 
     .memo-author {
         font-size: 11px;
-        color: var(--accent);
+        color: var(--manager);
         font-weight: 600;
         flex-shrink: 0;
     }
@@ -774,8 +743,8 @@
     }
 
     .calc-pass-row.checked {
-        background: rgba(79, 209, 197, .06);
-        border-color: rgba(79, 209, 197, .35);
+        background: rgba(var(--manager-rgb), .06);
+        border-color: rgba(var(--manager-rgb), .35);
     }
 
     .calc-disc-row {
@@ -792,29 +761,6 @@
     .calc-disc-row.checked {
         background: rgba(124, 106, 247, .06);
         border-color: rgba(124, 106, 247, .3);
-    }
-
-    .qty-btn {
-        width: 22px;
-        height: 22px;
-        border-radius: 4px;
-        border: 1px solid var(--border);
-        background: var(--surface2);
-        color: var(--text);
-        font-size: 13px;
-        cursor: pointer;
-        line-height: 1;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-family: inherit;
-        transition: all var(--tr);
-    }
-
-    .qty-btn:hover {
-        background: var(--accent);
-        border-color: var(--accent);
-        color: #0f0f13;
     }
 
     .quote-row {
@@ -870,9 +816,9 @@
     }
 
     .cal-nav-btn:hover {
-        background: var(--accent);
-        border-color: var(--accent);
-        color: #0f0f13;
+        background: var(--manager);
+        border-color: var(--manager);
+        color: #fff;
     }
 
     .cal-dow {
@@ -927,16 +873,16 @@
     }
 
     .cal-cell.today {
-        background: rgba(79, 209, 197, .15);
-        border-color: var(--accent);
-        color: var(--accent);
+        background: rgba(var(--manager-rgb), .15);
+        border-color: var(--manager);
+        color: var(--manager);
         font-weight: 700;
     }
 
     .cal-cell.selected {
-        background: var(--accent);
-        color: #0f0f13;
-        border-color: var(--accent);
+        background: var(--manager);
+        color: #fff;
+        border-color: var(--manager);
     }
 
     .event-bar {
@@ -966,8 +912,8 @@
         align-items: center;
         gap: 16px;
         padding: 20px 24px;
-        background: linear-gradient(135deg, rgba(79, 209, 197, .12), rgba(124, 106, 247, .07));
-        border: 1px solid rgba(79, 209, 197, .25);
+        background: linear-gradient(135deg, rgba(var(--manager-rgb), .12), rgba(124, 106, 247, .07));
+        border: 1px solid rgba(var(--manager-rgb), .25);
         border-radius: var(--r);
         margin-bottom: 22px;
     }
@@ -976,13 +922,13 @@
         width: 54px;
         height: 54px;
         border-radius: 50%;
-        background: linear-gradient(135deg, var(--accent), #38b2ac);
+        background: linear-gradient(135deg, var(--manager), #38b2ac);
         display: flex;
         align-items: center;
         justify-content: center;
         font-size: 22px;
         font-weight: 700;
-        color: #0f0f13;
+        color: #fff;
         flex-shrink: 0;
     }
 
@@ -1015,7 +961,7 @@
         font-family: 'DM Mono', monospace;
         font-size: 19px;
         font-weight: 600;
-        color: var(--accent);
+        color: var(--manager);
     }
 
     .hstat-key {
@@ -1117,12 +1063,12 @@
         left: 50%;
         transform: translateX(-50%) translateY(80px);
         background: var(--surface);
-        border: 1px solid var(--accent);
+        border: 1px solid var(--manager);
         border-radius: var(--r);
         padding: 13px 24px;
         font-size: 14px;
         font-weight: 600;
-        color: var(--accent);
+        color: var(--manager);
         z-index: 999;
         transition: transform .3s, opacity .3s;
         opacity: 0;
@@ -1184,4 +1130,9 @@
     .modal-close:hover {
         color: var(--text);
     }
+}
+
+:root[data-theme="dark"] #manager-app {
+    --manager: #4fd1c5;
+    --manager-rgb: 79, 209, 197;
 }

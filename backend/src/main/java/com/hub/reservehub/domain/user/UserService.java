@@ -1,6 +1,7 @@
 package com.hub.reservehub.domain.user;
 
 import java.util.UUID;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -8,16 +9,18 @@ import org.springframework.transaction.annotation.Transactional;
 public class UserService {
 
     private final UserRepository userRepository;
+    private final PasswordEncoder passwordEncoder;
 
-    public UserService(UserRepository userRepository) {
+    public UserService(UserRepository userRepository, PasswordEncoder passwordEncoder) {
         this.userRepository = userRepository;
+        this.passwordEncoder = passwordEncoder;
     }
 
     @Transactional
     // Saves a new user after the caller has already prepared the password hash.
     // 호출 측에서 준비한 비밀번호 해시를 받아 새 사용자를 저장한다.
-    public User create(String email, String passwordHash, Role role) {
-        return userRepository.save(new User(email, passwordHash, role));
+    public User create(String email, String passwordHash, Role role, String name, String phone) {
+        return userRepository.save(new User(email, passwordHash, role, name, phone));
     }
 
     @Transactional(readOnly = true)
@@ -34,5 +37,21 @@ public class UserService {
     public User getByEmail(String email) {
         return userRepository.findByEmail(email)
                 .orElseThrow(() -> new IllegalArgumentException("User not found"));
+    }
+
+    @Transactional
+    public void changePassword(UUID id, String currentRawPassword, String newRawPassword) {
+        User user = get(id);
+        if (!passwordEncoder.matches(currentRawPassword, user.getPasswordHash())) {
+            throw new IllegalArgumentException("Current password is incorrect");
+        }
+        user.changePassword(passwordEncoder.encode(newRawPassword));
+    }
+
+    @Transactional
+    public User updateProfile(UUID id, String name, String phone) {
+        User user = get(id);
+        user.updateProfile(name, phone);
+        return user;
     }
 }

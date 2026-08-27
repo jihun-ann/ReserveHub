@@ -22,6 +22,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
@@ -84,8 +85,10 @@ public class PlatformController {
     }
 
     @GetMapping("/{id}/staff")
-    public List<PlatformStaffResponse> listStaff(@PathVariable UUID id) {
-        return platformService.listStaff(id, currentAuthenticatedUser.get()).stream()
+    public List<PlatformStaffResponse> listStaff(
+            @PathVariable UUID id, @RequestParam(defaultValue = "false") boolean includeInactive
+    ) {
+        return platformService.listStaff(id, currentAuthenticatedUser.get(), includeInactive).stream()
                 .map(PlatformStaffResponse::from)
                 .toList();
     }
@@ -127,9 +130,11 @@ public class PlatformController {
         }
     }
 
-    public record PlatformStaffResponse(UUID id, UUID platformId, UUID userId, StaffRole staffRole) {
+    public record PlatformStaffResponse(UUID id, UUID platformId, UUID userId, StaffRole staffRole, boolean isActive) {
         public static PlatformStaffResponse from(PlatformStaff staff) {
-            return new PlatformStaffResponse(staff.getId(), staff.getPlatformId(), staff.getUserId(), staff.getStaffRole());
+            return new PlatformStaffResponse(
+                    staff.getId(), staff.getPlatformId(), staff.getUserId(), staff.getStaffRole(), staff.isActive()
+            );
         }
     }
 }

@@ -8,6 +8,7 @@ import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.Id;
 import java.util.UUID;
+import org.springframework.lang.Nullable;
 
 @Entity
 public class User extends BaseEntity {
@@ -26,14 +27,22 @@ public class User extends BaseEntity {
     @Column(nullable = false)
     private Role role;
 
+    @Column(nullable = false)
+    private String name;
+
+    @Nullable
+    private String phone;
+
     protected User() {
         // JPA only.
     }
 
-    public User(String email, String passwordHash, Role role) {
+    public User(String email, String passwordHash, Role role, String name, @Nullable String phone) {
         this.email = email;
         this.passwordHash = passwordHash;
         this.role = role;
+        this.name = name;
+        this.phone = phone;
     }
 
     public UUID getId() {
@@ -52,7 +61,21 @@ public class User extends BaseEntity {
         return role;
     }
 
+    public String getName() {
+        return name;
+    }
+
+    @Nullable
+    public String getPhone() {
+        return phone;
+    }
+
     public void changePassword(String passwordHash) {
         this.passwordHash = passwordHash;
+    }
+
+    public void updateProfile(String name, @Nullable String phone) {
+        this.name = name;
+        this.phone = phone;
     }
 }

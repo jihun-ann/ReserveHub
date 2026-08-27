@@ -61,6 +61,14 @@ public class OrderController {
         return toResponse(order);
     }
 
+    @GetMapping("/api/v1/platforms/{platformId}/orders")
+    @PreAuthorize("hasAnyRole('OWNER', 'MANAGER')")
+    public List<OrderResponse> listOrders(@PathVariable UUID platformId) {
+        return orderService.listByPlatform(platformId, currentAuthenticatedUser.get()).stream()
+                .map(this::toResponse)
+                .toList();
+    }
+
     @PostMapping("/api/v1/orders/{id}/pay")
     public OrderResponse pay(@PathVariable UUID id) {
         return toResponse(orderService.pay(id, currentAuthenticatedUser.get()));

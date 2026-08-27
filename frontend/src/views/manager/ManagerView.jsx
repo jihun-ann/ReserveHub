@@ -1,6 +1,10 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
 import { closeSidebar, toggleCollapse, openSidebar } from "../default.js";
+import { getTheme, toggleTheme } from "../../theme.js";
 import "./ManagerView.css";
+import { getCurrentUser, clearSession, displayName } from "../../api/http.js";
+import { listPlatforms, hexAlpha } from "../../api/common.js";
 import ManagerApprovalView from "./ManagerApprovalView.jsx";
 import ManagerCalculationView from "./ManagerCalculationView.jsx";
 import ManagerCalendarView from "./ManagerCalendarView.jsx";
@@ -12,8 +16,30 @@ import ManagerStudyHistoryView from "./ManagerStudyHistoryView.jsx";
 import ManagerTutorManageView from "./ManagerTutorManageView.jsx";
 
 export default function ManagerView() {
-	const [currentPlatform, setCurrentPlatform] = useState("pilates");
+	const navigate = useNavigate();
+	const user = getCurrentUser();
+
+	const [platforms, setPlatforms] = useState([]);
+	const [currentPlatformId, setCurrentPlatformId] = useState(null);
 	const [currentContext, setCurrentContext] = useState("dashboard");
+	const [theme, setTheme] = useState(getTheme());
+
+	const refreshPlatforms = useCallback(async () => {
+		const data = await listPlatforms();
+		setPlatforms(data);
+		setCurrentPlatformId((prev) => prev ?? data[0]?.id ?? null);
+	}, []);
+
+	useEffect(() => {
+		refreshPlatforms();
+	}, [refreshPlatforms]);
+
+	const currentPlatform = platforms.find((p) => p.id === currentPlatformId) || null;
+
+	function handleLogout() {
+		clearSession();
+		navigate("/login");
+	}
 
 	return (
 		<div className="app" id="manager-app">
@@ -26,37 +52,39 @@ export default function ManagerView() {
 						<div className="logo-icon">🏪</div>
 						<span className="logo-text">ReserveHub</span>
 					</div>
-					<button className="collapse-btn" onClick={toggleCollapse}>
-						◀
-					</button>
+					<div className="sidebar-top-actions">
+						<button className="theme-toggle" title="테마 전환" onClick={() => setTheme(toggleTheme())}>
+							{theme === "dark" ? "☀️" : "🌙"}
+						</button>
+						<button className="collapse-btn" onClick={toggleCollapse}>
+							◀
+						</button>
+					</div>
 				</div>
 
 				{/* 플랫폼 전환 */}
 				<div className="plat-switch">
 					<div className="plat-switch-label">담당 플랫폼</div>
-					<button
-						className={`plat-tab-btn ${currentPlatform === "pilates" ? "active" : ""}`}
-						id="platTab-pilates"
-						onClick={() => switchPlat("pilates")}
-					>
-						<div className="plat-dot" style={{ background: "#7c6af7" }}></div>
-						<span>스튜디오 필라테스 강남</span>
-					</button>
-					<button
-						className={`plat-tab-btn ${currentPlatform === "yoga" ? "active" : ""}`}
-						id="platTab-yoga"
-						onClick={() => switchPlat("yoga")}
-					>
-						<div className="plat-dot" style={{ background: "#4fd1c5" }}></div>
-						<span>요가라운지 홍대</span>
-					</button>
+					{platforms.length === 0 && (
+						<div style={{ fontSize: "11px", color: "var(--text-dim)", padding: "4px 2px" }}>배정된 플랫폼이 없습니다</div>
+					)}
+					{platforms.map((p) => (
+						<button
+							key={p.id}
+							className={`plat-tab-btn ${currentPlatformId === p.id ? "active" : ""}`}
+							onClick={() => setCurrentPlatformId(p.id)}
+						>
+							<div className="plat-dot" style={{ background: p.colorHex }}></div>
+							<span>{p.name}</span>
+						</button>
+					))}
 				</div>
 
 				<div className="user-card">
-					<div className="avatar">정</div>
+					<div className="avatar">{(user?.name || displayName(user))[0]}</div>
 					<div className="user-info">
-						<div className="user-name">정미래 점장</div>
-						<div className="user-role">서브담당자</div>
+						<div className="user-name">{user?.name || displayName(user)}</div>
+						<div className="user-role">매니저</div>
 					</div>
 				</div>
 
@@ -130,7 +158,7 @@ export default function ManagerView() {
 				</div>
 
 				<div className="sidebar-bottom">
-					<button className="btn-logout">
+					<button className="btn-logout" onClick={handleLogout}>
 						🚪 <span>로그아웃</span>
 					</button>
 				</div>
@@ -145,9 +173,15 @@ export default function ManagerView() {
 					<div className="topbar-title" id="topbar-title">
 						<SetTopbarTitle currentContext={currentContext} />
 					</div>
-					<span className="topbar-plat" id="topbar-plat">
-						🤸 필라테스 강남
-					</span>
+					{currentPlatform && (
+						<span
+							className="topbar-plat"
+							id="topbar-plat"
+							style={{ background: hexAlpha(currentPlatform.colorHex, 0.12), color: currentPlatform.colorHex }}
+						>
+							{currentPlatform.emoji} {currentPlatform.name}
+						</span>
+					)}
 					<div className="topbar-right">
 						<button className="notif-btn" title="알림">
 							🔔<span className="notif-dot"></span>
@@ -164,9 +198,6 @@ export default function ManagerView() {
 		</div>
 	);
 
-	function switchPlat(parm) {
-		setCurrentPlatform(parm);
-	}
 	function showPage(parm) {
 		setCurrentContext(parm);
 	}
@@ -175,25 +206,25 @@ export default function ManagerView() {
 	function RenderContext({ currentContext, currentPlatform }) {
 		switch (currentContext) {
 			case "dashboard":
-				return <ManagerDashBoardView onNavigate={showPage} />;
+				return <ManagerDashBoardView onNavigate={showPage} platformId={currentPlatformId} platformName={currentPlatform?.name} />;
 			case "approval":
-				return <ManagerApprovalView />;
+				return <ManagerApprovalView platformId={currentPlatformId} />;
 			case "members":
-				return <ManagerMemberManageView />;
+				return <ManagerMemberManageView platformId={currentPlatformId} />;
 			case "tutor":
-				return <ManagerTutorManageView />;
+				return <ManagerTutorManageView platformId={currentPlatformId} />;
 			case "payment":
-				return <ManagerPaymentView />;
+				return <ManagerPaymentView platformId={currentPlatformId} />;
 			case "calc":
-				return <ManagerCalculationView />;
+				return <ManagerCalculationView platformId={currentPlatformId} platformName={currentPlatform?.name} />;
 			case "calendar":
-				return <ManagerCalendarView />;
+				return <ManagerCalendarView platformId={currentPlatformId} />;
 			case "history":
-				return <ManagerStudyHistoryView />;
+				return <ManagerStudyHistoryView platformId={currentPlatformId} />;
 			case "mypage":
-				return <ManagerMypageView />;
+				return <ManagerMypageView platformId={currentPlatformId} currentPlatform={currentPlatform} />;
 			default:
-				return <ManagerDashBoardView onNavigate={showPage} />;
+				return <ManagerDashBoardView onNavigate={showPage} platformId={currentPlatformId} platformName={currentPlatform?.name} />;
 		}
 	}
 

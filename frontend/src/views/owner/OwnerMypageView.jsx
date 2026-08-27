@@ -1,4 +1,8 @@
-export default function OwnerMypageView(){
+import { businessTypeLabel } from "../../api/common.js";
+
+export default function OwnerMypageView({ user, platforms }) {
+	const activeCount = platforms.filter((p) => p.status === "ACTIVE").length;
+
 	return (
 		<div id="owner-mypage" className="page">
 			<div className="page-header">
@@ -8,109 +12,41 @@ export default function OwnerMypageView(){
 			</div>
 
 			<div className="mypage-hero" style={{ marginBottom: "24px" }}>
-				<div className="hero-avatar" style={{ background: "linear-gradient(135deg,#f6ad55,#ed8936)" }}>
-					박
+				<div className="hero-avatar">
+					{user?.email?.[0]?.toUpperCase() || "?"}
 				</div>
 				<div className="hero-identity">
-					<div className="hero-name">박지훈 원장</div>
-					<div className="hero-email">park.jihoon@reservehub.kr</div>
+					<div className="hero-name">{user?.email || "알 수 없음"}</div>
+					<div className="hero-email">{user?.role === "OWNER" ? "대표 (Owner)" : user?.role}</div>
 				</div>
 				<div className="hero-divider"></div>
 				<div className="hero-stats">
 					<div className="hero-stat">
-						<div className="hstat-val" style={{ color: "#f6ad55" }}>
-							3
-						</div>
+						<div className="hstat-val">{platforms.length}</div>
 						<div className="hstat-key">관리 플랫폼</div>
 					</div>
 					<div className="hero-stat">
-						<div className="hstat-val" style={{ color: "#f6ad55" }}>
-							284
-						</div>
-						<div className="hstat-key">전체 회원</div>
-					</div>
-					<div className="hero-stat">
-						<div className="hstat-val" style={{ color: "#f6ad55" }}>
-							9
-						</div>
-						<div className="hstat-key">일반관리자</div>
-					</div>
-					<div className="hero-stat">
-						<div className="hstat-val" style={{ color: "var(--green)" }}>
-							18.4만
-						</div>
-						<div className="hstat-key">이번 달 매출</div>
+						<div className="hstat-val">{activeCount}</div>
+						<div className="hstat-key">운영 중</div>
 					</div>
 				</div>
-				<button className="btn btn-ghost hero-edit btn-sm">✏️ 정보 수정</button>
 			</div>
 
-			<div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "20px" }}>
-				<div className="card">
-					<div className="card-title">관리 플랫폼</div>
-					<div className="platform-item">
-						<div className="plat-emoji">🤸</div>
+			<div className="card">
+				<div className="card-title">관리 플랫폼</div>
+				{platforms.length === 0 && (
+					<div style={{ fontSize: "12px", color: "var(--text-dim)", textAlign: "center", padding: "16px 0" }}>등록된 플랫폼이 없습니다</div>
+				)}
+				{platforms.map((p) => (
+					<div className="platform-item" key={p.id}>
+						<div className="plat-emoji">{p.emoji}</div>
 						<div className="plat-detail">
-							<div className="plat-name">스튜디오 필라테스 강남</div>
-							<span className="plat-tag" style={{ background: "rgba(124,106,247,0.15)", color: "#7c6af7" }}>
-								필라테스
-							</span>
-							<div className="plat-dates">회원 142명 · 강사 4명</div>
+							<div className="plat-name">{p.name}</div>
+							<span className="plat-tag">{businessTypeLabel(p.businessType)}</span>
 						</div>
-						<span className="plat-status ps-active">운영 중</span>
+						<span className={`plat-status ${p.status === "ACTIVE" ? "ps-active" : "ps-expired"}`}>{p.status === "ACTIVE" ? "운영 중" : p.status}</span>
 					</div>
-					<div className="platform-item">
-						<div className="plat-emoji">🧘</div>
-						<div className="plat-detail">
-							<div className="plat-name">요가라운지 홍대</div>
-							<span className="plat-tag" style={{ background: "rgba(79,209,197,0.15)", color: "#4fd1c5" }}>
-								요가
-							</span>
-							<div className="plat-dates">회원 86명 · 강사 2명</div>
-						</div>
-						<span className="plat-status ps-active">운영 중</span>
-					</div>
-					<div className="platform-item">
-						<div className="plat-emoji">🎵</div>
-						<div className="plat-detail">
-							<div className="plat-name">뮤직하우스 홍대</div>
-							<span className="plat-tag" style={{ background: "rgba(246,173,85,0.15)", color: "#f6ad55" }}>
-								음악
-							</span>
-							<div className="plat-dates">회원 56명 · 강사 3명</div>
-						</div>
-						<span className="plat-status ps-active">운영 중</span>
-					</div>
-				</div>
-				<div className="card">
-					<div className="card-title">전체 매출 현황</div>
-					<div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px", marginBottom: "16px" }}>
-						<div style={{ background: "var(--surface2)", borderRadius: "var(--radius-sm)", padding: "14px", textAlign: "center" }}>
-							<div style={{ fontFamily: "'DM Mono',monospace", fontSize: "20px", fontWeight: 500, color: "#4fd1c5" }}>
-								18.4만
-							</div>
-							<div style={{ fontSize: "10px", color: "var(--text-dim)", marginTop: "3px" }}>이번 달</div>
-						</div>
-						<div style={{ background: "var(--surface2)", borderRadius: "var(--radius-sm)", padding: "14px", textAlign: "center" }}>
-							<div style={{ fontFamily: "'DM Mono',monospace", fontSize: "20px", fontWeight: 500, color: "#7c6af7" }}>
-								16.9만
-							</div>
-							<div style={{ fontSize: "10px", color: "var(--text-dim)", marginTop: "3px" }}>지난 달</div>
-						</div>
-						<div style={{ background: "var(--surface2)", borderRadius: "var(--radius-sm)", padding: "14px", textAlign: "center" }}>
-							<div style={{ fontFamily: "'DM Mono',monospace", fontSize: "20px", fontWeight: 500, color: "var(--green)" }}>
-								↑9%
-							</div>
-							<div style={{ fontSize: "10px", color: "var(--text-dim)", marginTop: "3px" }}>성장률</div>
-						</div>
-						<div style={{ background: "var(--surface2)", borderRadius: "var(--radius-sm)", padding: "14px", textAlign: "center" }}>
-							<div style={{ fontFamily: "'DM Mono',monospace", fontSize: "20px", fontWeight: 500, color: "#f6ad55" }}>
-								196만
-							</div>
-							<div style={{ fontSize: "10px", color: "var(--text-dim)", marginTop: "3px" }}>연간 누적</div>
-						</div>
-					</div>
-				</div>
+				))}
 			</div>
 		</div>
 	);

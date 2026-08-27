@@ -29,4 +29,15 @@ public class MemberMemoService {
         platformAccessGuard.verify(platformId, actor);
         return memberMemoRepository.findByPlatformIdAndUserId(platformId, targetUserId);
     }
+
+    @Transactional
+    public void delete(UUID platformId, AuthenticatedUser actor, UUID memoId) {
+        platformAccessGuard.verify(platformId, actor);
+        MemberMemo memo = memberMemoRepository.findById(memoId)
+                .orElseThrow(() -> new IllegalArgumentException("Memo not found"));
+        if (!memo.getPlatformId().equals(platformId)) {
+            throw new IllegalArgumentException("Memo not found");
+        }
+        memberMemoRepository.delete(memo);
+    }
 }

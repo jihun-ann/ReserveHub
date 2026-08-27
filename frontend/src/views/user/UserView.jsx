@@ -5,9 +5,11 @@ import UserMypage from "./UserMypageView.jsx";
 import UserReservation from "./UserReservationView.jsx";
 import UserCalendar from "./UserCalendarView.jsx";
 import { closeSidebar, toggleCollapse, openSidebar } from "../default.js";
+import { getTheme, toggleTheme } from "../../theme.js";
 
 export default function UserView() {
 	const [currentContext, setCurrentContext] = useState("calendar");
+	const [theme, setTheme] = useState(getTheme());
 
 	return (
 		<div className="app" id="user-app">
@@ -21,9 +23,14 @@ export default function UserView() {
 						<div className="logo-icon">🗓</div>
 						<span className="logo-text">ReserveHub</span>
 					</div>
-					<button className="collapse-btn" onClick={toggleCollapse}>
-						◀
-					</button>
+					<div className="sidebar-top-actions">
+						<button className="theme-toggle" title="테마 전환" onClick={() => setTheme(toggleTheme())}>
+							{theme === "dark" ? "☀️" : "🌙"}
+						</button>
+						<button className="collapse-btn" onClick={toggleCollapse}>
+							◀
+						</button>
+					</div>
 				</div>
 
 				{/*로그인 데이터를 받아 처리할 항목*/}

@@ -1,659 +1,199 @@
-import { openModal, closeModal } from "../default.js";
+import { useState, useEffect, useCallback } from "react";
+import { listPlatforms, listMyLessons, listCalendarEventsForPlatforms, EVENT_TYPE_STYLE } from "../../api/common.js";
+
+const WEEKDAYS = ["일", "월", "화", "수", "목", "금", "토"];
+
+function pad(n) {
+	return String(n).padStart(2, "0");
+}
+function isoDate(year, month, day) {
+	return `${year}-${pad(month)}-${pad(day)}`;
+}
 
 export default function TutorCalendarView() {
+	const today0 = new Date();
+	const [calYear, setCalYear] = useState(today0.getFullYear());
+	const [calMonth, setCalMonth] = useState(today0.getMonth() + 1);
+	const [selDay, setSelDay] = useState(today0.getDate());
+	const [platforms, setPlatforms] = useState([]);
+	const [lessons, setLessons] = useState([]);
+	const [events, setEvents] = useState([]);
+	const [loading, setLoading] = useState(true);
+
+	const refresh = useCallback(async () => {
+		setLoading(true);
+		const daysInMonth = new Date(calYear, calMonth, 0).getDate();
+		const from = isoDate(calYear, calMonth, 1);
+		const to = isoDate(calYear, calMonth, daysInMonth);
+		const platformList = await listPlatforms();
+		setPlatforms(platformList);
+		const [lessonList, eventList] = await Promise.all([
+			listMyLessons(from, to),
+			listCalendarEventsForPlatforms(platformList, from, to)
+		]);
+		setLessons(lessonList);
+		setEvents(eventList);
+		setLoading(false);
+	}, [calYear, calMonth]);
+
+	useEffect(() => {
+		refresh();
+	}, [refresh]);
+
+	function calNav(delta) {
+		let y = calYear, m = calMonth + delta;
+		if (m > 12) { m = 1; y++; }
+		if (m < 1) { m = 12; y--; }
+		setCalYear(y);
+		setCalMonth(m);
+		setSelDay(1);
+	}
+
+	const platformsById = Object.fromEntries(platforms.map((p) => [p.id, p]));
+	const firstDow = new Date(calYear, calMonth - 1, 1).getDay();
+	const daysInMonth = new Date(calYear, calMonth, 0).getDate();
+	const daysInPrev = new Date(calYear, calMonth - 1, 0).getDate();
+	const isCurMonth = today0.getFullYear() === calYear && today0.getMonth() + 1 === calMonth;
+	const todayDay = isCurMonth ? today0.getDate() : -1;
+
+	const lessonsByDay = {};
+	lessons.forEach((l) => {
+		const d = Number(l.lessonDate.slice(-2));
+		(lessonsByDay[d] = lessonsByDay[d] || []).push(l);
+	});
+	const eventsByDay = {};
+	events.forEach((e) => {
+		const d = Number(e.eventDate.slice(-2));
+		(eventsByDay[d] = eventsByDay[d] || []).push(e);
+	});
+
+	const selDow = new Date(calYear, calMonth - 1, selDay).getDay();
+	const selLessons = lessonsByDay[selDay] || [];
+	const selEvents = eventsByDay[selDay] || [];
+	const selIsToday = isCurMonth && selDay === todayDay;
+
+	const todayLessonCount = lessonsByDay[todayDay]?.length || 0;
+	const monthTotal = lessons.reduce((sum, l) => sum + l.totalAttendance, 0);
+	const monthPresent = lessons.reduce((sum, l) => sum + l.presentCount, 0);
+	const monthRate = monthTotal === 0 ? 0 : Math.round((monthPresent / monthTotal) * 100);
+
 	return (
-		<>
 		<div id="admin-calendar" className="page active">
 			<div className="page-header">
 				<div className="page-label">Admin / Calendar</div>
 				<div className="page-title">내 캘린더</div>
-				<div className="page-subtitle">오늘의 레슨 일정과 수강생 현황을 확인하세요</div>
+				<div className="page-subtitle">내 레슨 일정과 플랫폼 공지를 확인하세요</div>
 			</div>
 
-			{/* 소속 안내 */}
-			<div
-				style={{
-					display: "flex",
-					alignItems: "center",
-					gap: "10px",
-					marginBottom: "20px",
-					flexWrap: "wrap",
-					padding: "10px 14px",
-					background: "var(--surface)",
-					border: "1px solid var(--border)",
-					borderRadius: "10px"
-				}}
-			>
-				<span
-					style={{
-						fontSize: "10px",
-						color: "var(--text-dim)",
-						letterSpacing: "1px",
-						textTransform: "uppercase",
-						fontFamily: "'DM Mono',monospace",
-						flexShrink: 0
-					}}
-				>
-					내 소속
-				</span>
-				<div
-					style={{
-						display: "flex",
-						alignItems: "center",
-						gap: "6px",
-						fontSize: "12px",
-						fontWeight: 600,
-						color: "#7c6af7"
-					}}
-				>
-					<span
-						style={{
-							display: "inline-block",
-							width: "10px",
-							height: "10px",
-							background: "#7c6af7",
-							borderRadius: "2px"
-						}}
-					></span>
-					스튜디오 필라테스 강남
-				</div>
-				<div
-					style={{
-						display: "flex",
-						alignItems: "center",
-						gap: "6px",
-						fontSize: "12px",
-						fontWeight: 600,
-						color: "#4fd1c5"
-					}}
-				>
-					<span
-						style={{
-							display: "inline-block",
-							width: "10px",
-							height: "10px",
-							background: "#4fd1c5",
-							borderRadius: "2px"
-						}}
-					></span>
-					요가라운지 홍대
-				</div>
+			<div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "20px", flexWrap: "wrap", padding: "10px 14px", background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "10px" }}>
+				<span style={{ fontSize: "10px", color: "var(--text-dim)", letterSpacing: "1px", textTransform: "uppercase", fontFamily: "'DM Mono',monospace", flexShrink: 0 }}>내 소속</span>
+				{platforms.length === 0 && <span style={{ fontSize: "12px", color: "var(--text-dim)" }}>소속된 플랫폼이 없습니다</span>}
+				{platforms.map((p) => (
+					<div key={p.id} style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "12px", fontWeight: 600, color: p.colorHex }}>
+						<span style={{ display: "inline-block", width: "10px", height: "10px", background: p.colorHex, borderRadius: "2px" }}></span>
+						{p.name}
+					</div>
+				))}
 			</div>
 
-			{/* 요약 3칸 */}
 			<div className="today-summary">
 				<div className="summary-cell">
-					<div className="summary-val" style={{ color: "var(--accent2)" }}>
-						4
-					</div>
+					<div className="summary-val" style={{ color: "var(--accent2)" }}>{loading ? "-" : todayLessonCount}</div>
 					<div className="summary-key">오늘 레슨</div>
 				</div>
 				<div className="summary-cell">
-					<div className="summary-val" style={{ color: "var(--green)" }}>
-						18
-					</div>
-					<div className="summary-key">오늘 수강생</div>
+					<div className="summary-val" style={{ color: "var(--green)" }}>{loading ? "-" : lessons.length}</div>
+					<div className="summary-key">이번 달 레슨</div>
 				</div>
 				<div className="summary-cell">
-					<div className="summary-val" style={{ color: "var(--accent3)" }}>
-						2
-					</div>
-					<div className="summary-key">미출석 확인</div>
+					<div className="summary-val" style={{ color: "var(--accent3)" }}>{loading ? "-" : `${monthRate}%`}</div>
+					<div className="summary-key">이번 달 출결률</div>
 				</div>
 			</div>
 
-			{/* 캘린더 + 타임라인 */}
 			<div className="tutor-cal-layout">
-				{/* 달력 */}
 				<div className="card">
 					<div className="cal-header">
-						<span className="cal-month">2026년 2월</span>
+						<span className="cal-month">{calYear}년 {calMonth}월</span>
 						<div className="cal-nav">
-							<button className="cal-btn">‹</button>
-							<button className="cal-btn">›</button>
+							<button className="cal-btn" onClick={() => calNav(-1)}>‹</button>
+							<button className="cal-btn" onClick={() => calNav(1)}>›</button>
 						</div>
 					</div>
 					<div className="cal-days-header">
-						<div className="cal-day-label" style={{ color: "#f87171" }}>
-							일
-						</div>
+						<div className="cal-day-label" style={{ color: "#f87171" }}>일</div>
 						<div className="cal-day-label">월</div>
 						<div className="cal-day-label">화</div>
 						<div className="cal-day-label">수</div>
 						<div className="cal-day-label">목</div>
 						<div className="cal-day-label">금</div>
-						<div className="cal-day-label" style={{ color: "#7c9ef7" }}>
-							토
-						</div>
+						<div className="cal-day-label" style={{ color: "#7c9ef7" }}>토</div>
 					</div>
-					<div className="cal-days" id="tutorCalDays"></div>
-
-					<div
-						style={{
-							display: "flex",
-							gap: "12px",
-							flexWrap: "wrap",
-							marginTop: "14px",
-							paddingTop: "12px",
-							borderTop: "1px solid var(--border)",
-							alignItems: "center"
-						}}
-					>
-						<span
-							style={{
-								fontSize: "10px",
-								color: "var(--text-dim)",
-								fontFamily: "'DM Mono',monospace"
-							}}
-						>
-							플랫폼
-						</span>
-						<div
-							style={{
-								display: "flex",
-								alignItems: "center",
-								gap: "5px",
-								fontSize: "11px",
-								color: "#7c6af7",
-								fontWeight: 600
-							}}
-						>
-							<span
-								style={{
-									display: "inline-block",
-									width: "10px",
-									height: "10px",
-									background: "#7c6af7",
-									borderRadius: "2px"
-								}}
-							></span>
-							스튜디오 필라테스
-						</div>
-						<div
-							style={{
-								display: "flex",
-								alignItems: "center",
-								gap: "5px",
-								fontSize: "11px",
-								color: "#4fd1c5",
-								fontWeight: 600
-							}}
-						>
-							<span
-								style={{
-									display: "inline-block",
-									width: "10px",
-									height: "10px",
-									background: "#4fd1c5",
-									borderRadius: "2px"
-								}}
-							></span>
-							요가라운지
-						</div>
-					</div>
-
-					{/* 날짜 클릭 상세 */}
-					<div className="day-detail" id="tutorDayDetail" style={{ display: "none" }}>
-						<div className="day-detail-header">
-							<div className="day-detail-title" id="tutorDayTitle">
-								2월 26일의 일정
-							</div>
-							<div className="day-detail-date" id="tutorDayDate">
-								목요일
-							</div>
-						</div>
-						<div className="day-events" id="tutorDayEvents"></div>
+					<div className="cal-days">
+						{Array.from({ length: firstDow }, (_, i) => (
+							<div className="cal-cell dim" key={`prev${i}`}>{daysInPrev - firstDow + 1 + i}</div>
+						))}
+						{Array.from({ length: daysInMonth }, (_, i) => {
+							const d = i + 1;
+							const dayLessons = lessonsByDay[d] || [];
+							const dayEvents = eventsByDay[d] || [];
+							const colors = [
+								...new Set(dayLessons.map((l) => platformsById[l.platformId]?.colorHex || "#888")),
+								...new Set(dayEvents.map((e) => EVENT_TYPE_STYLE[e.type]?.color || "#888"))
+							];
+							let cls = "cal-cell";
+							if (d === selDay) cls += " selected";
+							else if (d === todayDay) cls += " today";
+							return (
+								<div className={cls} key={d} onClick={() => setSelDay(d)}>
+									<div style={{ fontSize: "11px", fontWeight: 500, lineHeight: 1 }}>{d}</div>
+									{colors.map((c) => <div className="event-bar" style={{ background: c }} key={c}></div>)}
+								</div>
+							);
+						})}
 					</div>
 				</div>
 
-				{/* 오늘 타임라인 */}
-				<div className="tutor-cal-right">
-					<div className="card" style={{ padding: "20px" }}>
-						<div
-							style={{
-								display: "flex",
-								alignItems: "center",
-								justifyContent: "space-between",
-								marginBottom: "18px"
-							}}
-						>
-							<div>
-								<div className="card-title" style={{ marginBottom: "1px" }}>
-									오늘 전체 일정
-								</div>
-								<div style={{ fontSize: "11px", color: "var(--text-sub)" }}>
-									2026년 2월 26일 목요일 · 총 4건
-								</div>
-							</div>
+				<div className="card">
+					<div className="day-detail" style={{ margin: 0, padding: 0, border: "none" }}>
+						<div className="day-detail-header">
+							<div className="day-detail-title">{calMonth}월 {selDay}일의 일정</div>
+							<div className="day-detail-date">{WEEKDAYS[selDow]}요일{selIsToday ? " · 오늘" : ""}</div>
 						</div>
-
-						<div style={{ position: "relative" }}>
-							<div
-								style={{
-									position: "absolute",
-									left: "36px",
-									top: 0,
-									bottom: 0,
-									width: "1px",
-									background: "var(--border)",
-									zIndex: 0
-								}}
-							></div>
-
-							{/* 09:00 필라테스 그룹 */}
-							<div style={{ display: "flex", gap: 0, marginBottom: "14px", position: "relative" }}>
-								<div
-									style={{
-										width: "72px",
-										flexShrink: 0,
-										paddingTop: "3px",
-										textAlign: "right",
-										paddingRight: "14px"
-									}}
-								>
-									<span
-										style={{
-											fontFamily: "'DM Mono',monospace",
-											fontSize: "11px",
-											color: "var(--text-dim)"
-										}}
-									>
-										09:00
-									</span>
-								</div>
-								<div
-									style={{
-										width: "12px",
-										height: "12px",
-										borderRadius: "3px",
-										background: "#7c6af7",
-										flexShrink: 0,
-										marginTop: "3px",
-										zIndex: 1,
-										boxShadow: "0 0 0 3px rgba(124,106,247,0.2)"
-									}}
-								></div>
-								<div
-									style={{
-										flex: 1,
-										background: "rgba(124,106,247,0.08)",
-										border: "1px solid rgba(124,106,247,0.22)",
-										borderRadius: "10px",
-										padding: "10px 14px",
-										marginLeft: "10px",
-										minWidth: 0
-									}}
-								>
-									<div style={{ fontSize: "13px", fontWeight: 700, marginBottom: "5px" }}>
-										그룹반 A — 필라테스 기초
-									</div>
-									<div
-										style={{
-											display: "flex",
-											alignItems: "center",
-											gap: "6px",
-											flexWrap: "wrap",
-											marginBottom: "8px"
-										}}
-									>
-										<span
-											className="plat-chip"
-											style={{
-												background: "rgba(124,106,247,0.15)",
-												color: "#7c6af7",
-												borderColor: "rgba(124,106,247,0.3)"
-											}}
-										>
-											🤸 스튜디오 필라테스
-										</span>
-										<span style={{ fontSize: "10px", color: "var(--text-sub)" }}>
-											👥 그룹 · 6/8명
-										</span>
-									</div>
-									<button
-										className="btn btn-sm"
-										style={{
-											background: "rgba(74,222,128,0.12)",
-											color: "var(--green)",
-											border: "1px solid rgba(74,222,128,0.3)"
-										}}
-									>
-										출석 처리
-									</button>
-								</div>
-							</div>
-
-							{/* 10:00 필라테스 개인 */}
-							<div style={{ display: "flex", gap: 0, marginBottom: "14px", position: "relative" }}>
-								<div
-									style={{
-										width: "72px",
-										flexShrink: 0,
-										paddingTop: "3px",
-										textAlign: "right",
-										paddingRight: "14px"
-									}}
-								>
-									<span
-										style={{
-											fontFamily: "'DM Mono',monospace",
-											fontSize: "11px",
-											color: "var(--text-dim)"
-										}}
-									>
-										10:00
-									</span>
-								</div>
-								<div
-									style={{
-										width: "12px",
-										height: "12px",
-										borderRadius: "3px",
-										background: "#7c6af7",
-										flexShrink: 0,
-										marginTop: "3px",
-										zIndex: 1,
-										boxShadow: "0 0 0 3px rgba(124,106,247,0.2)"
-									}}
-								></div>
-								<div
-									style={{
-										flex: 1,
-										background: "rgba(124,106,247,0.05)",
-										border: "1px solid rgba(124,106,247,0.18)",
-										borderRadius: "10px",
-										padding: "10px 14px",
-										marginLeft: "10px",
-										minWidth: 0
-									}}
-								>
-									<div style={{ fontSize: "13px", fontWeight: 700, marginBottom: "5px" }}>
-										홍길동 — 1:1 개인 레슨
-									</div>
-									<div
-										style={{
-											display: "flex",
-											alignItems: "center",
-											gap: "6px",
-											flexWrap: "wrap",
-											marginBottom: "8px"
-										}}
-									>
-										<span
-											className="plat-chip"
-											style={{
-												background: "rgba(124,106,247,0.15)",
-												color: "#7c6af7",
-												borderColor: "rgba(124,106,247,0.3)"
-											}}
-										>
-											🤸 스튜디오 필라테스
-										</span>
-										<span style={{ fontSize: "10px", color: "var(--text-sub)" }}>
-											👤 개인 · 50분
-										</span>
-									</div>
-									<div style={{ display: "flex", gap: "6px" }}>
-										<button
-											className="btn btn-sm"
-											style={{
-												background: "rgba(74,222,128,0.12)",
-												color: "var(--green)",
-												border: "1px solid rgba(74,222,128,0.3)"
-											}}
-										>
-											출석
-										</button>
-										<button className="btn btn-sm btn-danger" onClick={() => openModal("requestModal")}>
-											변경 요청
-										</button>
-									</div>
-								</div>
-							</div>
-
-							{/* 이동 */}
-							<div style={{ display: "flex", gap: 0, marginBottom: "14px", position: "relative" }}>
-								<div style={{ width: "72px", flexShrink: 0 }}></div>
-								<div
-									style={{
-										width: "12px",
-										height: "12px",
-										borderRadius: "50%",
-										background: "var(--surface2)",
-										border: "1px solid var(--border)",
-										flexShrink: 0,
-										marginTop: "3px",
-										zIndex: 1
-									}}
-								></div>
-								<div
-									style={{
-										flex: 1,
-										padding: "7px 12px",
-										marginLeft: "10px",
-										background: "var(--surface2)",
-										borderRadius: "8px",
-										border: "1px dashed var(--border)",
-										minWidth: 0
-									}}
-								>
-									<span style={{ fontSize: "11px", color: "var(--text-dim)" }}>
-										🚗 스튜디오 필라테스 → 요가라운지 이동
-									</span>
-								</div>
-							</div>
-
-							{/* 14:00 요가 그룹 */}
-							<div style={{ display: "flex", gap: 0, marginBottom: "14px", position: "relative" }}>
-								<div
-									style={{
-										width: "72px",
-										flexShrink: 0,
-										paddingTop: "3px",
-										textAlign: "right",
-										paddingRight: "14px"
-									}}
-								>
-									<span
-										style={{
-											fontFamily: "'DM Mono',monospace",
-											fontSize: "11px",
-											color: "var(--text-dim)"
-										}}
-									>
-										14:00
-									</span>
-								</div>
-								<div
-									style={{
-										width: "12px",
-										height: "12px",
-										borderRadius: "3px",
-										background: "#4fd1c5",
-										flexShrink: 0,
-										marginTop: "3px",
-										zIndex: 1,
-										boxShadow: "0 0 0 3px rgba(79,209,197,0.2)"
-									}}
-								></div>
-								<div
-									style={{
-										flex: 1,
-										background: "rgba(79,209,197,0.08)",
-										border: "1px solid rgba(79,209,197,0.22)",
-										borderRadius: "10px",
-										padding: "10px 14px",
-										marginLeft: "10px",
-										minWidth: 0
-									}}
-								>
-									<div style={{ fontSize: "13px", fontWeight: 700, marginBottom: "5px" }}>
-										그룹반 B — 요가 기초
-									</div>
-									<div
-										style={{
-											display: "flex",
-											alignItems: "center",
-											gap: "6px",
-											flexWrap: "wrap",
-											marginBottom: "8px"
-										}}
-									>
-										<span
-											className="plat-chip"
-											style={{
-												background: "rgba(79,209,197,0.15)",
-												color: "#4fd1c5",
-												borderColor: "rgba(79,209,197,0.3)"
-											}}
-										>
-											🧘 요가라운지 홍대
-										</span>
-										<span style={{ fontSize: "10px", color: "var(--text-sub)" }}>
-											👥 그룹 · 8/8명
-										</span>
-									</div>
-									<button
-										className="btn btn-sm"
-										style={{
-											background: "rgba(74,222,128,0.12)",
-											color: "var(--green)",
-											border: "1px solid rgba(74,222,128,0.3)"
-										}}
-									>
-										출석 처리
-									</button>
-								</div>
-							</div>
-
-							{/* 16:00 필라테스 개인 */}
-							<div style={{ display: "flex", gap: 0, position: "relative" }}>
-								<div
-									style={{
-										width: "72px",
-										flexShrink: 0,
-										paddingTop: "3px",
-										textAlign: "right",
-										paddingRight: "14px"
-									}}
-								>
-									<span
-										style={{
-											fontFamily: "'DM Mono',monospace",
-											fontSize: "11px",
-											color: "var(--text-dim)"
-										}}
-									>
-										16:00
-									</span>
-								</div>
-								<div
-									style={{
-										width: "12px",
-										height: "12px",
-										borderRadius: "3px",
-										background: "#7c6af7",
-										flexShrink: 0,
-										marginTop: "3px",
-										zIndex: 1,
-										boxShadow: "0 0 0 3px rgba(124,106,247,0.2)"
-									}}
-								></div>
-								<div
-									style={{
-										flex: 1,
-										background: "rgba(124,106,247,0.05)",
-										border: "1px solid rgba(124,106,247,0.18)",
-										borderRadius: "10px",
-										padding: "10px 14px",
-										marginLeft: "10px",
-										minWidth: 0
-									}}
-								>
-									<div style={{ fontSize: "13px", fontWeight: 700, marginBottom: "5px" }}>
-										김민지 — 1:1 개인 레슨
-									</div>
-									<div
-										style={{
-											display: "flex",
-											alignItems: "center",
-											gap: "6px",
-											flexWrap: "wrap",
-											marginBottom: "8px"
-										}}
-									>
-										<span
-											className="plat-chip"
-											style={{
-												background: "rgba(124,106,247,0.15)",
-												color: "#7c6af7",
-												borderColor: "rgba(124,106,247,0.3)"
-											}}
-										>
-											🤸 스튜디오 필라테스
-										</span>
-										<span style={{ fontSize: "10px", color: "var(--text-sub)" }}>
-											👤 개인 · 50분
-										</span>
-									</div>
-									<div style={{ display: "flex", gap: "6px" }}>
-										<button
-											className="btn btn-sm"
-											style={{
-												background: "rgba(74,222,128,0.12)",
-												color: "var(--green)",
-												border: "1px solid rgba(74,222,128,0.3)"
-											}}
-										>
-											출석
-										</button>
-										<button className="btn btn-sm btn-danger" onClick={() => openModal("requestModal")}>
-											변경 요청
-										</button>
-									</div>
-								</div>
-							</div>
+						<div className="day-events">
+							{selLessons.length === 0 && selEvents.length === 0 ? (
+								<div style={{ fontSize: "13px", color: "var(--text-dim)", textAlign: "center", padding: "20px 0" }}>이 날의 일정이 없습니다</div>
+							) : (
+								<>
+									{selLessons.map((l) => (
+										<div key={l.id} style={{ display: "flex", alignItems: "center", gap: "10px", padding: "10px 0", borderBottom: "1px solid var(--border)" }}>
+											<div style={{ width: "3px", height: "36px", borderRadius: "2px", background: platformsById[l.platformId]?.colorHex || "#888", flexShrink: 0 }}></div>
+											<div style={{ flex: 1 }}>
+												<div style={{ fontSize: "13px", fontWeight: 600 }}>{l.programName}</div>
+												<div style={{ fontSize: "11px", color: "var(--text-dim)", marginTop: "2px" }}>
+													{platformsById[l.platformId]?.name} · {l.endedAt ? "완료" : l.startedAt ? "진행 중" : "예정"}
+												</div>
+											</div>
+										</div>
+									))}
+									{selEvents.map((e) => {
+										const style = EVENT_TYPE_STYLE[e.type] || { color: "#888", label: e.type };
+										return (
+											<div key={e.id} style={{ display: "flex", alignItems: "center", gap: "10px", padding: "10px 0", borderBottom: "1px solid var(--border)" }}>
+												<div style={{ width: "3px", height: "36px", borderRadius: "2px", background: style.color, flexShrink: 0 }}></div>
+												<div style={{ flex: 1 }}>
+													<div style={{ fontSize: "13px", fontWeight: 600 }}>{e.title}</div>
+													<div style={{ fontSize: "11px", color: "var(--text-dim)", marginTop: "2px" }}>{style.label}{e.description ? ` · ${e.description}` : ""}</div>
+												</div>
+											</div>
+										);
+									})}
+								</>
+							)}
 						</div>
 					</div>
 				</div>
 			</div>
 		</div>
-
-			{/* 일정 변경 요청 모달 */}
-			<div className="modal-overlay" id="requestModal">
-				<div className="modal-box">
-					<div className="modal-header">
-						<div className="modal-title">일정 변경 요청</div>
-						<button className="modal-close" onClick={() => closeModal("requestModal")}>✕</button>
-					</div>
-					<div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-						<div className="form-field">
-							<label>프로그램</label>
-							<select>
-								<option>1:1 개인 레슨</option>
-								<option>그룹반 A</option>
-								<option>그룹반 B</option>
-							</select>
-						</div>
-						<div className="form-field">
-							<label>기존 일정</label>
-							<input type="datetime-local" />
-						</div>
-						<div className="form-field">
-							<label>변경 희망 일정</label>
-							<input type="datetime-local" />
-						</div>
-						<div className="form-field">
-							<label>변경 사유</label>
-							<textarea placeholder="변경이 필요한 이유를 상세히 작성해주세요..."></textarea>
-						</div>
-						<div style={{ display: "flex", justifyContent: "flex-end", gap: "8px", marginTop: "8px" }}>
-							<button className="btn btn-ghost" onClick={() => closeModal("requestModal")}>취소</button>
-							<button className="btn btn-primary" onClick={() => closeModal("requestModal")}>제출</button>
-						</div>
-					</div>
-				</div>
-			</div>
-		</>
 	);
 }

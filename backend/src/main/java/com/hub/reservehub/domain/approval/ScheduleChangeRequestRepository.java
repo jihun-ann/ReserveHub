@@ -6,4 +6,6 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface ScheduleChangeRequestRepository extends JpaRepository<ScheduleChangeRequest, UUID> {
     List<ScheduleChangeRequest> findByPlatformIdAndStatus(UUID platformId, RequestStatus status);
+
+    List<ScheduleChangeRequest> findByRequestedBy(UUID requestedBy);
 }

@@ -40,7 +40,9 @@ public class AuthController {
     // Creates a new user account and returns a token for immediate authenticated use.
     // 새 사용자 계정을 만들고 바로 인증에 사용할 토큰을 반환한다.
     public ResponseEntity<AuthResponse> register(@Valid @RequestBody RegisterRequest request) {
-        AuthResult authResult = authService.register(request.email(), request.password(), request.role());
+        AuthResult authResult = authService.register(
+                request.email(), request.password(), request.role(), request.name(), request.phone()
+        );
         return ResponseEntity.status(HttpStatus.CREATED).body(AuthResponse.from(authResult));
     }
 
@@ -48,6 +50,7 @@ public class AuthController {
     // Verifies credentials and returns a fresh access token on success.
     // 자격 증명을 검증하고 성공하면 새로운 액세스 토큰을 반환한다.
     public AuthResponse login(@Valid @RequestBody LoginRequest request) {
+        System.out.println("ID : "+request.email() +  " | Password : " + request.password());
         AuthResult authResult = authService.login(request.email(), request.password());
         return AuthResponse.from(authResult);
     }
@@ -64,7 +67,9 @@ public class AuthController {
     public record RegisterRequest(
             @Email @NotBlank String email,
             @NotBlank String password,
-            @NotNull Role role
+            @NotNull Role role,
+            @NotBlank String name,
+            String phone
     ) {
     }
 
@@ -81,10 +86,10 @@ public class AuthController {
         }
     }
 
-    public record UserProfileResponse(String id, String email, Role role) {
+    public record UserProfileResponse(String id, String email, Role role, String name, String phone) {
 
         public static UserProfileResponse from(User user) {
-            return new UserProfileResponse(user.getId().toString(), user.getEmail(), user.getRole());
+            return new UserProfileResponse(user.getId().toString(), user.getEmail(), user.getRole(), user.getName(), user.getPhone());
         }
     }
 }

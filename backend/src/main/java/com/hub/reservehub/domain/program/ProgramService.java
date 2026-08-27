@@ -5,7 +5,10 @@ import com.hub.reservehub.security.AuthenticatedUser;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 import org.springframework.lang.Nullable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -73,6 +76,19 @@ public class ProgramService {
         Slot slot = slotRepository.findById(slotId)
                 .orElseThrow(() -> new IllegalArgumentException("Slot not found"));
         slot.deactivate();
+    }
+
+    @Transactional(readOnly = true)
+    // A tutor's own fixed weekly timetable, across every platform they teach at — self-scoped, no guard needed.
+    // 강사 본인의 고정 주간 시간표(소속된 모든 플랫폼 포함) — 본인 데이터라 가드가 필요 없다.
+    public List<SlotWithProgram> listMySlots(AuthenticatedUser actor) {
+        List<Slot> slots = slotRepository.findByInstructorIdAndIsActiveTrue(actor.getId());
+        Map<UUID, Program> programsById = programRepository.findAllById(slots.stream().map(Slot::getProgramId).distinct().toList())
+                .stream().collect(Collectors.toMap(Program::getId, Function.identity()));
+        return slots.stream().map(slot -> new SlotWithProgram(slot, programsById.get(slot.getProgramId()))).toList();
+    }
+
+    public record SlotWithProgram(Slot slot, Program program) {
     }
 
     private Program findProgram(UUID programId) {

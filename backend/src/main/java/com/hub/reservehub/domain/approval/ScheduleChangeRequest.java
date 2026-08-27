@@ -50,6 +50,10 @@ public class ScheduleChangeRequest extends BaseEntity {
     @Column(nullable = false)
     private RequestStatus status = RequestStatus.PENDING;
 
+    // 승인/반려 시 처리자가 남긴 메모. 반려 사유를 요청자에게 보여주기 위해 요청 자체에 저장한다.
+    @Nullable
+    private String decisionMemo;
+
     protected ScheduleChangeRequest() {
         // JPA only.
     }
@@ -110,17 +114,24 @@ public class ScheduleChangeRequest extends BaseEntity {
         return status;
     }
 
-    public void approve() {
+    @Nullable
+    public String getDecisionMemo() {
+        return decisionMemo;
+    }
+
+    public void approve(@Nullable String memo) {
         if (status != RequestStatus.PENDING) {
             throw new IllegalStateException("Only a PENDING request can be approved");
         }
         this.status = RequestStatus.APPROVED;
+        this.decisionMemo = memo;
     }
 
-    public void reject() {
+    public void reject(@Nullable String memo) {
         if (status != RequestStatus.PENDING) {
             throw new IllegalStateException("Only a PENDING request can be rejected");
         }
         this.status = RequestStatus.REJECTED;
+        this.decisionMemo = memo;
     }
 }
