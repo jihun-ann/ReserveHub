@@ -129,7 +129,7 @@ export default function TutorMypageView() {
 					</div>
 				</div>
 				<div style={{ display: "flex", flexDirection: "column", gap: "6px", marginLeft: "auto" }}>
-					<button className="btn btn-ghost btn-sm" onClick={() => openModal("tutorAccountModal")}>✏️ 계정 정보</button>
+					<button className="btn btn-ghost btn-sm" onClick={() => openModal("tutorAccountModal")}>✏️ 내 정보 변경</button>
 					<button className="btn btn-ghost btn-sm" onClick={() => openModal("tutorPasswordModal")}>🔒 비밀번호 변경</button>
 				</div>
 			</div>

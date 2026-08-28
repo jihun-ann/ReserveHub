@@ -21,7 +21,7 @@ export default function ManagerTutorManageView({ platformId }) {
 			return;
 		}
 		setLoading(true);
-		const staff = (await listStaff(platformId, true)).filter((s) => s.staffRole === "ADMIN");
+		const staff = (await listStaff(platformId, true)).filter((s) => s.staffRole === "TUTOR");
 		const withDetail = await Promise.all(
 			staff.map(async (s) => {
 				const u = await getUser(s.userId);

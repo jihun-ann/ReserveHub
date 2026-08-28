@@ -16,7 +16,6 @@ import java.util.List;
 import java.util.UUID;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -38,7 +37,6 @@ public class ProgramController {
     }
 
     @PostMapping("/api/v1/platforms/{platformId}/programs")
-    @PreAuthorize("hasAnyRole('OWNER', 'MANAGER')")
     public ResponseEntity<ProgramResponse> createProgram(
             @PathVariable UUID platformId, @Valid @RequestBody CreateProgramRequest request
     ) {
@@ -62,14 +60,12 @@ public class ProgramController {
     }
 
     @DeleteMapping("/api/v1/programs/{id}")
-    @PreAuthorize("hasAnyRole('OWNER', 'MANAGER')")
     public ResponseEntity<Void> deactivateProgram(@PathVariable UUID id) {
         programService.deactivate(id, currentAuthenticatedUser.get());
         return ResponseEntity.noContent().build();
     }
 
     @PostMapping("/api/v1/programs/{id}/slots")
-    @PreAuthorize("hasAnyRole('OWNER', 'MANAGER')")
     public ResponseEntity<SlotResponse> addSlot(@PathVariable UUID id, @Valid @RequestBody CreateSlotRequest request) {
         Slot slot = programService.addSlot(
                 id, currentAuthenticatedUser.get(), request.instructorId(), request.dayOfWeek(),
@@ -93,7 +89,6 @@ public class ProgramController {
     }
 
     @DeleteMapping("/api/v1/programs/{id}/slots/{slotId}")
-    @PreAuthorize("hasAnyRole('OWNER', 'MANAGER')")
     public ResponseEntity<Void> deactivateSlot(@PathVariable UUID id, @PathVariable UUID slotId) {
         programService.deactivateSlot(id, slotId, currentAuthenticatedUser.get());
         return ResponseEntity.noContent().build();

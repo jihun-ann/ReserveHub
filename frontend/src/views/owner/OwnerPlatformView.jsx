@@ -14,7 +14,7 @@ import {
 const TABS = [
 	{ key: "info", label: "기본 정보" },
 	{ key: "programs", label: "프로그램/슬롯" },
-	{ key: "instructors", label: "일반관리자" },
+	{ key: "instructors", label: "강사" },
 	{ key: "members", label: "사용자" },
 	{ key: "billing", label: "수강권/결제" },
 	{ key: "stats", label: "수익/통계" }
@@ -243,7 +243,7 @@ export default function OwnerPlatformView({ platforms, currentPlatformId, onSele
 
 							{activeTab === "instructors" && (
 								<div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
-									{staff.filter((s) => s.staffRole === "ADMIN").map((s) => (
+									{staff.filter((s) => s.staffRole === "TUTOR").map((s) => (
 										<div key={s.id} style={{ background: "var(--surface2)", border: "1px solid var(--border)", borderRadius: "var(--radius-sm)", padding: "14px", display: "flex", alignItems: "center", gap: "14px" }}>
 											<div className="avatar" style={{ background: "linear-gradient(135deg,var(--accent2),#667eea)", width: "38px", height: "38px", fontSize: "15px" }}>{s.email?.[0]?.toUpperCase() || "?"}</div>
 											<div style={{ flex: 1 }}>
@@ -252,8 +252,8 @@ export default function OwnerPlatformView({ platforms, currentPlatformId, onSele
 											<span className="plat-status ps-active" style={{ fontSize: "10px" }}>재직</span>
 										</div>
 									))}
-									{staff.filter((s) => s.staffRole === "ADMIN").length === 0 && (
-										<div style={{ fontSize: "12px", color: "var(--text-dim)", textAlign: "center", padding: "16px 0" }}>배정된 일반관리자가 없습니다</div>
+									{staff.filter((s) => s.staffRole === "TUTOR").length === 0 && (
+										<div style={{ fontSize: "12px", color: "var(--text-dim)", textAlign: "center", padding: "16px 0" }}>배정된 강사가 없습니다</div>
 									)}
 									<div style={{ fontSize: "11px", color: "var(--text-dim)" }}>* 이메일로 사용자를 검색해 배정하는 API가 아직 없어 등록 UI는 제공하지 않습니다.</div>
 								</div>

@@ -1,6 +1,7 @@
 package com.hub.reservehub.domain.pass;
 
 import com.hub.reservehub.domain.platform.PlatformAccessGuard;
+import com.hub.reservehub.domain.platform.StaffRole;
 import com.hub.reservehub.security.AuthenticatedUser;
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -26,7 +27,7 @@ public class DiscountPolicyService {
             UUID platformId, AuthenticatedUser actor, String name, DiscountType type, BigDecimal rate,
             @Nullable Integer conditionValue, @Nullable String couponCode, @Nullable Instant expiresAt, @Nullable String memo
     ) {
-        platformAccessGuard.verify(platformId, actor);
+        platformAccessGuard.verifyRole(platformId, actor, StaffRole.MANAGER);
         return discountPolicyRepository.save(
                 new DiscountPolicy(platformId, name, type, rate, conditionValue, couponCode, expiresAt, memo, actor.getId())
         );
@@ -36,14 +37,14 @@ public class DiscountPolicyService {
     // Staff-only management view (not shown to customers) — coupon codes shouldn't be publicly listable.
     // 스태프 전용 관리 화면 (고객에게 노출 안 함) — 쿠폰 코드가 공개 목록에 나오면 안 되기 때문.
     public List<DiscountPolicy> list(UUID platformId, AuthenticatedUser actor) {
-        platformAccessGuard.verify(platformId, actor);
+        platformAccessGuard.verifyRole(platformId, actor, StaffRole.MANAGER);
         return discountPolicyRepository.findByPlatformIdAndIsActiveTrue(platformId);
     }
 
     @Transactional
     public void deactivate(UUID policyId, AuthenticatedUser actor) {
         DiscountPolicy policy = findPolicy(policyId);
-        platformAccessGuard.verify(policy.getPlatformId(), actor);
+        platformAccessGuard.verifyRole(policy.getPlatformId(), actor, StaffRole.MANAGER);
         policy.deactivate();
     }
 

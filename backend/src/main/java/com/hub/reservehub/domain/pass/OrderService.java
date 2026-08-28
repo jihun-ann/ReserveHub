@@ -6,6 +6,7 @@ import com.hub.reservehub.domain.approval.ActionTarget;
 import com.hub.reservehub.domain.outbox.OutboxEvent;
 import com.hub.reservehub.domain.outbox.OutboxEventRepository;
 import com.hub.reservehub.domain.platform.PlatformAccessGuard;
+import com.hub.reservehub.domain.platform.StaffRole;
 import com.hub.reservehub.security.AuthenticatedUser;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -138,7 +139,7 @@ public class OrderService {
 
     @Transactional(readOnly = true)
     public List<Order> listByPlatform(UUID platformId, AuthenticatedUser actor) {
-        platformAccessGuard.verify(platformId, actor);
+        platformAccessGuard.verifyRole(platformId, actor, StaffRole.MANAGER);
         return orderRepository.findByPlatformId(platformId);
     }
 
@@ -196,7 +197,7 @@ public class OrderService {
     // MANAGER 이상만 가능한 승인성 처리 — action_logs 기록은 선택이 아니라 필수다 (AGENT.md 4-2).
     public Order refund(UUID orderId, AuthenticatedUser actor, @Nullable String memo) {
         Order order = findOrder(orderId);
-        platformAccessGuard.verify(order.getPlatformId(), actor);
+        platformAccessGuard.verifyRole(order.getPlatformId(), actor, StaffRole.MANAGER);
         order.refund();
 
         for (OrderItem item : orderItemRepository.findByOrderId(orderId)) {

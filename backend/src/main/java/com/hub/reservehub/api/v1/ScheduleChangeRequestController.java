@@ -22,7 +22,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @Validated
-@PreAuthorize("hasAnyRole('OWNER', 'MANAGER', 'ADMIN')")
+@PreAuthorize("hasAnyRole('OWNER', 'MANAGER', 'TUTOR')")
 public class ScheduleChangeRequestController {
 
     private final ScheduleChangeRequestService scheduleChangeRequestService;
@@ -43,7 +43,6 @@ public class ScheduleChangeRequestController {
     }
 
     @GetMapping("/api/v1/platforms/{platformId}/schedule-requests")
-    @PreAuthorize("hasAnyRole('OWNER', 'MANAGER')")
     public List<ScheduleChangeRequestResponse> list(@PathVariable UUID platformId, @RequestParam(defaultValue = "PENDING") RequestStatus status) {
         return scheduleChangeRequestService.list(platformId, currentAuthenticatedUser.get(), status).stream()
                 .map(ScheduleChangeRequestResponse::from)
@@ -58,14 +57,12 @@ public class ScheduleChangeRequestController {
     }
 
     @PostMapping("/api/v1/schedule-requests/{id}/approve")
-    @PreAuthorize("hasAnyRole('OWNER', 'MANAGER')")
     public ScheduleChangeRequestResponse approve(@PathVariable UUID id, @RequestBody(required = false) DecisionRequest request) {
         String memo = request != null ? request.memo() : null;
         return ScheduleChangeRequestResponse.from(scheduleChangeRequestService.approve(id, currentAuthenticatedUser.get(), memo));
     }
 
     @PostMapping("/api/v1/schedule-requests/{id}/reject")
-    @PreAuthorize("hasAnyRole('OWNER', 'MANAGER')")
     public ScheduleChangeRequestResponse reject(@PathVariable UUID id, @RequestBody(required = false) DecisionRequest request) {
         String memo = request != null ? request.memo() : null;
         return ScheduleChangeRequestResponse.from(scheduleChangeRequestService.reject(id, currentAuthenticatedUser.get(), memo));

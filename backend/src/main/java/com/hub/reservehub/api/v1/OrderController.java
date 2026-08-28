@@ -20,7 +20,6 @@ import java.util.List;
 import java.util.UUID;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -62,7 +61,6 @@ public class OrderController {
     }
 
     @GetMapping("/api/v1/platforms/{platformId}/orders")
-    @PreAuthorize("hasAnyRole('OWNER', 'MANAGER')")
     public List<OrderResponse> listOrders(@PathVariable UUID platformId) {
         return orderService.listByPlatform(platformId, currentAuthenticatedUser.get()).stream()
                 .map(this::toResponse)
@@ -80,7 +78,6 @@ public class OrderController {
     }
 
     @PostMapping("/api/v1/orders/{id}/refund")
-    @PreAuthorize("hasAnyRole('OWNER', 'MANAGER')")
     public OrderResponse refund(@PathVariable UUID id, @RequestBody(required = false) RefundRequest request) {
         String memo = request != null ? request.memo() : null;
         return toResponse(orderService.refund(id, currentAuthenticatedUser.get(), memo));

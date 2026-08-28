@@ -1,6 +1,7 @@
 package com.hub.reservehub.domain.pass;
 
 import com.hub.reservehub.domain.platform.PlatformAccessGuard;
+import com.hub.reservehub.domain.platform.StaffRole;
 import com.hub.reservehub.security.AuthenticatedUser;
 import java.util.List;
 import java.util.UUID;
@@ -24,7 +25,7 @@ public class PassService {
             UUID platformId, AuthenticatedUser actor, String name, PassType type,
             int price, @Nullable Short sessionCount, short validDays
     ) {
-        platformAccessGuard.verify(platformId, actor);
+        platformAccessGuard.verifyRole(platformId, actor, StaffRole.MANAGER);
         return passRepository.save(new Pass(platformId, name, type, price, sessionCount, validDays));
     }
 
@@ -43,7 +44,7 @@ public class PassService {
     @Transactional
     public void deactivate(UUID passId, AuthenticatedUser actor) {
         Pass pass = findPass(passId);
-        platformAccessGuard.verify(pass.getPlatformId(), actor);
+        platformAccessGuard.verifyRole(pass.getPlatformId(), actor, StaffRole.MANAGER);
         pass.deactivate();
     }
 

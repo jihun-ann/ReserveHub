@@ -65,7 +65,7 @@ public class ReservationController {
     }
 
     @PostMapping("/api/v1/reservations/{id}/no-show")
-    @PreAuthorize("hasAnyRole('OWNER', 'MANAGER', 'ADMIN')")
+    @PreAuthorize("hasAnyRole('OWNER', 'MANAGER', 'TUTOR')")
     public ReservationResponse markNoShow(@PathVariable UUID id) {
         return ReservationResponse.from(reservationService.markNoShow(id, currentAuthenticatedUser.get()));
     }

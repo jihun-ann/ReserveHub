@@ -2,13 +2,6 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { apiPost, setSession } from "../api/http.js";
 
-const ROLE_HOME = {
-	OWNER: "/owner",
-	MANAGER: "/manager",
-	ADMIN: "/tutor",
-	USER: "/user"
-};
-
 export default function LoginView() {
 	const navigate = useNavigate();
 	const [email, setEmail] = useState("");
@@ -23,7 +16,7 @@ export default function LoginView() {
 		try {
 			const result = await apiPost("/api/v1/auth/login", { email, password });
 			setSession(result);
-			navigate(ROLE_HOME[result.user.role] || "/");
+			navigate("/app");
 		} catch (err) {
 			setError(err.message || "로그인에 실패했습니다.");
 		} finally {

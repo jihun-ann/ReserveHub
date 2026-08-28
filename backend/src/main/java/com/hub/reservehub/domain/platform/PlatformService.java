@@ -1,8 +1,11 @@
 package com.hub.reservehub.domain.platform;
 
-import com.hub.reservehub.domain.user.Role;
+import com.hub.reservehub.domain.pass.UserPassRepository;
 import com.hub.reservehub.security.AuthenticatedUser;
+import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import org.springframework.lang.Nullable;
 import org.springframework.stereotype.Service;
@@ -13,15 +16,18 @@ public class PlatformService {
 
     private final PlatformRepository platformRepository;
     private final PlatformStaffRepository platformStaffRepository;
+    private final UserPassRepository userPassRepository;
     private final PlatformAccessGuard platformAccessGuard;
 
     public PlatformService(
             PlatformRepository platformRepository,
             PlatformStaffRepository platformStaffRepository,
+            UserPassRepository userPassRepository,
             PlatformAccessGuard platformAccessGuard
     ) {
         this.platformRepository = platformRepository;
         this.platformStaffRepository = platformStaffRepository;
+        this.userPassRepository = userPassRepository;
         this.platformAccessGuard = platformAccessGuard;
     }
 
@@ -43,23 +49,47 @@ public class PlatformService {
     }
 
     @Transactional(readOnly = true)
-    // Lists platforms the current user can see: owned platforms for OWNER, assigned platforms otherwise.
-    // 현재 사용자가 볼 수 있는 플랫폼 목록: OWNER는 소유한 플랫폼, 그 외에는 배정된 플랫폼.
+    // Lists every platform the user has ANY standing on — owns it, staffs it, or holds a pass there —
+    // since one account can hold different standings on different platforms at once.
+    // 소유·스태프·수강권 보유 중 하나라도 해당되는 모든 플랫폼을 반환한다 — 한 계정이 플랫폼마다
+    // 서로 다른 자격을 동시에 가질 수 있기 때문이다.
     public List<Platform> listAccessible(AuthenticatedUser user) {
-        if (user.getRole() == Role.OWNER) {
-            return platformRepository.findByCreatedBy(user.getId());
-        }
-        List<UUID> platformIds = platformStaffRepository.findByUserIdAndIsActiveTrue(user.getId()).stream()
-                .map(PlatformStaff::getPlatformId)
-                .toList();
+        Set<UUID> platformIds = new LinkedHashSet<>();
+        platformRepository.findByCreatedBy(user.getId()).forEach(p -> platformIds.add(p.getId()));
+        platformStaffRepository.findByUserIdAndIsActiveTrue(user.getId())
+                .forEach(staff -> platformIds.add(staff.getPlatformId()));
+        userPassRepository.findByUserId(user.getId())
+                .forEach(userPass -> platformIds.add(userPass.getPlatformId()));
         return platformRepository.findAllById(platformIds);
+    }
+
+    @Transactional(readOnly = true)
+    // The account's standings on THIS specific platform — may hold more than one at once
+    // (e.g. staffing a platform as both MANAGER and TUTOR, or staffing it while also having
+    // bought a pass there as a customer).
+    // 이 플랫폼에서 계정이 가진 자격들 — 한 플랫폼에서 MANAGER와 TUTOR을 동시에 갖거나, 스태프이면서
+    // 동시에 수강권을 산 고객일 수도 있어 둘 이상일 수 있다.
+    public List<String> myRoles(UUID platformId, AuthenticatedUser user) {
+        List<String> roles = new ArrayList<>();
+        if (platformRepository.existsByIdAndCreatedBy(platformId, user.getId())) {
+            roles.add("OWNER");
+        }
+        platformStaffRepository.findByPlatformIdAndUserId(platformId, user.getId()).stream()
+                .filter(PlatformStaff::isActive)
+                .forEach(staff -> roles.add(staff.getStaffRole().name()));
+        boolean hasPass = userPassRepository.findByUserId(user.getId()).stream()
+                .anyMatch(userPass -> userPass.getPlatformId().equals(platformId));
+        if (hasPass) {
+            roles.add("USER");
+        }
+        return roles;
     }
 
     @Transactional
     // Assigns a staff member to a platform; enforces the MANAGER single-platform rule (AGENT.md 3, double-checked with the DB trigger).
     // 플랫폼에 스태프를 배정한다. MANAGER는 1개 플랫폼만 담당 가능한 규칙을 서비스 레이어에서도 검증한다 (DB 트리거와 이중 검증).
     public PlatformStaff assignStaff(UUID platformId, AuthenticatedUser actor, UUID targetUserId, StaffRole staffRole) {
-        platformAccessGuard.verify(platformId, actor);
+        platformAccessGuard.verifyRole(platformId, actor, StaffRole.MANAGER);
 
         if (staffRole == StaffRole.MANAGER
                 && platformStaffRepository.existsByUserIdAndStaffRoleAndIsActiveTrue(targetUserId, StaffRole.MANAGER)) {
@@ -70,12 +100,20 @@ public class PlatformService {
     }
 
     @Transactional
+    // Removes the target from the platform entirely — if they hold more than one active StaffRole
+    // there (e.g. MANAGER+TUTOR), all of them end at once, matching the single "제거" action in the UI.
+    // 대상을 플랫폼에서 완전히 제거한다 — 여러 StaffRole(예: MANAGER+TUTOR)을 동시에 갖고 있어도
+    // UI의 단일 "제거" 동작에 맞춰 한 번에 모두 해제한다.
     public void removeStaff(UUID platformId, AuthenticatedUser actor, UUID targetUserId) {
-        platformAccessGuard.verify(platformId, actor);
+        platformAccessGuard.verifyRole(platformId, actor, StaffRole.MANAGER);
 
-        PlatformStaff staff = platformStaffRepository.findByPlatformIdAndUserId(platformId, targetUserId)
-                .orElseThrow(() -> new IllegalArgumentException("Staff assignment not found"));
-        staff.leave();
+        List<PlatformStaff> staffList = platformStaffRepository.findByPlatformIdAndUserId(platformId, targetUserId).stream()
+                .filter(PlatformStaff::isActive)
+                .toList();
+        if (staffList.isEmpty()) {
+            throw new IllegalArgumentException("Staff assignment not found");
+        }
+        staffList.forEach(PlatformStaff::leave);
     }
 
     @Transactional(readOnly = true)

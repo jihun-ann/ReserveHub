@@ -21,8 +21,8 @@ public class ScheduleChangeRequest extends BaseEntity {
     @Column(nullable = false)
     private UUID platformId;
 
-    // The tutor (ADMIN) who submitted the request.
-    // 요청을 제출한 강사(ADMIN).
+    // The tutor (TUTOR) who submitted the request.
+    // 요청을 제출한 강사(TUTOR).
     @Column(nullable = false)
     private UUID requestedBy;
 

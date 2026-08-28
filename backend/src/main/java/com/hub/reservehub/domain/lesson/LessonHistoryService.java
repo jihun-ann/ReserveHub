@@ -1,6 +1,7 @@
 package com.hub.reservehub.domain.lesson;
 
 import com.hub.reservehub.domain.platform.PlatformAccessGuard;
+import com.hub.reservehub.domain.platform.StaffRole;
 import com.hub.reservehub.domain.program.Program;
 import com.hub.reservehub.domain.program.ProgramRepository;
 import com.hub.reservehub.domain.user.User;
@@ -42,7 +43,7 @@ public class LessonHistoryService {
 
     @Transactional(readOnly = true)
     public List<Entry> list(UUID platformId, AuthenticatedUser actor, LocalDate from, LocalDate to) {
-        platformAccessGuard.verify(platformId, actor);
+        platformAccessGuard.verifyRole(platformId, actor, StaffRole.MANAGER);
         return enrich(lessonRepository.findByPlatformIdAndLessonDateBetween(platformId, from, to));
     }
 

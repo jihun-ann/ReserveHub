@@ -3,6 +3,7 @@ package com.hub.reservehub.domain.approval;
 import com.hub.reservehub.domain.outbox.OutboxEvent;
 import com.hub.reservehub.domain.outbox.OutboxEventRepository;
 import com.hub.reservehub.domain.platform.PlatformAccessGuard;
+import com.hub.reservehub.domain.platform.StaffRole;
 import com.hub.reservehub.domain.program.Slot;
 import com.hub.reservehub.domain.program.SlotRepository;
 import com.hub.reservehub.domain.reservation.Reservation;
@@ -74,7 +75,7 @@ public class ScheduleChangeRequestService {
 
     @Transactional(readOnly = true)
     public List<ScheduleChangeRequest> list(UUID platformId, AuthenticatedUser actor, RequestStatus status) {
-        platformAccessGuard.verify(platformId, actor);
+        platformAccessGuard.verifyRole(platformId, actor, StaffRole.MANAGER);
         return requestRepository.findByPlatformIdAndStatus(platformId, status);
     }
 
@@ -88,7 +89,7 @@ public class ScheduleChangeRequestService {
     @Transactional
     public ScheduleChangeRequest approve(UUID requestId, AuthenticatedUser actor, @Nullable String memo) {
         ScheduleChangeRequest request = findRequest(requestId);
-        platformAccessGuard.verify(request.getPlatformId(), actor);
+        platformAccessGuard.verifyRole(request.getPlatformId(), actor, StaffRole.MANAGER);
         request.approve(memo);
 
         actionLogRepository.save(ActionLog.of(request.getPlatformId(), actor.getId(), ActionTarget.SCHEDULE_REQUEST, request.getId(), "APPROVE", memo));
@@ -103,7 +104,7 @@ public class ScheduleChangeRequestService {
     @Transactional
     public ScheduleChangeRequest reject(UUID requestId, AuthenticatedUser actor, @Nullable String memo) {
         ScheduleChangeRequest request = findRequest(requestId);
-        platformAccessGuard.verify(request.getPlatformId(), actor);
+        platformAccessGuard.verifyRole(request.getPlatformId(), actor, StaffRole.MANAGER);
         request.reject(memo);
 
         actionLogRepository.save(ActionLog.of(request.getPlatformId(), actor.getId(), ActionTarget.SCHEDULE_REQUEST, request.getId(), "REJECT", memo));

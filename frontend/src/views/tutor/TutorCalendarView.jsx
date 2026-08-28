@@ -78,9 +78,9 @@ export default function TutorCalendarView() {
 	const monthRate = monthTotal === 0 ? 0 : Math.round((monthPresent / monthTotal) * 100);
 
 	return (
-		<div id="admin-calendar" className="page active">
+		<div id="tutor-calendar" className="page active">
 			<div className="page-header">
-				<div className="page-label">Admin / Calendar</div>
+				<div className="page-label">Tutor / Calendar</div>
 				<div className="page-title">내 캘린더</div>
 				<div className="page-subtitle">내 레슨 일정과 플랫폼 공지를 확인하세요</div>
 			</div>

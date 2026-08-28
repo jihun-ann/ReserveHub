@@ -162,9 +162,9 @@ export async function enrollMember(platformId, email, password, name, phone, pas
 	return user;
 }
 
-// 강사 등록: 계정 생성(ADMIN role) -> 플랫폼 스태프 배정까지 이어서 처리한다.
+// 강사 등록: 계정 생성(TUTOR role) -> 플랫폼 스태프 배정까지 이어서 처리한다.
 export async function enrollTutor(platformId, email, password, name, phone) {
-	const user = await createUserAccount(email, password, name, phone, "ADMIN");
-	await assignStaff(platformId, user.id, "ADMIN");
+	const user = await createUserAccount(email, password, name, phone, "TUTOR");
+	await assignStaff(platformId, user.id, "TUTOR");
 	return user;
 }

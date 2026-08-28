@@ -12,11 +12,11 @@ CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 -- 1. 계정 / 권한 도메인
 -- ============================================================
 
--- 역할 (OWNER > MANAGER > ADMIN > USER)
+-- 역할 (OWNER > MANAGER > TUTOR > USER)
 CREATE TYPE user_role AS ENUM (
     'OWNER',        -- 오너 (대표)
     'MANAGER',      -- 매니저 (점주/사장)
-    'ADMIN',        -- 일반관리자 (강사)
+    'TUTOR',        -- 강사
     'USER'          -- 수강생
 );
 
@@ -35,7 +35,7 @@ CREATE TABLE users (
 );
 
 COMMENT ON TABLE  users              IS '전체 사용자 계정. role 컬럼으로 역할을 구분';
-COMMENT ON COLUMN users.role         IS 'OWNER/MANAGER/ADMIN/USER — 계층 구조 반영';
+COMMENT ON COLUMN users.role         IS 'OWNER/MANAGER/TUTOR/USER — 계층 구조 반영';
 COMMENT ON COLUMN users.password_hash IS 'bcrypt hash (cost 12)';
 
 
@@ -66,7 +66,7 @@ COMMENT ON TABLE platforms IS '플랫폼 (스튜디오/센터 단위). 오너만
 
 -- 플랫폼 ↔ 스태프 N:M (매니저·강사 모두 이 테이블로 관리)
 -- 매니저: 플랫폼 1개 고정 (UI 확정), 강사: 복수 플랫폼 가능
-CREATE TYPE staff_role AS ENUM ('MANAGER', 'ADMIN');
+CREATE TYPE staff_role AS ENUM ('MANAGER', 'TUTOR');
 
 CREATE TABLE platform_staff (
                                 id              UUID        PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -76,10 +76,10 @@ CREATE TABLE platform_staff (
                                 is_active       BOOLEAN     NOT NULL DEFAULT TRUE,
                                 joined_at       TIMESTAMPTZ NOT NULL DEFAULT NOW(),
                                 left_at         TIMESTAMPTZ,                         -- 퇴사/해제 시각
-                                UNIQUE (platform_id, user_id)
+                                UNIQUE (platform_id, user_id, staff_role)
 );
 
-COMMENT ON TABLE  platform_staff           IS '플랫폼-스태프 매핑. MANAGER는 1개 플랫폼만 허용 (앱 레이어에서 검증)';
+COMMENT ON TABLE  platform_staff           IS '플랫폼-스태프 매핑. 한 계정이 한 플랫폼에서 MANAGER+TUTOR을 동시에 가질 수 있음. MANAGER는 1개 플랫폼만 허용 (앱 레이어에서 검증)';
 COMMENT ON COLUMN platform_staff.left_at   IS 'NULL이면 재직 중. Soft delete 방식으로 이력 보존';
 
 
@@ -111,7 +111,7 @@ CREATE TYPE day_of_week AS ENUM ('MON','TUE','WED','THU','FRI','SAT','SUN');
 CREATE TABLE slots (
                        id              UUID        PRIMARY KEY DEFAULT uuid_generate_v4(),
                        program_id      UUID        NOT NULL REFERENCES programs(id) ON DELETE CASCADE,
-                       instructor_id   UUID        NOT NULL REFERENCES users(id),     -- ADMIN role
+                       instructor_id   UUID        NOT NULL REFERENCES users(id),     -- TUTOR role
                        day_of_week     day_of_week NOT NULL,
                        start_time      TIME        NOT NULL,
                        end_time        TIME        NOT NULL,
@@ -322,7 +322,7 @@ CREATE TYPE request_status AS ENUM ('PENDING', 'APPROVED', 'REJECTED');
 CREATE TABLE schedule_change_requests (
                                           id              UUID            PRIMARY KEY DEFAULT uuid_generate_v4(),
                                           platform_id     UUID            NOT NULL REFERENCES platforms(id),
-                                          requested_by    UUID            NOT NULL REFERENCES users(id),  -- 강사(ADMIN)
+                                          requested_by    UUID            NOT NULL REFERENCES users(id),  -- 강사(TUTOR)
                                           reservation_id  UUID            NOT NULL REFERENCES reservations(id),
                                           original_date   DATE            NOT NULL,
                                           original_slot   UUID            NOT NULL REFERENCES slots(id),
@@ -391,7 +391,7 @@ CREATE TYPE share_scope AS ENUM (
     'PLATFORM',         -- 해당 플랫폼 내
     'ALL_MANAGER',      -- 전체 매니저
     'INCLUDE_OWNER',    -- 오너 포함
-    'INCLUDE_ADMIN'     -- 강사 포함
+    'INCLUDE_TUTOR'     -- 강사 포함
 );
 
 CREATE TABLE calendar_events (

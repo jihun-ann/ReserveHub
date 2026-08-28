@@ -21,7 +21,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @Validated
-@PreAuthorize("hasAnyRole('OWNER', 'MANAGER', 'ADMIN')")
+@PreAuthorize("hasAnyRole('OWNER', 'MANAGER', 'TUTOR')")
 public class MemberMemoController {
 
     private final MemberMemoService memberMemoService;

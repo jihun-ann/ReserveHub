@@ -3,6 +3,6 @@ package com.hub.reservehub.domain.user;
 public enum Role {
     OWNER,
     MANAGER,
-    ADMIN,
+    TUTOR,
     USER
 }

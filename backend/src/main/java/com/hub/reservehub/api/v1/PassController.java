@@ -13,7 +13,6 @@ import java.util.List;
 import java.util.UUID;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -35,7 +34,6 @@ public class PassController {
     }
 
     @PostMapping("/api/v1/platforms/{platformId}/passes")
-    @PreAuthorize("hasAnyRole('OWNER', 'MANAGER')")
     public ResponseEntity<PassResponse> createPass(@PathVariable UUID platformId, @Valid @RequestBody CreatePassRequest request) {
         Pass pass = passService.create(
                 platformId, currentAuthenticatedUser.get(), request.name(), request.type(),
@@ -55,7 +53,6 @@ public class PassController {
     }
 
     @DeleteMapping("/api/v1/passes/{id}")
-    @PreAuthorize("hasAnyRole('OWNER', 'MANAGER')")
     public ResponseEntity<Void> deactivatePass(@PathVariable UUID id) {
         passService.deactivate(id, currentAuthenticatedUser.get());
         return ResponseEntity.noContent().build();

@@ -91,7 +91,7 @@ public class DummyDataSeeder implements CommandLineRunner {
         System.out.println("[DummyDataSeeder] seeding start");
         User owner = authService.register("owner@test.com", PASSWORD, Role.OWNER, "김도윤", "010-1111-2222").user();
         User manager = authService.register("manager@test.com", PASSWORD, Role.MANAGER, "이서연", "010-2222-3333").user();
-        User tutor = authService.register("tutor@test.com", PASSWORD, Role.ADMIN, "박지훈", "010-3333-4444").user();
+        User tutor = authService.register("tutor@test.com", PASSWORD, Role.TUTOR, "박지훈", "010-3333-4444").user();
         authService.register("user@test.com", PASSWORD, Role.USER, "최민서", "010-4444-5555");
 
         AuthenticatedUser ownerPrincipal = AuthenticatedUser.from(owner);
@@ -100,12 +100,32 @@ public class DummyDataSeeder implements CommandLineRunner {
                 "02-1234-5678", "서울시 강남구", "더미 데이터용 테스트 플랫폼"
         );
         platformService.assignStaff(platform.getId(), ownerPrincipal, manager.getId(), StaffRole.MANAGER);
-        platformService.assignStaff(platform.getId(), ownerPrincipal, tutor.getId(), StaffRole.ADMIN);
+        platformService.assignStaff(platform.getId(), ownerPrincipal, tutor.getId(), StaffRole.TUTOR);
         seedScheduleChangeRequests(platform.getId(), tutor.getId());
         List<User> members = seedMembers(platform.getId(), ownerPrincipal);
         seedCalendarEvents(platform.getId(), ownerPrincipal);
         Slot slot = seedLessonsForSlot(platform.getId(), ownerPrincipal, "그룹반 A", DayOfWeek.MON, tutor.getId(), members);
         seedReservationAndRequest(platform.getId(), ownerPrincipal, tutor, slot, members.get(0), "수강생 요청으로 다음 그룹반 일정을 조정합니다.");
+
+        // tutor@test.com이 자신이 강사로 소속된 플랫폼에서 동시에 수강권을 구매한 고객이기도 한
+        // 시나리오 — 한 플랫폼 안에서 스태프이면서 사용자인 다중 역할 케이스를 재현한다.
+        AuthenticatedUser tutorPrincipal = AuthenticatedUser.from(tutor);
+        Pass tutorOwnPass = passService.list(platform.getId()).get(0);
+        var tutorOrder = orderService.createOrder(
+                platform.getId(), tutorPrincipal, tutor.getId(),
+                List.of(new OrderService.PassSelection(tutorOwnPass.getId(), (short) 1)), List.of(), null
+        );
+        orderService.pay(tutorOrder.getId(), tutorPrincipal);
+
+        // manager@test.com도 같은 테스트 스튜디오에서 수강권을 구매한 고객이기도 한 시나리오 —
+        // MANAGER(관리자)+USER(사용자) 멀티롤 케이스를 테스트 스튜디오에서 재현한다.
+        AuthenticatedUser managerPrincipal = AuthenticatedUser.from(manager);
+        Pass managerOwnPass = passService.list(platform.getId()).get(0);
+        var managerOrder = orderService.createOrder(
+                platform.getId(), managerPrincipal, manager.getId(),
+                List.of(new OrderService.PassSelection(managerOwnPass.getId(), (short) 1)), List.of(), null
+        );
+        orderService.pay(managerOrder.getId(), managerPrincipal);
 
         // 같은 owner가 소유한 플랫폼이 여러 개일 때의 목록/전환 UI를 테스트하기 위한 추가 플랫폼.
         // 강사는 두 플랫폼(필라테스 스튜디오 + 요가 스튜디오)에 동시 소속되어 요일이 겹치지 않는
@@ -114,15 +134,49 @@ public class DummyDataSeeder implements CommandLineRunner {
                 ownerPrincipal, "홍대 요가 스튜디오", BusinessType.YOGA,
                 "02-2345-6789", "서울시 마포구", "더미 데이터용 테스트 플랫폼 2"
         );
-        platformService.assignStaff(platform2.getId(), ownerPrincipal, tutor.getId(), StaffRole.ADMIN);
+        platformService.assignStaff(platform2.getId(), ownerPrincipal, tutor.getId(), StaffRole.TUTOR);
         List<User> members2 = seedSimpleMembers(platform2.getId(), ownerPrincipal);
         Slot slot2 = seedLessonsForSlot(platform2.getId(), ownerPrincipal, "요가 기초반", DayOfWeek.WED, tutor.getId(), members2);
         seedReservationAndRequest(platform2.getId(), ownerPrincipal, tutor, slot2, members2.get(0), "수강생 사정으로 요가 기초반 일정을 조정합니다.");
 
-        platformService.create(
+        // manager@test.com은 여기서 매니저가 아니라 강사(TUTOR)로, tutor@test.com은 반대로
+        // 매니저(MANAGER)로 배정된 세 번째 플랫폼 — 같은 계정이 플랫폼마다 다른 역할을 가지는
+        // 시나리오를 두 계정 모두에서 재현해, 강사/매니저 역할이 겹치는 케이스를 양쪽 계정으로 테스트할 수 있다.
+        Platform platform3 = platformService.create(
                 ownerPrincipal, "잠실 댄스 아카데미", BusinessType.DANCE,
                 "02-3456-7890", "서울시 송파구", "더미 데이터용 테스트 플랫폼 3"
         );
+        platformService.assignStaff(platform3.getId(), ownerPrincipal, manager.getId(), StaffRole.TUTOR);
+        platformService.assignStaff(platform3.getId(), ownerPrincipal, tutor.getId(), StaffRole.MANAGER);
+
+        seedMultiRoleAccount(platform.getId(), platform2.getId(), platform3.getId(), ownerPrincipal);
+    }
+
+    // 플랫폼마다 역할 조합이 다른 계정 하나로 셸의 멀티 역할 메뉴/플랫폼 전환 버튼을 골고루 확인하기
+    // 위한 전용 테스트 계정 — 테스트 스튜디오는 수강생만, 홍대 요가는 매니저+강사를 동시에(같은
+    // 플랫폼에서 두 StaffRole을 동시에 갖는 케이스), 잠실 댄스는 수강생+강사를 동시에 가진다.
+    private void seedMultiRoleAccount(UUID platform1Id, UUID platform2Id, UUID platform3Id, AuthenticatedUser ownerPrincipal) {
+        User multiRole = authService.register("multirole@test.com", PASSWORD, Role.USER, "한다중", "010-0000-1111").user();
+
+        Pass studioPass = passService.list(platform1Id).get(0);
+        var studioOrder = orderService.createOrder(
+                platform1Id, ownerPrincipal, multiRole.getId(),
+                List.of(new OrderService.PassSelection(studioPass.getId(), (short) 1)), List.of(), null
+        );
+        orderService.pay(studioOrder.getId(), ownerPrincipal);
+
+        platformService.assignStaff(platform2Id, ownerPrincipal, multiRole.getId(), StaffRole.MANAGER);
+        platformService.assignStaff(platform2Id, ownerPrincipal, multiRole.getId(), StaffRole.TUTOR);
+
+        Pass dancePass = passService.create(
+                platform3Id, ownerPrincipal, "댄스 월정액", PassType.MONTHLY, 130000, null, (short) 30
+        );
+        platformService.assignStaff(platform3Id, ownerPrincipal, multiRole.getId(), StaffRole.TUTOR);
+        var dancePassOrder = orderService.createOrder(
+                platform3Id, ownerPrincipal, multiRole.getId(),
+                List.of(new OrderService.PassSelection(dancePass.getId(), (short) 1)), List.of(), null
+        );
+        orderService.pay(dancePassOrder.getId(), ownerPrincipal);
     }
 
     // reservationId/originalSlot은 실제 예약 없이 승인 관리 화면을 테스트하기 위한 더미 UUID (FK 강제 없음).
@@ -141,12 +195,12 @@ public class DummyDataSeeder implements CommandLineRunner {
                 platformId, tutorId, UUID.randomUUID(), today.minusDays(3),
                 UUID.randomUUID(), today.minusDays(1), UUID.randomUUID(), "수강생 요청으로 인한 일정 변경입니다."
         );
-        approved.approve();
+        approved.approve("정상 승인 처리되었습니다.");
         ScheduleChangeRequest rejected = new ScheduleChangeRequest(
                 platformId, tutorId, UUID.randomUUID(), today.minusDays(5),
                 UUID.randomUUID(), today.minusDays(4), null, "수강생 해외 출장으로 인한 레슨 취소 요청입니다."
         );
-        rejected.reject();
+        rejected.reject("해당 일정으로는 대체 강사 배정이 어려워 반려합니다.");
 
         scheduleChangeRequestRepository.save(pending1);
         scheduleChangeRequestRepository.save(pending2);
@@ -296,7 +350,7 @@ public class DummyDataSeeder implements CommandLineRunner {
 
         User member4 = authService.register("member4@test.com", PASSWORD, Role.USER, "전다인", "010-8888-9999").user();
         User member5 = authService.register("member5@test.com", PASSWORD, Role.USER, "한서준", "010-9999-0000").user();
-
+    
         for (User member : List.of(member4, member5)) {
             var order = orderService.createOrder(
                     platformId, ownerPrincipal, member.getId(),

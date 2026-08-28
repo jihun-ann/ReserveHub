@@ -5,6 +5,7 @@ import com.hub.reservehub.domain.platform.Platform;
 import com.hub.reservehub.domain.platform.PlatformService;
 import com.hub.reservehub.domain.platform.PlatformStaff;
 import com.hub.reservehub.domain.platform.StaffRole;
+import com.hub.reservehub.security.AuthenticatedUser;
 import com.hub.reservehub.security.CurrentAuthenticatedUser;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
@@ -47,27 +48,32 @@ public class PlatformController {
                 currentAuthenticatedUser.get(), request.name(), request.businessType(),
                 request.phone(), request.address(), request.description()
         );
-        return ResponseEntity.status(HttpStatus.CREATED).body(PlatformResponse.from(platform));
+        return ResponseEntity.status(HttpStatus.CREATED).body(PlatformResponse.from(platform, List.of("OWNER")));
     }
 
     @GetMapping("/{id}")
     public PlatformResponse getPlatform(@PathVariable UUID id) {
-        return PlatformResponse.from(platformService.get(id, currentAuthenticatedUser.get()));
+        AuthenticatedUser actor = currentAuthenticatedUser.get();
+        return PlatformResponse.from(platformService.get(id, actor), platformService.myRoles(id, actor));
     }
 
     @GetMapping
-    // Lists platforms visible to the caller: owned platforms for OWNER, assigned platforms otherwise.
-    // 호출자가 볼 수 있는 플랫폼 목록: OWNER는 소유한 플랫폼, 그 외는 배정된 플랫폼.
+    // Lists every platform the caller has any standing on, each tagged with the roles they
+    // hold there — the same account can be OWNER on one, MANAGER on another, USER on a third.
+    // 호출자가 어떤 자격으로든 관계된 모든 플랫폼을, 그 플랫폼에서 가진 역할들과 함께 반환한다 —
+    // 같은 계정이 플랫폼마다 OWNER/MANAGER/USER 등 다른 역할일 수 있다.
     public List<PlatformResponse> listPlatforms() {
-        return platformService.listAccessible(currentAuthenticatedUser.get()).stream()
-                .map(PlatformResponse::from)
+        AuthenticatedUser actor = currentAuthenticatedUser.get();
+        return platformService.listAccessible(actor).stream()
+                .map(platform -> PlatformResponse.from(platform, platformService.myRoles(platform.getId(), actor)))
                 .toList();
     }
 
     @PostMapping("/{id}/staff")
-    @PreAuthorize("hasAnyRole('OWNER', 'MANAGER')")
-    // Assigns a staff member to the platform; caller must already have access to it (checked in the service).
-    // 플랫폼에 스태프를 배정한다. 호출자는 해당 플랫폼에 접근 권한이 있어야 한다 (서비스에서 검증).
+    // Assigns a staff member to the platform; caller must be MANAGER-or-owner on THIS platform,
+    // checked in the service against the actual staff record (not the account's global role).
+    // 플랫폼에 스태프를 배정한다. 호출자가 이 플랫폼에서 실제로 매니저이거나 소유자인지 서비스에서 검증한다
+    // (계정의 전역 role이 아님).
     public ResponseEntity<PlatformStaffResponse> assignStaff(
             @PathVariable UUID id, @Valid @RequestBody AssignStaffRequest request
     ) {
@@ -78,7 +84,6 @@ public class PlatformController {
     }
 
     @DeleteMapping("/{id}/staff/{userId}")
-    @PreAuthorize("hasAnyRole('OWNER', 'MANAGER')")
     public ResponseEntity<Void> removeStaff(@PathVariable UUID id, @PathVariable UUID userId) {
         platformService.removeStaff(id, currentAuthenticatedUser.get(), userId);
         return ResponseEntity.noContent().build();
@@ -98,8 +103,9 @@ public class PlatformController {
     // Suspends or reactivates a platform; only the owning OWNER may do this (guard checks ownership).
     // 플랫폼을 정지/재개한다. 소유한 OWNER만 가능하다 (가드에서 소유권 검증).
     public PlatformResponse updateStatus(@PathVariable UUID id, @Valid @RequestBody UpdateStatusRequest request) {
-        Platform platform = platformService.setSuspended(id, currentAuthenticatedUser.get(), request.suspended());
-        return PlatformResponse.from(platform);
+        AuthenticatedUser actor = currentAuthenticatedUser.get();
+        Platform platform = platformService.setSuspended(id, actor, request.suspended());
+        return PlatformResponse.from(platform, platformService.myRoles(id, actor));
     }
 
     public record UpdateStatusRequest(@NotNull Boolean suspended) {
@@ -119,13 +125,13 @@ public class PlatformController {
 
     public record PlatformResponse(
             UUID id, String name, BusinessType businessType, String phone, String address,
-            String description, String emoji, String colorHex, String status
+            String description, String emoji, String colorHex, String status, List<String> roles
     ) {
-        public static PlatformResponse from(Platform platform) {
+        public static PlatformResponse from(Platform platform, List<String> roles) {
             return new PlatformResponse(
                     platform.getId(), platform.getName(), platform.getBusinessType(), platform.getPhone(),
                     platform.getAddress(), platform.getDescription(), platform.getEmoji(),
-                    platform.getColorHex(), platform.getStatus().name()
+                    platform.getColorHex(), platform.getStatus().name(), roles
             );
         }
     }

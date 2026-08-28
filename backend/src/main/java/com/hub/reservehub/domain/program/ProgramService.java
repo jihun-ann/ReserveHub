@@ -1,6 +1,7 @@
 package com.hub.reservehub.domain.program;
 
 import com.hub.reservehub.domain.platform.PlatformAccessGuard;
+import com.hub.reservehub.domain.platform.StaffRole;
 import com.hub.reservehub.security.AuthenticatedUser;
 import java.time.LocalDate;
 import java.time.LocalTime;
@@ -31,7 +32,7 @@ public class ProgramService {
             UUID platformId, AuthenticatedUser actor, String name, ProgramType type,
             short capacity, short durationMin, @Nullable String description
     ) {
-        platformAccessGuard.verify(platformId, actor);
+        platformAccessGuard.verifyRole(platformId, actor, StaffRole.MANAGER);
         return programRepository.save(new Program(platformId, name, type, capacity, durationMin, description));
     }
 
@@ -50,7 +51,7 @@ public class ProgramService {
     @Transactional
     public void deactivate(UUID programId, AuthenticatedUser actor) {
         Program program = findProgram(programId);
-        platformAccessGuard.verify(program.getPlatformId(), actor);
+        platformAccessGuard.verifyRole(program.getPlatformId(), actor, StaffRole.MANAGER);
         program.deactivate();
     }
 
@@ -60,7 +61,7 @@ public class ProgramService {
             LocalTime startTime, LocalTime endTime, LocalDate validFrom, @Nullable LocalDate validUntil
     ) {
         Program program = findProgram(programId);
-        platformAccessGuard.verify(program.getPlatformId(), actor);
+        platformAccessGuard.verifyRole(program.getPlatformId(), actor, StaffRole.MANAGER);
         return slotRepository.save(new Slot(programId, instructorId, dayOfWeek, startTime, endTime, validFrom, validUntil));
     }
 
@@ -72,7 +73,7 @@ public class ProgramService {
     @Transactional
     public void deactivateSlot(UUID programId, UUID slotId, AuthenticatedUser actor) {
         Program program = findProgram(programId);
-        platformAccessGuard.verify(program.getPlatformId(), actor);
+        platformAccessGuard.verifyRole(program.getPlatformId(), actor, StaffRole.MANAGER);
         Slot slot = slotRepository.findById(slotId)
                 .orElseThrow(() -> new IllegalArgumentException("Slot not found"));
         slot.deactivate();

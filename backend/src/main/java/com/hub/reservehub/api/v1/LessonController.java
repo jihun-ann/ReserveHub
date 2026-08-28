@@ -27,7 +27,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @Validated
-@PreAuthorize("hasAnyRole('OWNER', 'MANAGER', 'ADMIN')")
+@PreAuthorize("hasAnyRole('OWNER', 'MANAGER', 'TUTOR')")
 public class LessonController {
 
     private final LessonService lessonService;
@@ -44,7 +44,6 @@ public class LessonController {
     }
 
     @GetMapping("/api/v1/platforms/{platformId}/lessons")
-    @PreAuthorize("hasAnyRole('OWNER', 'MANAGER')")
     public List<LessonHistoryResponse> listHistory(
             @PathVariable UUID platformId,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,

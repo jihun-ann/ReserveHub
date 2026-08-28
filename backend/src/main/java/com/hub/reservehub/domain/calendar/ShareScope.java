@@ -4,5 +4,5 @@ public enum ShareScope {
     PLATFORM,
     ALL_MANAGER,
     INCLUDE_OWNER,
-    INCLUDE_ADMIN
+    INCLUDE_TUTOR
 }

@@ -200,7 +200,7 @@ export default function ManagerCalendarView({ platformId }) {
 							<option value="PLATFORM">해당 플랫폼 내</option>
 							<option value="ALL_MANAGER">전체 매니저</option>
 							<option value="INCLUDE_OWNER">오너 포함</option>
-							<option value="INCLUDE_ADMIN">강사 포함</option>
+							<option value="INCLUDE_TUTOR">강사 포함</option>
 						</select>
 					</div>
 					{saveError && <div style={{ color: "var(--red)", fontSize: "12px" }}>{saveError}</div>}

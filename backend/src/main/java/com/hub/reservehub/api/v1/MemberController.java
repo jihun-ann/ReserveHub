@@ -13,10 +13,10 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 // MemberService.list already scopes access via platformAccessGuard (owner or any active staff,
-// including ADMIN/tutor) — this just needs to admit tutors past the door.
-// MemberService.list이 platformAccessGuard로 접근 범위를 이미 검증한다(오너 또는 ADMIN/강사 포함 활성 스태프
+// including TUTOR) — this just needs to admit tutors past the door.
+// MemberService.list이 platformAccessGuard로 접근 범위를 이미 검증한다(오너 또는 TUTOR/강사 포함 활성 스태프
 // 누구나) — 여기서는 강사가 그 검증까지 도달하도록 막지만 않으면 된다.
-@PreAuthorize("hasAnyRole('OWNER', 'MANAGER', 'ADMIN')")
+@PreAuthorize("hasAnyRole('OWNER', 'MANAGER', 'TUTOR')")
 public class MemberController {
 
     private final MemberService memberService;
