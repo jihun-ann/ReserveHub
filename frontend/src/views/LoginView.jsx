@@ -4,7 +4,7 @@ import { apiPost, setSession } from "../api/http.js";
 
 export default function LoginView() {
 	const navigate = useNavigate();
-	const [email, setEmail] = useState("");
+	const [username, setUsername] = useState("");
 	const [password, setPassword] = useState("");
 	const [error, setError] = useState("");
 	const [loading, setLoading] = useState(false);
@@ -14,7 +14,7 @@ export default function LoginView() {
 		setError("");
 		setLoading(true);
 		try {
-			const result = await apiPost("/api/v1/auth/login", { email, password });
+			const result = await apiPost("/api/v1/auth/login", { username, password });
 			setSession(result);
 			navigate("/app");
 		} catch (err) {
@@ -54,11 +54,11 @@ export default function LoginView() {
 					<h1 style={{ fontSize: "20px", fontWeight: 700, color: "var(--text)" }}>로그인</h1>
 				</div>
 				<div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
-					<label style={{ fontSize: "12px", color: "var(--text-sub)" }}>이메일</label>
+					<label style={{ fontSize: "12px", color: "var(--text-sub)" }}>아이디</label>
 					<input
-						type="email"
-						value={email}
-						onChange={(e) => setEmail(e.target.value)}
+						type="text"
+						value={username}
+						onChange={(e) => setUsername(e.target.value)}
 						required
 						style={inputStyle}
 					/>

@@ -18,6 +18,7 @@ export default function ManagerMypageView({ platformId, currentPlatform }) {
 
 	const [profileName, setProfileName] = useState(user?.name || "");
 	const [profilePhone, setProfilePhone] = useState(user?.phone || "");
+	const [profileEmail, setProfileEmail] = useState(user?.email || "");
 	const [profileError, setProfileError] = useState("");
 	const [profileSuccess, setProfileSuccess] = useState("");
 	const [savingProfile, setSavingProfile] = useState(false);
@@ -65,10 +66,10 @@ export default function ManagerMypageView({ platformId, currentPlatform }) {
 	async function submitProfile() {
 		setProfileError("");
 		setProfileSuccess("");
-		if (!profileName.trim()) return;
+		if (!profileName.trim() || !profileEmail.trim()) return;
 		setSavingProfile(true);
 		try {
-			await updateProfile(profileName.trim(), profilePhone.trim() || null);
+			await updateProfile(profileName.trim(), profilePhone.trim() || null, profileEmail.trim());
 			setProfileSuccess("정보가 저장되었습니다.");
 		} catch (err) {
 			setProfileError(err.message || "정보 저장에 실패했습니다.");
@@ -90,7 +91,8 @@ export default function ManagerMypageView({ platformId, currentPlatform }) {
 				<div className="hero-avatar">{(user?.name || displayName(user))[0]}</div>
 				<div className="hero-info">
 					<div className="hero-name">{user?.name || displayName(user)}</div>
-					<div className="hero-email">{user?.email}</div>
+					<div className="hero-email">@{user?.username}</div>
+					<div className="hero-email" style={{ marginTop: "2px" }}>{user?.email}</div>
 					{user?.phone && <div className="hero-email" style={{ marginTop: "2px" }}>{user.phone}</div>}
 				</div>
 				<div className="hero-stats">
@@ -151,7 +153,11 @@ export default function ManagerMypageView({ platformId, currentPlatform }) {
 					</div>
 					<div className="form-field">
 						<label>이메일</label>
-						<input type="email" value={user?.email || ""} readOnly style={{ opacity: ".7", cursor: "default" }} />
+						<input type="email" value={profileEmail} onChange={(e) => setProfileEmail(e.target.value)} placeholder="name@example.com" />
+					</div>
+					<div className="form-field">
+						<label>아이디</label>
+						<input type="text" value={user?.username || ""} readOnly style={{ opacity: ".7", cursor: "default" }} />
 					</div>
 					<div className="form-field">
 						<label>역할</label>

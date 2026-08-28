@@ -7,6 +7,7 @@ import com.hub.reservehub.security.CurrentAuthenticatedUser;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Pattern;
 import jakarta.validation.Valid;
 import java.util.UUID;
 import org.springframework.http.HttpStatus;
@@ -47,11 +48,11 @@ public class UserController {
 
     @PatchMapping("/me")
     public UserResponse updateProfile(@Valid @RequestBody UpdateProfileRequest request) {
-        User user = userService.updateProfile(currentAuthenticatedUser.get().getId(), request.name(), request.phone());
+        User user = userService.updateProfile(currentAuthenticatedUser.get().getId(), request.name(), request.phone(), request.email());
         return UserResponse.from(user);
     }
 
-    public record UpdateProfileRequest(@NotBlank String name, String phone) {
+    public record UpdateProfileRequest(@NotBlank String name, String phone, @Email @NotBlank String email) {
     }
 
     @GetMapping("/{id}")
@@ -67,6 +68,7 @@ public class UserController {
     // 관리 API가 계정을 직접 생성할 때 비밀번호를 해시해서 사용자를 만든다.
     public ResponseEntity<UserResponse> createUser(@Valid @RequestBody CreateUserRequest request) {
         User user = userService.create(
+                request.username(),
                 request.email(),
                 passwordEncoder.encode(request.password()),
                 request.role(),
@@ -77,6 +79,7 @@ public class UserController {
     }
 
     public record CreateUserRequest(
+            @NotBlank @Pattern(regexp = "^[a-zA-Z0-9_]{4,20}$", message = "아이디는 영문/숫자/밑줄 4~20자여야 합니다") String username,
             @Email @NotBlank String email,
             @NotBlank String password,
             @NotNull Role role,
@@ -85,10 +88,10 @@ public class UserController {
     ) {
     }
 
-    public record UserResponse(UUID id, String email, Role role, String name, String phone) {
+    public record UserResponse(UUID id, String username, String email, Role role, String name, String phone) {
 
         public static UserResponse from(User user) {
-            return new UserResponse(user.getId(), user.getEmail(), user.getRole(), user.getName(), user.getPhone());
+            return new UserResponse(user.getId(), user.getUsername(), user.getEmail(), user.getRole(), user.getName(), user.getPhone());
         }
     }
 }

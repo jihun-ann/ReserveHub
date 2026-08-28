@@ -1,4 +1,69 @@
 #user-app {
+    --user-rgb: 124, 106, 247;
+
+    /* 플랫폼 전환 탭 */
+
+    .plat-switch {
+        padding: 10px 12px;
+        border-bottom: 1px solid var(--border);
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+    }
+
+    .plat-switch-label {
+        font-size: 9px;
+        color: var(--text-dim);
+        letter-spacing: 1.5px;
+        text-transform: uppercase;
+        margin-bottom: 2px;
+    }
+
+    .plat-tab-btn {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 7px 10px;
+        border-radius: var(--rs);
+        border: none;
+        background: none;
+        color: var(--text-sub);
+        cursor: pointer;
+        font-size: 12px;
+        font-weight: 500;
+        font-family: inherit;
+        transition: all var(--tr);
+        width: 100%;
+        text-align: left;
+        white-space: nowrap;
+        overflow: hidden;
+    }
+
+    .plat-tab-btn:hover {
+        background: var(--surface2);
+    }
+
+    .plat-tab-btn.active {
+        background: rgba(var(--user-rgb), .12);
+        color: var(--accent);
+        font-weight: 700;
+    }
+
+    .plat-tab-btn .plat-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 2px;
+        flex-shrink: 0;
+    }
+
+    .sidebar.collapsed .plat-switch-label, .sidebar.collapsed .plat-tab-btn span {
+        display: none;
+    }
+
+    .sidebar.collapsed .plat-tab-btn {
+        justify-content: center;
+    }
+
     /* ── 메인 ── */
 
     .main {

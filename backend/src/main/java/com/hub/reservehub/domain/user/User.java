@@ -17,6 +17,11 @@ public class User extends BaseEntity {
     @GeneratedValue
     private UUID id;
 
+    // 로그인 아이디 — 이메일과 별개의 통상적인 아이디 형식(영문/숫자/밑줄). 로그인 식별자는 이걸
+    // 쓰고, 이메일은 연락처 성격의 정보로 분리해서 관리한다.
+    @Column(nullable = false, unique = true)
+    private String username;
+
     @Column(nullable = false, unique = true)
     private String email;
 
@@ -37,7 +42,8 @@ public class User extends BaseEntity {
         // JPA only.
     }
 
-    public User(String email, String passwordHash, Role role, String name, @Nullable String phone) {
+    public User(String username, String email, String passwordHash, Role role, String name, @Nullable String phone) {
+        this.username = username;
         this.email = email;
         this.passwordHash = passwordHash;
         this.role = role;
@@ -47,6 +53,10 @@ public class User extends BaseEntity {
 
     public UUID getId() {
         return id;
+    }
+
+    public String getUsername() {
+        return username;
     }
 
     public String getEmail() {
@@ -74,8 +84,9 @@ public class User extends BaseEntity {
         this.passwordHash = passwordHash;
     }
 
-    public void updateProfile(String name, @Nullable String phone) {
+    public void updateProfile(String name, @Nullable String phone, String email) {
         this.name = name;
         this.phone = phone;
+        this.email = email;
     }
 }

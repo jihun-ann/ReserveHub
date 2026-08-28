@@ -89,10 +89,10 @@ public class DummyDataSeeder implements CommandLineRunner {
     @Override
     public void run(String... args) {
         System.out.println("[DummyDataSeeder] seeding start");
-        User owner = authService.register("owner@test.com", PASSWORD, Role.OWNER, "김도윤", "010-1111-2222").user();
-        User manager = authService.register("manager@test.com", PASSWORD, Role.MANAGER, "이서연", "010-2222-3333").user();
-        User tutor = authService.register("tutor@test.com", PASSWORD, Role.TUTOR, "박지훈", "010-3333-4444").user();
-        authService.register("user@test.com", PASSWORD, Role.USER, "최민서", "010-4444-5555");
+        User owner = authService.register("owner", "owner@test.com", PASSWORD, Role.OWNER, "김도윤", "010-1111-2222");
+        User manager = authService.register("manager", "manager@test.com", PASSWORD, Role.MANAGER, "이서연", "010-2222-3333");
+        User tutor = authService.register("tutor", "tutor@test.com", PASSWORD, Role.TUTOR, "박지훈", "010-3333-4444");
+        authService.register("user", "user@test.com", PASSWORD, Role.USER, "최민서", "010-4444-5555");
 
         AuthenticatedUser ownerPrincipal = AuthenticatedUser.from(owner);
         Platform platform = platformService.create(
@@ -156,7 +156,7 @@ public class DummyDataSeeder implements CommandLineRunner {
     // 위한 전용 테스트 계정 — 테스트 스튜디오는 수강생만, 홍대 요가는 매니저+강사를 동시에(같은
     // 플랫폼에서 두 StaffRole을 동시에 갖는 케이스), 잠실 댄스는 수강생+강사를 동시에 가진다.
     private void seedMultiRoleAccount(UUID platform1Id, UUID platform2Id, UUID platform3Id, AuthenticatedUser ownerPrincipal) {
-        User multiRole = authService.register("multirole@test.com", PASSWORD, Role.USER, "한다중", "010-0000-1111").user();
+        User multiRole = authService.register("multirole", "multirole@test.com", PASSWORD, Role.USER, "한다중", "010-0000-1111");
 
         Pass studioPass = passService.list(platform1Id).get(0);
         var studioOrder = orderService.createOrder(
@@ -225,9 +225,9 @@ public class DummyDataSeeder implements CommandLineRunner {
                 3, null, null, "3개월 이상 등록 시 10% 할인"
         );
 
-        User member1 = authService.register("member1@test.com", PASSWORD, Role.USER, "정하은", "010-5555-6666").user();
-        User member2 = authService.register("member2@test.com", PASSWORD, Role.USER, "강태윤", "010-6666-7777").user();
-        User member3 = authService.register("member3@test.com", PASSWORD, Role.USER, "윤서아", "010-7777-8888").user();
+        User member1 = authService.register("member1", "member1@test.com", PASSWORD, Role.USER, "정하은", "010-5555-6666");
+        User member2 = authService.register("member2", "member2@test.com", PASSWORD, Role.USER, "강태윤", "010-6666-7777");
+        User member3 = authService.register("member3", "member3@test.com", PASSWORD, Role.USER, "윤서아", "010-7777-8888");
 
         // member1: 할인 없이 그룹 월정액 결제 → 활성 상태.
         var order1 = orderService.createOrder(
@@ -348,8 +348,8 @@ public class DummyDataSeeder implements CommandLineRunner {
                 platformId, ownerPrincipal, "요가 월정액", PassType.MONTHLY, 120000, null, (short) 30
         );
 
-        User member4 = authService.register("member4@test.com", PASSWORD, Role.USER, "전다인", "010-8888-9999").user();
-        User member5 = authService.register("member5@test.com", PASSWORD, Role.USER, "한서준", "010-9999-0000").user();
+        User member4 = authService.register("member4", "member4@test.com", PASSWORD, Role.USER, "전다인", "010-8888-9999");
+        User member5 = authService.register("member5", "member5@test.com", PASSWORD, Role.USER, "한서준", "010-9999-0000");
     
         for (User member : List.of(member4, member5)) {
             var order = orderService.createOrder(

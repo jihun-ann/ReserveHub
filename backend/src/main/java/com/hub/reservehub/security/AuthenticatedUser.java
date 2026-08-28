@@ -16,19 +16,19 @@ import org.springframework.security.core.userdetails.UserDetails;
 public class AuthenticatedUser implements UserDetails {
 
     private final UUID id;
-    private final String email;
+    private final String username;
     private final String passwordHash;
     private final Role role;
 
-    private AuthenticatedUser(UUID id, String email, String passwordHash, Role role) {
+    private AuthenticatedUser(UUID id, String username, String passwordHash, Role role) {
         this.id = id;
-        this.email = email;
+        this.username = username;
         this.passwordHash = passwordHash;
         this.role = role;
     }
 
     public static AuthenticatedUser from(User user) {
-        return new AuthenticatedUser(user.getId(), user.getEmail(), user.getPasswordHash(), user.getRole());
+        return new AuthenticatedUser(user.getId(), user.getUsername(), user.getPasswordHash(), user.getRole());
     }
 
     // Exposes the application-specific identifier for downstream business logic.
@@ -37,8 +37,8 @@ public class AuthenticatedUser implements UserDetails {
         return id;
     }
 
-    // Exposes the domain role so JWT claims and authorization can stay role-aware.
-    // JWT 클레임과 인가 로직이 역할 정보를 사용할 수 있도록 도메인 역할을 노출한다.
+    // Exposes the domain role so downstream authorization checks can stay role-aware.
+    // 인가 로직이 역할 정보를 사용할 수 있도록 도메인 역할을 노출한다.
     public Role getRole() {
         return role;
     }
@@ -57,6 +57,6 @@ public class AuthenticatedUser implements UserDetails {
 
     @Override
     public String getUsername() {
-        return email;
+        return username;
     }
 }

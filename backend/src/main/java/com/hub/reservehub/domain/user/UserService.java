@@ -19,8 +19,8 @@ public class UserService {
     @Transactional
     // Saves a new user after the caller has already prepared the password hash.
     // 호출 측에서 준비한 비밀번호 해시를 받아 새 사용자를 저장한다.
-    public User create(String email, String passwordHash, Role role, String name, String phone) {
-        return userRepository.save(new User(email, passwordHash, role, name, phone));
+    public User create(String username, String email, String passwordHash, Role role, String name, String phone) {
+        return userRepository.save(new User(username, email, passwordHash, role, name, phone));
     }
 
     @Transactional(readOnly = true)
@@ -49,9 +49,15 @@ public class UserService {
     }
 
     @Transactional
-    public User updateProfile(UUID id, String name, String phone) {
+    // 이메일도 이 화면에서 바꿀 수 있게 하되, 다른 계정이 이미 쓰는 이메일로는 바꿀 수 없게 막는다.
+    public User updateProfile(UUID id, String name, String phone, String email) {
         User user = get(id);
-        user.updateProfile(name, phone);
+        userRepository.findByEmail(email)
+                .filter(existing -> !existing.getId().equals(id))
+                .ifPresent(existing -> {
+                    throw new IllegalStateException("Email already exists");
+                });
+        user.updateProfile(name, phone, email);
         return user;
     }
 }

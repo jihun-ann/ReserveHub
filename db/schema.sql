@@ -22,6 +22,7 @@ CREATE TYPE user_role AS ENUM (
 
 CREATE TABLE users (
                        id              UUID        PRIMARY KEY DEFAULT uuid_generate_v4(),
+                       username        VARCHAR(50)  NOT NULL UNIQUE,
                        email           VARCHAR(255) NOT NULL UNIQUE,
                        password_hash   TEXT        NOT NULL,
                        name            VARCHAR(100) NOT NULL,
@@ -35,6 +36,7 @@ CREATE TABLE users (
 );
 
 COMMENT ON TABLE  users              IS '전체 사용자 계정. role 컬럼으로 역할을 구분';
+COMMENT ON COLUMN users.username     IS '로그인 아이디 — 이메일과 별개, 통상적인 아이디 형식';
 COMMENT ON COLUMN users.role         IS 'OWNER/MANAGER/TUTOR/USER — 계층 구조 반영';
 COMMENT ON COLUMN users.password_hash IS 'bcrypt hash (cost 12)';
 
