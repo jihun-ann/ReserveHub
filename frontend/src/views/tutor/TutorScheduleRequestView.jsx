@@ -18,7 +18,7 @@ function isoDate(d) {
 	return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 }
 
-export default function TutorScheduleRequestView() {
+export default function TutorScheduleRequestView({ platformId }) {
 	const [requests, setRequests] = useState([]);
 	const [platformsById, setPlatformsById] = useState({});
 	const [loading, setLoading] = useState(true);
@@ -26,6 +26,8 @@ export default function TutorScheduleRequestView() {
 	const [mySlots, setMySlots] = useState([]);
 	const [selectedSlotId, setSelectedSlotId] = useState("");
 	const [dateLessons, setDateLessons] = useState([]);
+	const [selectedYear, setSelectedYear] = useState("");
+	const [selectedMonth, setSelectedMonth] = useState("");
 	const [selectedLessonId, setSelectedLessonId] = useState("");
 	const [reservations, setReservations] = useState([]);
 	const [studentNames, setStudentNames] = useState({});
@@ -42,11 +44,11 @@ export default function TutorScheduleRequestView() {
 			listPlatforms(),
 			listMySlots()
 		]);
-		setRequests(requestList);
+		setRequests(requestList.filter((r) => r.platformId === platformId));
 		setPlatformsById(Object.fromEntries(platforms.map((p) => [p.id, p.name])));
-		setMySlots(slots);
+		setMySlots(slots.filter((s) => s.platformId === platformId));
 		setLoading(false);
-	}, []);
+	}, [platformId]);
 
 	useEffect(() => {
 		refresh();
@@ -58,12 +60,34 @@ export default function TutorScheduleRequestView() {
 		setSelectedLessonId("");
 		setSelectedReservationId("");
 		setReservations([]);
-		if (!slotId) return;
+		if (!slotId) {
+			setSelectedYear("");
+			setSelectedMonth("");
+			return;
+		}
+		// 년/월은 항상 고를 수 있으니, 고르는 수고를 덜게 오늘 날짜로 기본값을 잡아둔다.
 		const today = new Date();
+		setSelectedYear(String(today.getFullYear()));
+		setSelectedMonth(String(today.getMonth() + 1).padStart(2, "0"));
 		const from = isoDate(new Date(today.getTime() - 14 * 86400000));
 		const to = isoDate(new Date(today.getTime() + 60 * 86400000));
 		const lessons = (await listMyLessons(from, to)).filter((l) => l.slotId === slotId);
 		setDateLessons(lessons);
+	}
+
+	function pickYear(y) {
+		setSelectedYear(y);
+		setSelectedMonth("");
+		setSelectedLessonId("");
+		setSelectedReservationId("");
+		setReservations([]);
+	}
+
+	function pickMonth(m) {
+		setSelectedMonth(m);
+		setSelectedLessonId("");
+		setSelectedReservationId("");
+		setReservations([]);
 	}
 
 	async function pickDate(lessonId) {
@@ -91,6 +115,8 @@ export default function TutorScheduleRequestView() {
 			});
 			setSelectedSlotId("");
 			setDateLessons([]);
+			setSelectedYear("");
+			setSelectedMonth("");
 			setSelectedLessonId("");
 			setSelectedReservationId("");
 			setReservations([]);
@@ -103,6 +129,15 @@ export default function TutorScheduleRequestView() {
 			setSubmitting(false);
 		}
 	}
+
+	// "일자"를 년/월/일로 나눠 고른다 — 년/월은 고를 수 있는 범위를 그대로 보여주고,
+	// 실제로 예정된 수업이 있는지는 마지막 "일" 단계에서만 걸러낸다.
+	const thisYear = new Date().getFullYear();
+	const availableYears = [thisYear - 1, thisYear, thisYear + 1].map(String);
+	const availableMonths = Array.from({ length: 12 }, (_, i) => String(i + 1).padStart(2, "0"));
+	const availableDays = dateLessons
+		.filter((l) => l.lessonDate.slice(0, 4) === selectedYear && l.lessonDate.slice(5, 7) === selectedMonth)
+		.sort((a, b) => (a.lessonDate < b.lessonDate ? -1 : 1));
 
 	return (
 		<div id="tutor-request" className="page">
@@ -128,14 +163,27 @@ export default function TutorScheduleRequestView() {
 					</div>
 					<div className="form-field">
 						<label>일자</label>
-						<select value={selectedLessonId} onChange={(e) => pickDate(e.target.value)} disabled={!selectedSlotId}>
-							<option value="">
-								{!selectedSlotId ? "먼저 수업을 선택하세요" : dateLessons.length === 0 ? "예정된 날짜가 없습니다" : "일자를 선택하세요"}
-							</option>
-							{dateLessons.map((l) => (
-								<option key={l.id} value={l.id}>{l.lessonDate}</option>
-							))}
-						</select>
+						<div style={{ display: "flex", gap: "6px" }}>
+							<select value={selectedYear} onChange={(e) => pickYear(e.target.value)} disabled={!selectedSlotId}>
+								<option value="">년도</option>
+								{availableYears.map((y) => <option key={y} value={y}>{y}년</option>)}
+							</select>
+							<select value={selectedMonth} onChange={(e) => pickMonth(e.target.value)} disabled={!selectedYear}>
+								<option value="">월</option>
+								{availableMonths.map((m) => <option key={m} value={m}>{Number(m)}월</option>)}
+							</select>
+							<select value={selectedLessonId} onChange={(e) => pickDate(e.target.value)} disabled={!selectedMonth}>
+								<option value="">일</option>
+								{availableDays.map((l) => (
+									<option key={l.id} value={l.id}>{Number(l.lessonDate.slice(8, 10))}일</option>
+								))}
+							</select>
+						</div>
+						{selectedYear && selectedMonth && availableDays.length === 0 && (
+							<div style={{ fontSize: "11px", color: "var(--text-dim)", marginTop: "4px" }}>
+								이 달엔 예정된 수업이 없습니다
+							</div>
+						)}
 					</div>
 					<div className="form-field">
 						<label>수강생</label>

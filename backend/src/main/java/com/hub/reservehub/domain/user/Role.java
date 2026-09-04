@@ -4,5 +4,6 @@ public enum Role {
     OWNER,
     MANAGER,
     TUTOR,
-    USER
+    USER,
+    TAX_ACCOUNTANT
 }

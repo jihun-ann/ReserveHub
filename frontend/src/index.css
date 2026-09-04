@@ -167,6 +167,184 @@ body {
   transform: rotate(180deg);
 }
 
+/* ── 플랫폼 전환 ──
+   평소엔 현재 플랫폼(tier-current-btn) 하나만 보인다. 그 위에 마우스를 올리면(모바일은
+   탭) 배정된 다른 역할들이 ROLE_PRIORITY 순서상 위/아래로 인라인으로 늘어나며 나타난다
+   (배정 없는 역할은 아예 표시 안 함, 팝오버 아님 — tier-switch 영역 자체 높이가 커진다).
+   역할 줄을 클릭하면 그 줄 옆으로 플랫폼 목록이 튀어나오고(tier-side-flyout), 플랫폼을
+   고르면 전환되며 패널 전체가 닫힌다. 역할별 색상에 기대지 않는 공용 스타일이라 index.css
+   한 곳에만 둔다 (셸마다 활성 역할 하나의 색상 변수만 존재해서, 여러 역할을 동시에
+   나열해야 하는 이 컴포넌트에는 역할별 accent를 쓸 수 없다). */
+
+.tier-switch {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border);
+}
+
+.tier-switch-label {
+  font-size: 9px;
+  color: var(--text-dim);
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  margin-bottom: 4px;
+}
+
+.tier-current {
+  position: relative;
+}
+
+.tier-current-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 7px 10px;
+  border-radius: var(--rs);
+  border: none;
+  background: none;
+  color: var(--text);
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 600;
+  font-family: inherit;
+  white-space: nowrap;
+  overflow: hidden;
+  transition: background var(--tr);
+}
+
+.tier-current-btn:hover {
+  background: var(--surface2);
+}
+
+.tier-current-btn span:nth-child(2) {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tier-current-caret {
+  flex-shrink: 0;
+  color: var(--text-dim);
+  font-size: 10px;
+}
+
+@keyframes tierFlyoutIn {
+  from {
+    opacity: 0;
+    transform: translateX(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+/* 역할 목록을 열고 닫을 때 tier-switch 영역 자체가 부드럽게 늘고 줄어들도록(그래서
+   tier-current-btn과 그 아래 user-card/nav가 자연스럽게 밀렸다 돌아오도록) grid-rows
+   트릭을 쓴다 — 항상 DOM에 그려두고 grid-template-rows만 0fr↔1fr로 트랜지션한다. */
+.tier-expand {
+  display: grid;
+  grid-template-rows: 0fr;
+  visibility: hidden;
+  transition: grid-template-rows .22s ease, visibility 0s linear .22s;
+}
+
+.tier-expand.open {
+  grid-template-rows: 1fr;
+  visibility: visible;
+  transition: grid-template-rows .22s ease, visibility 0s linear;
+}
+
+.tier-expand-inner {
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-height: 0;
+}
+
+.tier-role-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 8px 10px;
+  border-radius: var(--rs);
+  border: none;
+  background: none;
+  color: var(--text);
+  cursor: pointer;
+  font-size: 12.5px;
+  font-weight: 500;
+  font-family: inherit;
+  text-align: left;
+  transition: background var(--tr);
+}
+
+.tier-role-item:hover {
+  background: var(--surface2);
+}
+
+.tier-role-caret {
+  margin-left: auto;
+  color: var(--text-dim);
+}
+
+/* 역할을 클릭하면 그 줄 옆으로 튀어나오는 플랫폼 목록. */
+/* body에 포털로 그려진다(사이드바가 overflow:hidden이라 그 안에서는 옆으로 못 튀어나옴) —
+   top/left는 클릭한 줄의 화면 좌표를 재서 JS(toggleRoleFlyout)에서 인라인으로 넣어준다. */
+.tier-side-flyout {
+  position: fixed;
+  min-width: 180px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--rs);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, .18);
+  padding: 6px;
+  z-index: 210;
+  animation: tierFlyoutIn .16s ease;
+}
+
+.tier-dropdown-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 10px;
+  border-radius: var(--rs);
+  border: none;
+  background: none;
+  color: var(--text);
+  cursor: pointer;
+  font-size: 12.5px;
+  font-weight: 500;
+  font-family: inherit;
+  text-align: left;
+  white-space: nowrap;
+  transition: background var(--tr);
+}
+
+.tier-dropdown-item:hover {
+  background: var(--surface2);
+}
+
+.tier-dropdown-item.active {
+  color: var(--accent);
+  font-weight: 700;
+}
+
+.sidebar.collapsed .tier-switch-label,
+.sidebar.collapsed .tier-current-btn span,
+.sidebar.collapsed .tier-current-caret {
+  display: none;
+}
+
+.sidebar.collapsed .tier-current-btn {
+  justify-content: center;
+}
+
 .user-card {
   display: flex;
   align-items: center;
@@ -514,4 +692,58 @@ body {
     padding: 5px 12px;
     font-size: 12px;
   }
+}
+
+/* ── 모달 ── 역할별 색상에 기대지 않는 공용 스타일이라 index.css 한 곳에만 둔다
+   (예전엔 Manager/Tutor/User CSS에 각각 복제돼 있었는데 Owner엔 없어서, Owner가
+   ManagerCalendarView의 "공유 이벤트 등록" 모달을 열면 완전히 깨져 보였다). */
+
+.modal-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, .7);
+  z-index: 500;
+  align-items: center;
+  justify-content: center;
+  backdrop-filter: blur(4px);
+}
+
+.modal-overlay.open {
+  display: flex;
+}
+
+.modal-box {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  padding: 28px;
+  width: min(480px, 90vw);
+  max-height: 80vh;
+  overflow-y: auto;
+}
+
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 20px;
+}
+
+.modal-title {
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.modal-close {
+  background: none;
+  border: none;
+  color: var(--text-sub);
+  font-size: 20px;
+  cursor: pointer;
+  padding: 4px;
+}
+
+.modal-close:hover {
+  color: var(--text);
 }

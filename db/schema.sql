@@ -12,33 +12,38 @@ CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 -- 1. 계정 / 권한 도메인
 -- ============================================================
 
--- 역할 (OWNER > MANAGER > TUTOR > USER)
+-- 역할 (OWNER > MANAGER > TUTOR > USER, TAX_ACCOUNTANT는 계층과 무관한 계정 전역 역할)
 CREATE TYPE user_role AS ENUM (
-    'OWNER',        -- 오너 (대표)
-    'MANAGER',      -- 매니저 (점주/사장)
-    'TUTOR',        -- 강사
-    'USER'          -- 수강생
+    'OWNER',          -- 오너 (대표)
+    'MANAGER',        -- 매니저 (점주/사장)
+    'TUTOR',          -- 강사
+    'USER',           -- 수강생
+    'TAX_ACCOUNTANT'  -- 세무사 — 오너가 초대한 플랫폼의 재무/정산 데이터만 조회 (platform_tax_accountants)
 );
 
 CREATE TABLE users (
-                       id              UUID        PRIMARY KEY DEFAULT uuid_generate_v4(),
-                       username        VARCHAR(50)  NOT NULL UNIQUE,
-                       email           VARCHAR(255) NOT NULL UNIQUE,
-                       password_hash   TEXT        NOT NULL,
-                       name            VARCHAR(100) NOT NULL,
-                       phone           VARCHAR(20),
-                       role            user_role   NOT NULL DEFAULT 'USER',
-                       profile_image   TEXT,
-                       is_active       BOOLEAN     NOT NULL DEFAULT TRUE,
-                       last_login_at   TIMESTAMPTZ,
-                       created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-                       updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
+                       id                    UUID        PRIMARY KEY DEFAULT uuid_generate_v4(),
+                       username              VARCHAR(50)  NOT NULL UNIQUE,
+                       email                 VARCHAR(255) NOT NULL UNIQUE,
+                       password_hash         TEXT        NOT NULL,
+                       name                  VARCHAR(100) NOT NULL,
+                       phone                 VARCHAR(20),
+                       role                  user_role   NOT NULL DEFAULT 'USER',
+                       profile_image         TEXT,
+                       bank_name             VARCHAR(50),   -- 정산 계좌 — 본인이 마이페이지에서 등록
+                       bank_account_number   VARCHAR(50),
+                       bank_account_holder   VARCHAR(100),
+                       is_active             BOOLEAN     NOT NULL DEFAULT TRUE,
+                       last_login_at         TIMESTAMPTZ,
+                       created_at            TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                       updated_at            TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 COMMENT ON TABLE  users              IS '전체 사용자 계정. role 컬럼으로 역할을 구분';
 COMMENT ON COLUMN users.username     IS '로그인 아이디 — 이메일과 별개, 통상적인 아이디 형식';
-COMMENT ON COLUMN users.role         IS 'OWNER/MANAGER/TUTOR/USER — 계층 구조 반영';
+COMMENT ON COLUMN users.role         IS 'OWNER/MANAGER/TUTOR/USER/TAX_ACCOUNTANT';
 COMMENT ON COLUMN users.password_hash IS 'bcrypt hash (cost 12)';
+COMMENT ON COLUMN users.bank_name    IS '정산 계좌 은행명 — 세무사 조회용, 본인이 직접 등록';
 
 
 -- ============================================================
@@ -83,6 +88,21 @@ CREATE TABLE platform_staff (
 
 COMMENT ON TABLE  platform_staff           IS '플랫폼-스태프 매핑. 한 계정이 한 플랫폼에서 MANAGER+TUTOR을 동시에 가질 수 있음. MANAGER는 1개 플랫폼만 허용 (앱 레이어에서 검증)';
 COMMENT ON COLUMN platform_staff.left_at   IS 'NULL이면 재직 중. Soft delete 방식으로 이력 보존';
+
+
+-- 플랫폼 ↔ 세무사 — platform_staff와 별개 테이블. 스태프가 아니라 오너가 초대한 읽기 전용
+-- 재무 접근 권한이며, 같은 세무사 계정이 여러 오너의 플랫폼에 동시에 걸릴 수 있다.
+CREATE TABLE platform_tax_accountants (
+                                          id              UUID        PRIMARY KEY DEFAULT uuid_generate_v4(),
+                                          platform_id     UUID        NOT NULL REFERENCES platforms(id) ON DELETE CASCADE,
+                                          user_id         UUID        NOT NULL REFERENCES users(id)     ON DELETE CASCADE,
+                                          is_active       BOOLEAN     NOT NULL DEFAULT TRUE,
+                                          joined_at       TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                                          left_at         TIMESTAMPTZ,
+                                          UNIQUE (platform_id, user_id)
+);
+
+COMMENT ON TABLE platform_tax_accountants IS '오너가 초대한 세무사의 플랫폼별 재무 데이터 접근 권한 (매출 집계, 스태프 정산 계좌 조회)';
 
 
 -- ============================================================
@@ -339,13 +359,41 @@ CREATE TABLE schedule_change_requests (
 COMMENT ON TABLE schedule_change_requests IS '강사가 제출한 일정 변경 요청. 매니저 또는 오너가 승인';
 
 
+-- 세무사가 등록한 재무 일정(월급날/지출일/명세서 제출일) — 매니저 또는 오너가 승인
+CREATE TYPE financial_request_type AS ENUM (
+    'PAYDAY',     -- 월급날
+    'EXPENSE',    -- 지출일
+    'STATEMENT'   -- 명세서 제출
+);
+
+CREATE TABLE financial_requests (
+                                     id              UUID                     PRIMARY KEY DEFAULT uuid_generate_v4(),
+                                     platform_id     UUID                     NOT NULL REFERENCES platforms(id),
+                                     requested_by    UUID                     NOT NULL REFERENCES users(id),  -- 세무사
+                                     type            financial_request_type   NOT NULL,
+                                     title           VARCHAR(200)             NOT NULL,
+                                     event_date      DATE                     NOT NULL,
+                                     memo            TEXT,
+                                     status          request_status           NOT NULL DEFAULT 'PENDING',
+                                     decision_memo   TEXT,
+                                     created_at      TIMESTAMPTZ              NOT NULL DEFAULT NOW(),
+                                     updated_at      TIMESTAMPTZ              NOT NULL DEFAULT NOW()
+);
+
+COMMENT ON TABLE financial_requests IS '세무사가 등록한 재무 일정. 매니저 또는 오너가 승인';
+
+
 -- 처리 이력 (모든 승인/반려 행위 기록 — 담당자 추적)
 CREATE TYPE action_target AS ENUM (
-    'SCHEDULE_REQUEST',  -- 일정 변경 요청
-    'MEMBER_MEMO',       -- 회원 상담 메모
-    'STAFF_CHANGE',      -- 강사 등록/변경
-    'PASS_REFUND',       -- 수강권 환불
-    'PLATFORM_CHANGE'    -- 플랫폼 설정 변경
+    'SCHEDULE_REQUEST',   -- 일정 변경 요청
+    'MEMBER_MEMO',        -- 회원 상담 메모
+    'STAFF_CHANGE',       -- 강사 등록/변경
+    'PASS_REFUND',        -- 수강권 환불
+    'PLATFORM_CHANGE',    -- 플랫폼 설정 변경
+    'PROGRAM_CHANGE',     -- 프로그램/슬롯 등록·중단
+    'PASS_CHANGE',        -- 수강권 등록·중단
+    'DISCOUNT_CHANGE',    -- 할인 정책 등록·중단
+    'FINANCIAL_REQUEST'   -- 세무사가 등록한 재무 일정 승인/반려
 );
 
 CREATE TABLE action_logs (
@@ -470,6 +518,11 @@ CREATE INDEX idx_attend_user       ON attendances(user_id);
 CREATE INDEX idx_scr_platform      ON schedule_change_requests(platform_id);
 CREATE INDEX idx_scr_status        ON schedule_change_requests(status);
 CREATE INDEX idx_scr_requested_by  ON schedule_change_requests(requested_by);
+
+-- financial_requests
+CREATE INDEX idx_finreq_platform   ON financial_requests(platform_id);
+CREATE INDEX idx_finreq_status     ON financial_requests(status);
+CREATE INDEX idx_finreq_requested_by ON financial_requests(requested_by);
 
 -- action_logs
 CREATE INDEX idx_alog_platform     ON action_logs(platform_id);

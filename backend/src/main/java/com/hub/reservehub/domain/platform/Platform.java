@@ -7,11 +7,22 @@ import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.Id;
+import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicInteger;
 import org.springframework.lang.Nullable;
 
 @Entity
 public class Platform extends BaseEntity {
+
+    // 캘린더/사이드바에서 플랫폼을 색으로 구분하므로, 생성 순서대로 이 팔레트를 한 바퀴씩 돌며
+    // 배정한다 (전부 같은 기본색이면 여러 플랫폼을 눈으로 구분할 수 없다).
+    private static final List<String> COLOR_PALETTE = List.of(
+            "#7c6af7", "#4fd1c5", "#f6ad55", "#f56565", "#48bb78", "#4299e1", "#ed64a6", "#ecc94b",
+            "#9f7aea", "#38b2ac", "#ed8936", "#e53e3e", "#38a169", "#3182ce", "#d53f8c", "#d69e2e",
+            "#667eea", "#319795", "#dd6b20", "#805ad5"
+    );
+    private static final AtomicInteger COLOR_INDEX = new AtomicInteger(0);
 
     @Id
     @GeneratedValue
@@ -58,6 +69,7 @@ public class Platform extends BaseEntity {
         this.address = address;
         this.description = description;
         this.createdBy = createdBy;
+        this.colorHex = COLOR_PALETTE.get(COLOR_INDEX.getAndIncrement() % COLOR_PALETTE.size());
     }
 
     public UUID getId() {

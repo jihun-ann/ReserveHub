@@ -1,5 +1,8 @@
 package com.hub.reservehub.domain.pass;
 
+import com.hub.reservehub.domain.approval.ActionLog;
+import com.hub.reservehub.domain.approval.ActionLogRepository;
+import com.hub.reservehub.domain.approval.ActionTarget;
 import com.hub.reservehub.domain.platform.PlatformAccessGuard;
 import com.hub.reservehub.domain.platform.StaffRole;
 import com.hub.reservehub.security.AuthenticatedUser;
@@ -16,10 +19,15 @@ public class DiscountPolicyService {
 
     private final DiscountPolicyRepository discountPolicyRepository;
     private final PlatformAccessGuard platformAccessGuard;
+    private final ActionLogRepository actionLogRepository;
 
-    public DiscountPolicyService(DiscountPolicyRepository discountPolicyRepository, PlatformAccessGuard platformAccessGuard) {
+    public DiscountPolicyService(
+            DiscountPolicyRepository discountPolicyRepository, PlatformAccessGuard platformAccessGuard,
+            ActionLogRepository actionLogRepository
+    ) {
         this.discountPolicyRepository = discountPolicyRepository;
         this.platformAccessGuard = platformAccessGuard;
+        this.actionLogRepository = actionLogRepository;
     }
 
     @Transactional
@@ -28,9 +36,11 @@ public class DiscountPolicyService {
             @Nullable Integer conditionValue, @Nullable String couponCode, @Nullable Instant expiresAt, @Nullable String memo
     ) {
         platformAccessGuard.verifyRole(platformId, actor, StaffRole.MANAGER);
-        return discountPolicyRepository.save(
+        DiscountPolicy policy = discountPolicyRepository.save(
                 new DiscountPolicy(platformId, name, type, rate, conditionValue, couponCode, expiresAt, memo, actor.getId())
         );
+        actionLogRepository.save(ActionLog.of(platformId, actor.getId(), ActionTarget.DISCOUNT_CHANGE, policy.getId(), "CREATE", null));
+        return policy;
     }
 
     @Transactional(readOnly = true)
@@ -46,6 +56,7 @@ public class DiscountPolicyService {
         DiscountPolicy policy = findPolicy(policyId);
         platformAccessGuard.verifyRole(policy.getPlatformId(), actor, StaffRole.MANAGER);
         policy.deactivate();
+        actionLogRepository.save(ActionLog.of(policy.getPlatformId(), actor.getId(), ActionTarget.DISCOUNT_CHANGE, policy.getId(), "DEACTIVATE", null));
     }
 
     private DiscountPolicy findPolicy(UUID policyId) {

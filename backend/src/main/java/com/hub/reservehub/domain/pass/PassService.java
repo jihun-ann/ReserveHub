@@ -1,5 +1,8 @@
 package com.hub.reservehub.domain.pass;
 
+import com.hub.reservehub.domain.approval.ActionLog;
+import com.hub.reservehub.domain.approval.ActionLogRepository;
+import com.hub.reservehub.domain.approval.ActionTarget;
 import com.hub.reservehub.domain.platform.PlatformAccessGuard;
 import com.hub.reservehub.domain.platform.StaffRole;
 import com.hub.reservehub.security.AuthenticatedUser;
@@ -14,10 +17,12 @@ public class PassService {
 
     private final PassRepository passRepository;
     private final PlatformAccessGuard platformAccessGuard;
+    private final ActionLogRepository actionLogRepository;
 
-    public PassService(PassRepository passRepository, PlatformAccessGuard platformAccessGuard) {
+    public PassService(PassRepository passRepository, PlatformAccessGuard platformAccessGuard, ActionLogRepository actionLogRepository) {
         this.passRepository = passRepository;
         this.platformAccessGuard = platformAccessGuard;
+        this.actionLogRepository = actionLogRepository;
     }
 
     @Transactional
@@ -26,7 +31,9 @@ public class PassService {
             int price, @Nullable Short sessionCount, short validDays
     ) {
         platformAccessGuard.verifyRole(platformId, actor, StaffRole.MANAGER);
-        return passRepository.save(new Pass(platformId, name, type, price, sessionCount, validDays));
+        Pass pass = passRepository.save(new Pass(platformId, name, type, price, sessionCount, validDays));
+        actionLogRepository.save(ActionLog.of(platformId, actor.getId(), ActionTarget.PASS_CHANGE, pass.getId(), "CREATE", null));
+        return pass;
     }
 
     @Transactional(readOnly = true)
@@ -46,6 +53,7 @@ public class PassService {
         Pass pass = findPass(passId);
         platformAccessGuard.verifyRole(pass.getPlatformId(), actor, StaffRole.MANAGER);
         pass.deactivate();
+        actionLogRepository.save(ActionLog.of(pass.getPlatformId(), actor.getId(), ActionTarget.PASS_CHANGE, pass.getId(), "DEACTIVATE", null));
     }
 
     private Pass findPass(UUID passId) {

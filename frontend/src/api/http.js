@@ -71,3 +71,17 @@ export async function updateProfile(name, phone, email) {
   }
   return updated;
 }
+
+// 정산 계좌 — 강사/매니저가 마이페이지에서 등록하면, 오너가 초대한 세무사가 플랫폼별로 조회할 수 있다.
+export async function updateBankInfo(bankName, bankAccountNumber, bankAccountHolder) {
+  const updated = await apiPatch("/api/v1/users/me/bank-info", { bankName, bankAccountNumber, bankAccountHolder });
+  if (cachedUser) {
+    cachedUser = {
+      ...cachedUser,
+      bankName: updated.bankName,
+      bankAccountNumber: updated.bankAccountNumber,
+      bankAccountHolder: updated.bankAccountHolder
+    };
+  }
+  return updated;
+}

@@ -138,8 +138,9 @@ public class OrderService {
     }
 
     @Transactional(readOnly = true)
+    // MANAGER 또는 오너가 초대한 세무사(재무 데이터 열람용, 매출 집계는 이 목록을 프론트에서 합산한다)만 조회 가능.
     public List<Order> listByPlatform(UUID platformId, AuthenticatedUser actor) {
-        platformAccessGuard.verifyRole(platformId, actor, StaffRole.MANAGER);
+        platformAccessGuard.verifyFinancialAccess(platformId, actor);
         return orderRepository.findByPlatformId(platformId);
     }
 

@@ -108,11 +108,15 @@ public class AuthController {
     ) {
     }
 
-    public record UserProfileResponse(String id, String username, String email, Role role, String name, String phone) {
+    public record UserProfileResponse(
+            String id, String username, String email, Role role, String name, String phone,
+            String bankName, String bankAccountNumber, String bankAccountHolder
+    ) {
 
         public static UserProfileResponse from(User user) {
             return new UserProfileResponse(
-                    user.getId().toString(), user.getUsername(), user.getEmail(), user.getRole(), user.getName(), user.getPhone()
+                    user.getId().toString(), user.getUsername(), user.getEmail(), user.getRole(), user.getName(), user.getPhone(),
+                    user.getBankName(), user.getBankAccountNumber(), user.getBankAccountHolder()
             );
         }
     }

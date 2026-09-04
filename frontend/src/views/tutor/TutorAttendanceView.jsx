@@ -16,7 +16,7 @@ function isoDate(d) {
 	return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 }
 
-export default function TutorAttendanceView() {
+export default function TutorAttendanceView({ platformId }) {
 	const today = new Date();
 	const todayIso = isoDate(today);
 	const todayKey = JS_DAY_TO_KEY[today.getDay()];
@@ -39,15 +39,16 @@ export default function TutorAttendanceView() {
 			listMyLessons(todayIso, todayIso),
 			listMyLessons(monthStart, monthEnd)
 		]);
-		setSlots(mySlots);
+		const myTodaysLessons = todaysLessons.filter((l) => l.platformId === platformId);
+		setSlots(mySlots.filter((s) => s.platformId === platformId));
 		setPlatformsById(Object.fromEntries(platforms.map((p) => [p.id, p.name])));
-		setTodayLessons(todaysLessons);
-		setMonthLessons(monthly);
+		setTodayLessons(myTodaysLessons);
+		setMonthLessons(monthly.filter((l) => l.platformId === platformId));
 
-		const attendanceEntries = await Promise.all(todaysLessons.map((l) => listLessonAttendance(l.id)));
-		setAttendanceByLesson(Object.fromEntries(todaysLessons.map((l, i) => [l.id, attendanceEntries[i]])));
+		const attendanceEntries = await Promise.all(myTodaysLessons.map((l) => listLessonAttendance(l.id)));
+		setAttendanceByLesson(Object.fromEntries(myTodaysLessons.map((l, i) => [l.id, attendanceEntries[i]])));
 
-		const platformIds = [...new Set(todaysLessons.map((l) => l.platformId))];
+		const platformIds = [...new Set(myTodaysLessons.map((l) => l.platformId))];
 		const memberLists = await Promise.all(platformIds.map((id) => listMembers(id)));
 		const membersMap = {};
 		platformIds.forEach((id, i) => {
@@ -57,7 +58,7 @@ export default function TutorAttendanceView() {
 		setMembersByPlatform(membersMap);
 
 		setLoading(false);
-	}, [todayIso]);
+	}, [todayIso, platformId]);
 
 	useEffect(() => {
 		refresh();

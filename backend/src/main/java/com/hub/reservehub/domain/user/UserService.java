@@ -40,6 +40,20 @@ public class UserService {
     }
 
     @Transactional
+    // 이미 있는 이메일이면 역할이 맞는지 확인하고 그대로 반환하고, 없으면 새로 만든다 — 세무사처럼
+    // 여러 플랫폼에 걸쳐 재사용되는 계정을 오너가 초대할 때마다 새로 만들지 않고 이어붙일 수 있게 한다.
+    public User findOrCreateWithRole(String username, String email, String rawPassword, Role role, String name, String phone) {
+        return userRepository.findByEmail(email)
+                .map(existing -> {
+                    if (existing.getRole() != role) {
+                        throw new IllegalStateException("이미 다른 역할로 등록된 이메일입니다.");
+                    }
+                    return existing;
+                })
+                .orElseGet(() -> userRepository.save(new User(username, email, passwordEncoder.encode(rawPassword), role, name, phone)));
+    }
+
+    @Transactional
     public void changePassword(UUID id, String currentRawPassword, String newRawPassword) {
         User user = get(id);
         if (!passwordEncoder.matches(currentRawPassword, user.getPasswordHash())) {
@@ -58,6 +72,13 @@ public class UserService {
                     throw new IllegalStateException("Email already exists");
                 });
         user.updateProfile(name, phone, email);
+        return user;
+    }
+
+    @Transactional
+    public User updateBankInfo(UUID id, String bankName, String bankAccountNumber, String bankAccountHolder) {
+        User user = get(id);
+        user.updateBankInfo(bankName, bankAccountNumber, bankAccountHolder);
         return user;
     }
 }

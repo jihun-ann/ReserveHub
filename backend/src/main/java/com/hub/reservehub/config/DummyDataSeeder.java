@@ -1,6 +1,8 @@
 package com.hub.reservehub.config;
 
 import com.hub.reservehub.api.v1.auth.service.AuthService;
+import com.hub.reservehub.domain.approval.FinancialRequestService;
+import com.hub.reservehub.domain.approval.FinancialRequestType;
 import com.hub.reservehub.domain.approval.ScheduleChangeRequest;
 import com.hub.reservehub.domain.approval.ScheduleChangeRequestRepository;
 import com.hub.reservehub.domain.approval.ScheduleChangeRequestService;
@@ -8,6 +10,7 @@ import com.hub.reservehub.domain.platform.BusinessType;
 import com.hub.reservehub.domain.platform.Platform;
 import com.hub.reservehub.domain.platform.PlatformService;
 import com.hub.reservehub.domain.platform.StaffRole;
+import com.hub.reservehub.domain.platform.TaxAccountantService;
 import com.hub.reservehub.domain.program.DayOfWeek;
 import com.hub.reservehub.domain.program.Program;
 import com.hub.reservehub.domain.program.ProgramService;
@@ -32,6 +35,7 @@ import com.hub.reservehub.domain.reservation.Reservation;
 import com.hub.reservehub.domain.reservation.ReservationService;
 import com.hub.reservehub.domain.user.Role;
 import com.hub.reservehub.domain.user.User;
+import com.hub.reservehub.domain.user.UserService;
 import com.hub.reservehub.security.AuthenticatedUser;
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -52,6 +56,8 @@ public class DummyDataSeeder implements CommandLineRunner {
 
     private final AuthService authService;
     private final PlatformService platformService;
+    private final TaxAccountantService taxaccountService;
+    private final UserService userService;
     private final ScheduleChangeRequestRepository scheduleChangeRequestRepository;
     private final PassService passService;
     private final UserPassRepository userPassRepository;
@@ -62,18 +68,23 @@ public class DummyDataSeeder implements CommandLineRunner {
     private final LessonService lessonService;
     private final ReservationService reservationService;
     private final ScheduleChangeRequestService scheduleChangeRequestService;
+    private final FinancialRequestService financialRequestService;
 
     public DummyDataSeeder(
             AuthService authService, PlatformService platformService,
+            TaxAccountantService taxaccountService, UserService userService,
             ScheduleChangeRequestRepository scheduleChangeRequestRepository,
             PassService passService, UserPassRepository userPassRepository,
             OrderService orderService, DiscountPolicyService discountPolicyService,
             CalendarEventService calendarEventService, ProgramService programService,
             LessonService lessonService, ReservationService reservationService,
-            ScheduleChangeRequestService scheduleChangeRequestService
+            ScheduleChangeRequestService scheduleChangeRequestService,
+            FinancialRequestService financialRequestService
     ) {
         this.authService = authService;
         this.platformService = platformService;
+        this.taxaccountService = taxaccountService;
+        this.userService = userService;
         this.scheduleChangeRequestRepository = scheduleChangeRequestRepository;
         this.passService = passService;
         this.userPassRepository = userPassRepository;
@@ -84,6 +95,7 @@ public class DummyDataSeeder implements CommandLineRunner {
         this.lessonService = lessonService;
         this.reservationService = reservationService;
         this.scheduleChangeRequestService = scheduleChangeRequestService;
+        this.financialRequestService = financialRequestService;
     }
 
     @Override
@@ -93,6 +105,11 @@ public class DummyDataSeeder implements CommandLineRunner {
         User manager = authService.register("manager", "manager@test.com", PASSWORD, Role.MANAGER, "이서연", "010-2222-3333");
         User tutor = authService.register("tutor", "tutor@test.com", PASSWORD, Role.TUTOR, "박지훈", "010-3333-4444");
         authService.register("user", "user@test.com", PASSWORD, Role.USER, "최민서", "010-4444-5555");
+
+        // 세무사가 조회할 정산 계좌 — 실제 서비스에선 본인이 마이페이지에서 등록하지만, 더미데이터는
+        // 미리 채워둬서 세무사 계정 시드 즉시 "직원 정보" 화면에 값이 보이도록 한다.
+        userService.updateBankInfo(manager.getId(), "국민은행", "110-234-567890", manager.getName());
+        userService.updateBankInfo(tutor.getId(), "신한은행", "110-345-678901", tutor.getName());
 
         AuthenticatedUser ownerPrincipal = AuthenticatedUser.from(owner);
         Platform platform = platformService.create(
@@ -150,6 +167,34 @@ public class DummyDataSeeder implements CommandLineRunner {
         platformService.assignStaff(platform3.getId(), ownerPrincipal, tutor.getId(), StaffRole.MANAGER);
 
         seedMultiRoleAccount(platform.getId(), platform2.getId(), platform3.getId(), ownerPrincipal);
+
+        // 세무사는 오너가 명시적으로 초대한 플랫폼만 본다 — 잠실 댄스 아카데미는 일부러 초대하지
+        // 않아서, "계약 안 한 플랫폼은 안 보임"이 그대로 재현되도록 한다.
+        User taxAccountant = taxaccountService.grant(
+                platform.getId(), ownerPrincipal, "taxaccount", "taxaccount@test.com", PASSWORD, "오세무", "010-1234-5678"
+        );
+        taxaccountService.grant(
+                platform2.getId(), ownerPrincipal, "taxaccount", "taxaccount@test.com", PASSWORD, "오세무", "010-1234-5678"
+        );
+
+        seedFinancialRequests(platform.getId(), taxAccountant, managerPrincipal);
+    }
+
+    // 세무사가 등록한 재무 일정(월급날/지출일/명세서 제출일) 예시 — 하나는 매니저가 이미 승인한 상태로,
+    // 다른 하나는 대기 중인 상태로 만들어 승인 관리/활동 이력 화면을 바로 확인할 수 있게 한다.
+    private void seedFinancialRequests(UUID platformId, User taxAccountant, AuthenticatedUser managerPrincipal) {
+        AuthenticatedUser taxAccountantPrincipal = AuthenticatedUser.from(taxAccountant);
+
+        var payday = financialRequestService.create(
+                platformId, taxAccountantPrincipal, FinancialRequestType.PAYDAY,
+                "8월 급여 지급일", LocalDate.now().withDayOfMonth(25), "급여 이체 예정일입니다."
+        );
+        financialRequestService.approve(payday.getId(), managerPrincipal, "확인했습니다. 예정대로 진행합니다.");
+
+        financialRequestService.create(
+                platformId, taxAccountantPrincipal, FinancialRequestType.STATEMENT,
+                "부가세 신고 자료 제출", LocalDate.now().plusDays(10), "신고 전 정산 자료 확인 부탁드립니다."
+        );
     }
 
     // 플랫폼마다 역할 조합이 다른 계정 하나로 셸의 멀티 역할 메뉴/플랫폼 전환 버튼을 골고루 확인하기
@@ -291,7 +336,6 @@ public class DummyDataSeeder implements CommandLineRunner {
         LocalDate today = LocalDate.now();
         LocalDate monthStart = today.withDayOfMonth(1);
         LocalDate monthEnd = today.withDayOfMonth(today.lengthOfMonth());
-        boolean seededToday = false;
 
         for (LocalDate date = monthStart; !date.isAfter(monthEnd); date = date.plusDays(1)) {
             if (date.getDayOfWeek() != jdkDayOfWeek) continue;
@@ -304,12 +348,6 @@ public class DummyDataSeeder implements CommandLineRunner {
                     lessonService.recordAttendance(lesson.getId(), ownerPrincipal, members.get(i).getId(), status, null, null);
                 }
             }
-            if (date.isEqual(today)) seededToday = true;
-        }
-
-        // 오늘이 슬롯 요일이 아니어도 강사 화면에서 바로 출석 처리를 테스트할 수 있도록 오늘 날짜 수업을 보장한다.
-        if (!seededToday) {
-            lessonService.create(slot.getId(), ownerPrincipal, today);
         }
 
         return slot;

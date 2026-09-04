@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { openModal, closeModal } from "../default.js";
-import { getCurrentUser, displayName, changePassword, updateProfile } from "../../api/http.js";
+import { getCurrentUser, displayName, changePassword, updateProfile, updateBankInfo } from "../../api/http.js";
 import { listMembers, listStaff } from "../../api/common.js";
 
 export default function ManagerMypageView({ platformId, currentPlatform }) {
@@ -22,6 +22,13 @@ export default function ManagerMypageView({ platformId, currentPlatform }) {
 	const [profileError, setProfileError] = useState("");
 	const [profileSuccess, setProfileSuccess] = useState("");
 	const [savingProfile, setSavingProfile] = useState(false);
+
+	const [bankName, setBankName] = useState(user?.bankName || "");
+	const [bankAccountNumber, setBankAccountNumber] = useState(user?.bankAccountNumber || "");
+	const [bankAccountHolder, setBankAccountHolder] = useState(user?.bankAccountHolder || "");
+	const [bankError, setBankError] = useState("");
+	const [bankSuccess, setBankSuccess] = useState("");
+	const [savingBank, setSavingBank] = useState(false);
 
 	const refresh = useCallback(async () => {
 		if (!platformId) {
@@ -78,6 +85,21 @@ export default function ManagerMypageView({ platformId, currentPlatform }) {
 		}
 	}
 
+	// 정산 계좌 — 오너가 초대한 세무사가 이 플랫폼 기준으로 조회할 수 있는 정보라, 여기서 직접 등록한다.
+	async function submitBankInfo() {
+		setBankError("");
+		setBankSuccess("");
+		setSavingBank(true);
+		try {
+			await updateBankInfo(bankName.trim() || null, bankAccountNumber.trim() || null, bankAccountHolder.trim() || null);
+			setBankSuccess("정산 계좌가 저장되었습니다.");
+		} catch (err) {
+			setBankError(err.message || "정산 계좌 저장에 실패했습니다.");
+		} finally {
+			setSavingBank(false);
+		}
+	}
+
 	return (
 		<>
 		<div className="page" id="manager-mypage">
@@ -111,6 +133,7 @@ export default function ManagerMypageView({ platformId, currentPlatform }) {
 				</div>
 				<div style={{ display: "flex", flexDirection: "column", gap: "6px", marginLeft: "auto" }}>
 					<button className="btn btn-ghost btn-sm" onClick={() => openModal("managerAccountModal")}>✏️ 계정 정보</button>
+					<button className="btn btn-ghost btn-sm" onClick={() => openModal("managerBankModal")}>🏦 정산 계좌</button>
 					<button className="btn btn-ghost btn-sm" onClick={() => openModal("managerPasswordModal")}>🔒 비밀번호 변경</button>
 				</div>
 			</div>
@@ -169,6 +192,40 @@ export default function ManagerMypageView({ platformId, currentPlatform }) {
 						<button className="btn btn-ghost" onClick={() => closeModal("managerAccountModal")}>닫기</button>
 						<button className="btn btn-primary" disabled={savingProfile} onClick={submitProfile}>
 							{savingProfile ? "저장 중..." : "저장"}
+						</button>
+					</div>
+				</div>
+			</div>
+		</div>
+
+		<div className="modal-overlay" id="managerBankModal">
+			<div className="modal-box">
+				<div className="modal-header">
+					<div className="modal-title">정산 계좌</div>
+					<button className="modal-close" onClick={() => closeModal("managerBankModal")}>✕</button>
+				</div>
+				<div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+					<div style={{ fontSize: "11px", color: "var(--text-dim)" }}>
+						여기 등록한 계좌는 소속 플랫폼 오너가 초대한 세무사가 정산용으로 조회합니다.
+					</div>
+					<div className="form-field">
+						<label>은행명</label>
+						<input type="text" value={bankName} onChange={(e) => setBankName(e.target.value)} placeholder="예: 국민은행" />
+					</div>
+					<div className="form-field">
+						<label>계좌번호</label>
+						<input type="text" value={bankAccountNumber} onChange={(e) => setBankAccountNumber(e.target.value)} placeholder="000-000-000000" />
+					</div>
+					<div className="form-field">
+						<label>예금주</label>
+						<input type="text" value={bankAccountHolder} onChange={(e) => setBankAccountHolder(e.target.value)} placeholder={user?.name || "예금주명"} />
+					</div>
+					{bankError && <div style={{ color: "var(--red)", fontSize: "12px" }}>{bankError}</div>}
+					{bankSuccess && <div style={{ color: "var(--green)", fontSize: "12px" }}>{bankSuccess}</div>}
+					<div style={{ display: "flex", justifyContent: "flex-end", gap: "8px", marginTop: "8px" }}>
+						<button className="btn btn-ghost" onClick={() => closeModal("managerBankModal")}>닫기</button>
+						<button className="btn btn-primary" disabled={savingBank} onClick={submitBankInfo}>
+							{savingBank ? "저장 중..." : "저장"}
 						</button>
 					</div>
 				</div>

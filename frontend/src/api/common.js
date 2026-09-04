@@ -37,6 +37,33 @@ export const assignStaff = (platformId, userId, staffRole) =>
 export const removeStaff = (platformId, userId) =>
 	apiDelete(`/api/v1/platforms/${platformId}/staff/${userId}`);
 
+// 세무사 — 스태프가 아니라 오너가 초대한 별도의 재무 데이터 접근 권한.
+export const listTaxAccountants = (platformId) => apiGet(`/api/v1/platforms/${platformId}/tax-accountants`);
+
+export const grantTaxAccountant = (platformId, payload) =>
+	apiPost(`/api/v1/platforms/${platformId}/tax-accountants`, payload);
+
+export const revokeTaxAccountant = (platformId, userId) =>
+	apiDelete(`/api/v1/platforms/${platformId}/tax-accountants/${userId}`);
+
+export const listStaffPayroll = (platformId) => apiGet(`/api/v1/platforms/${platformId}/staff-payroll`);
+
+export const FINANCIAL_REQUEST_TYPE_LABEL = { PAYDAY: "월급날", EXPENSE: "지출일", STATEMENT: "명세서 제출" };
+
+export const createFinancialRequest = (platformId, payload) =>
+	apiPost(`/api/v1/platforms/${platformId}/financial-requests`, payload);
+
+export const listFinancialRequests = (platformId) =>
+	apiGet(`/api/v1/platforms/${platformId}/financial-requests`);
+
+export const approveFinancialRequest = (id, memo) =>
+	apiPost(`/api/v1/financial-requests/${id}/approve`, memo ? { memo } : undefined);
+
+export const rejectFinancialRequest = (id, memo) =>
+	apiPost(`/api/v1/financial-requests/${id}/reject`, memo ? { memo } : undefined);
+
+export const listActionLogs = (platformId) => apiGet(`/api/v1/platforms/${platformId}/action-logs`);
+
 export const getUser = (id) => apiGet(`/api/v1/users/${id}`);
 
 export const listPrograms = (platformId) => apiGet(`/api/v1/platforms/${platformId}/programs`);

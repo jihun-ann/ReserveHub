@@ -55,6 +55,18 @@ public class UserController {
     public record UpdateProfileRequest(@NotBlank String name, String phone, @Email @NotBlank String email) {
     }
 
+    @PatchMapping("/me/bank-info")
+    // 정산 계좌 — 본인이 마이페이지에서 등록하면, 오너가 초대한 세무사가 플랫폼별로 조회할 수 있다.
+    public UserResponse updateBankInfo(@Valid @RequestBody UpdateBankInfoRequest request) {
+        User user = userService.updateBankInfo(
+                currentAuthenticatedUser.get().getId(), request.bankName(), request.bankAccountNumber(), request.bankAccountHolder()
+        );
+        return UserResponse.from(user);
+    }
+
+    public record UpdateBankInfoRequest(String bankName, String bankAccountNumber, String bankAccountHolder) {
+    }
+
     @GetMapping("/{id}")
     // Returns a single user by id for protected internal lookups.
     // 보호된 내부 조회 용도로 id 기준 사용자 한 명을 반환한다.
@@ -88,10 +100,16 @@ public class UserController {
     ) {
     }
 
-    public record UserResponse(UUID id, String username, String email, Role role, String name, String phone) {
+    public record UserResponse(
+            UUID id, String username, String email, Role role, String name, String phone,
+            String bankName, String bankAccountNumber, String bankAccountHolder
+    ) {
 
         public static UserResponse from(User user) {
-            return new UserResponse(user.getId(), user.getUsername(), user.getEmail(), user.getRole(), user.getName(), user.getPhone());
+            return new UserResponse(
+                    user.getId(), user.getUsername(), user.getEmail(), user.getRole(), user.getName(), user.getPhone(),
+                    user.getBankName(), user.getBankAccountNumber(), user.getBankAccountHolder()
+            );
         }
     }
 }

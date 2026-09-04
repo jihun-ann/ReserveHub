@@ -5,11 +5,16 @@ import {
 	businessTypeLabel,
 	createPlatform,
 	createProgram,
+	grantTaxAccountant,
 	hexAlpha,
+	listActionLogs,
 	listPrograms,
 	listStaff,
+	listTaxAccountants,
+	revokeTaxAccountant,
 	setPlatformSuspended
 } from "../../api/common.js";
+import { formatDateTime } from "../../utils/formatDateTime.js";
 
 const TABS = [
 	{ key: "info", label: "기본 정보" },
@@ -17,13 +22,28 @@ const TABS = [
 	{ key: "instructors", label: "강사" },
 	{ key: "members", label: "사용자" },
 	{ key: "billing", label: "수강권/결제" },
-	{ key: "stats", label: "수익/통계" }
+	{ key: "stats", label: "수익/통계" },
+	{ key: "taxaccountants", label: "세무사" },
+	{ key: "activityLog", label: "활동 이력" }
 ];
+
+const TARGET_LABEL = {
+	SCHEDULE_REQUEST: "일정 변경 요청",
+	MEMBER_MEMO: "회원 메모",
+	STAFF_CHANGE: "스태프 변경",
+	PASS_REFUND: "수강권 환불",
+	PLATFORM_CHANGE: "플랫폼 상태",
+	PROGRAM_CHANGE: "프로그램 변경",
+	PASS_CHANGE: "수강권 변경",
+	DISCOUNT_CHANGE: "할인 정책 변경",
+	FINANCIAL_REQUEST: "재무 일정"
+};
 
 const NOT_CONNECTED_TABS = { members: true, billing: true, stats: true };
 
 const EMPTY_FORM = { name: "", businessType: "PILATES", phone: "", address: "", description: "" };
 const EMPTY_PROGRAM = { name: "", type: "GROUP", capacity: 8, durationMin: 60, description: "" };
+const EMPTY_TAX_FORM = { username: "", email: "", password: "", name: "", phone: "" };
 
 export default function OwnerPlatformView({ platforms, currentPlatformId, onSelectPlatform, onPlatformsChanged }) {
 	const [activeTab, setActiveTab] = useState("info");
@@ -36,6 +56,14 @@ export default function OwnerPlatformView({ platforms, currentPlatformId, onSele
 	const [programForm, setProgramForm] = useState(EMPTY_PROGRAM);
 
 	const [staff, setStaff] = useState([]);
+
+	const [taxAccountants, setTaxAccountants] = useState([]);
+	const [showTaxForm, setShowTaxForm] = useState(false);
+	const [taxForm, setTaxForm] = useState(EMPTY_TAX_FORM);
+	const [taxSaving, setTaxSaving] = useState(false);
+	const [taxError, setTaxError] = useState("");
+
+	const [activityLogs, setActivityLogs] = useState([]);
 
 	const plat = platforms.find((p) => p.id === currentPlatformId) || null;
 
@@ -57,7 +85,38 @@ export default function OwnerPlatformView({ platforms, currentPlatformId, onSele
 				setStaff(withEmail);
 			})
 			.catch(() => setStaff([]));
+		refreshTaxAccountants(plat.id);
+		listActionLogs(plat.id).then(setActivityLogs).catch(() => setActivityLogs([]));
 	}, [plat?.id]);
+
+	function refreshTaxAccountants(platformId) {
+		listTaxAccountants(platformId).then(setTaxAccountants).catch(() => setTaxAccountants([]));
+	}
+
+	async function submitTaxAccountant(e) {
+		e.preventDefault();
+		setTaxError("");
+		setTaxSaving(true);
+		try {
+			await grantTaxAccountant(plat.id, taxForm);
+			setTaxForm(EMPTY_TAX_FORM);
+			setShowTaxForm(false);
+			refreshTaxAccountants(plat.id);
+		} catch (err) {
+			setTaxError(err.message || "세무사 초대에 실패했습니다.");
+		} finally {
+			setTaxSaving(false);
+		}
+	}
+
+	async function removeTaxAccountant(userId) {
+		try {
+			await revokeTaxAccountant(plat.id, userId);
+			refreshTaxAccountants(plat.id);
+		} catch (err) {
+			alert(err.message || "접근 해제에 실패했습니다.");
+		}
+	}
 
 	async function submitCreate(e) {
 		e.preventDefault();
@@ -256,6 +315,73 @@ export default function OwnerPlatformView({ platforms, currentPlatformId, onSele
 										<div style={{ fontSize: "12px", color: "var(--text-dim)", textAlign: "center", padding: "16px 0" }}>배정된 강사가 없습니다</div>
 									)}
 									<div style={{ fontSize: "11px", color: "var(--text-dim)" }}>* 이메일로 사용자를 검색해 배정하는 API가 아직 없어 등록 UI는 제공하지 않습니다.</div>
+								</div>
+							)}
+
+							{activeTab === "taxaccountants" && (
+								<div>
+									<div style={{ fontSize: "12px", color: "var(--text-dim)", marginBottom: "14px" }}>
+										초대한 세무사만 이 플랫폼의 매출 집계와 강사·매니저 정산 계좌를 볼 수 있습니다.
+									</div>
+									<div style={{ display: "flex", flexDirection: "column", gap: "10px", marginBottom: "16px" }}>
+										{taxAccountants.map((a) => (
+											<div key={a.id} style={{ background: "var(--surface2)", border: "1px solid var(--border)", borderRadius: "var(--radius-sm)", padding: "14px", display: "flex", alignItems: "center", gap: "14px" }}>
+												<div className="avatar" style={{ background: "linear-gradient(135deg,var(--owner),var(--owner-soft))", width: "38px", height: "38px", fontSize: "15px" }}>{a.name?.[0] || "?"}</div>
+												<div style={{ flex: 1 }}>
+													<div style={{ fontSize: "14px", fontWeight: 700 }}>{a.name}</div>
+													<div style={{ fontSize: "11px", color: "var(--text-sub)" }}>{a.email}</div>
+												</div>
+												<button className="btn btn-sm btn-danger" onClick={() => removeTaxAccountant(a.id)}>접근 해제</button>
+											</div>
+										))}
+										{taxAccountants.length === 0 && (
+											<div style={{ fontSize: "12px", color: "var(--text-dim)", textAlign: "center", padding: "16px 0" }}>초대된 세무사가 없습니다</div>
+										)}
+									</div>
+
+									<button className="btn btn-primary btn-sm" onClick={() => setShowTaxForm((v) => !v)}>+ 세무사 초대</button>
+									{showTaxForm && (
+										<form onSubmit={submitTaxAccountant} className="card" style={{ marginTop: "12px", display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
+											<div className="form-field"><label>아이디</label><input required value={taxForm.username} onChange={(e) => setTaxForm({ ...taxForm, username: e.target.value })} /></div>
+											<div className="form-field"><label>이메일</label><input type="email" required value={taxForm.email} onChange={(e) => setTaxForm({ ...taxForm, email: e.target.value })} /></div>
+											<div className="form-field"><label>이름</label><input required value={taxForm.name} onChange={(e) => setTaxForm({ ...taxForm, name: e.target.value })} /></div>
+											<div className="form-field"><label>연락처</label><input value={taxForm.phone} onChange={(e) => setTaxForm({ ...taxForm, phone: e.target.value })} /></div>
+											<div className="form-field" style={{ gridColumn: "1/-1" }}>
+												<label>초기 비밀번호</label>
+												<input type="password" required value={taxForm.password} onChange={(e) => setTaxForm({ ...taxForm, password: e.target.value })} />
+											</div>
+											<div style={{ gridColumn: "1/-1", fontSize: "11px", color: "var(--text-dim)" }}>
+												이미 세무사로 등록된 이메일이면 비밀번호/이름/연락처는 무시되고 이 플랫폼 접근만 추가됩니다.
+											</div>
+											{taxError && <div style={{ gridColumn: "1/-1", color: "var(--red)", fontSize: "12px" }}>{taxError}</div>}
+											<button className="btn btn-primary btn-sm" style={{ gridColumn: "1/-1" }} type="submit" disabled={taxSaving}>
+												{taxSaving ? "초대 중..." : "초대하기"}
+											</button>
+										</form>
+									)}
+								</div>
+							)}
+
+							{activeTab === "activityLog" && (
+								<div style={{ overflowX: "auto" }}>
+									<table className="data-table">
+										<thead><tr><th>일시</th><th>처리자</th><th>항목</th><th>작업</th><th>메모</th></tr></thead>
+										<tbody>
+											{activityLogs.length === 0 ? (
+												<tr><td colSpan={5} style={{ textAlign: "center", color: "var(--text-dim)", padding: "16px" }}>이력이 없습니다</td></tr>
+											) : (
+												activityLogs.map((l) => (
+													<tr key={l.id}>
+														<td style={{ fontFamily: "'DM Mono',monospace", fontSize: "12px" }}>{formatDateTime(l.createdAt)}</td>
+														<td>{l.actorName || "-"}</td>
+														<td>{TARGET_LABEL[l.targetType] || l.targetType}</td>
+														<td>{l.action}</td>
+														<td style={{ color: "var(--text-sub)" }}>{l.memo || "-"}</td>
+													</tr>
+												))
+											)}
+										</tbody>
+									</table>
 								</div>
 							)}
 

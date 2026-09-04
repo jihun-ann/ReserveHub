@@ -3,67 +3,11 @@
     --tutor: #2a5fcc;
     --tutor-rgb: 42, 95, 204;
 
-    /* 플랫폼 전환 탭 */
-
-    .plat-switch {
-        padding: 10px 12px;
-        border-bottom: 1px solid var(--border);
-        display: flex;
-        flex-direction: column;
-        gap: 4px;
-    }
-
-    .plat-switch-label {
-        font-size: 9px;
-        color: var(--text-dim);
-        letter-spacing: 1.5px;
-        text-transform: uppercase;
-        margin-bottom: 2px;
-    }
-
-    .plat-tab-btn {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        padding: 7px 10px;
-        border-radius: var(--rs);
-        border: none;
-        background: none;
-        color: var(--text-sub);
-        cursor: pointer;
-        font-size: 12px;
-        font-weight: 500;
-        font-family: inherit;
-        transition: all var(--tr);
-        width: 100%;
-        text-align: left;
-        white-space: nowrap;
-        overflow: hidden;
-    }
-
-    .plat-tab-btn:hover {
-        background: var(--surface2);
-    }
-
-    .plat-tab-btn.active {
-        background: rgba(var(--tutor-rgb), .12);
-        color: var(--tutor);
-        font-weight: 700;
-    }
-
-    .plat-tab-btn .plat-dot {
+    .plat-dot {
         width: 8px;
         height: 8px;
         border-radius: 2px;
         flex-shrink: 0;
-    }
-
-    .sidebar.collapsed .plat-switch-label, .sidebar.collapsed .plat-tab-btn span {
-        display: none;
-    }
-
-    .sidebar.collapsed .plat-tab-btn {
-        justify-content: center;
     }
 
     .nav-item.active {
@@ -705,6 +649,299 @@
     }
 
     /* ═══════════════════════════════════════════════
+       PAGE: 출석 이력 — 한 줄이 하나의 출석부 기록처럼 보이도록,
+       cal-cell과 같은 날짜 스탬프 모양을 재사용하고 출석률은
+       숫자 대신 채워지는 바로 한눈에 훑을 수 있게 한다.
+    ══════════════════════════════════════════════════ */
+
+    /* 월 이동 — 표의 날짜 스탬프(.stamp-day/.stamp-dow)와 같은 문법으로 만든 큰 스탬프가
+       현재 연/월을 보여주는 동시에 눌러서 여는 월 그리드 피커의 트리거 역할을 한다. */
+
+    .hist-nav {
+        display: flex;
+        align-items: stretch;
+        justify-content: center;
+        gap: 14px;
+        margin-bottom: 28px;
+    }
+
+    /* 이전/다음 달 — 옆의 월 스탬프와 높이를 맞춰 하나의 계기판처럼 붙어 보이게 한다.
+       화살표만 있는 좁은 버튼이 아니라, 눌렀을 때 실제로 무슨 일이 벌어지는지
+       한글로도 알려줘서(이전 달/다음 달) 존재감을 준다. */
+
+    .hist-nav-btn {
+        width: 96px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        border-radius: var(--radius);
+        border: 1.5px solid var(--border);
+        background: var(--surface);
+        color: var(--text-sub);
+        cursor: pointer;
+        transition: border-color .15s, color .15s, background .15s, transform .1s;
+    }
+
+    .hist-nav-arrow {
+        font-size: 28px;
+        line-height: 1;
+    }
+
+    .hist-nav-text {
+        font-size: 12px;
+        font-weight: 600;
+        letter-spacing: .5px;
+    }
+
+    .hist-nav-btn:hover {
+        border-color: var(--tutor);
+        color: var(--tutor);
+        background: rgba(var(--tutor-rgb), .06);
+    }
+
+    .hist-nav-btn:active {
+        transform: scale(.94);
+    }
+
+    .month-stamp-wrap {
+        position: relative;
+    }
+
+    .month-stamp {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 2px;
+        width: 180px;
+        padding: 14px 0 12px;
+        border-radius: var(--radius);
+        border: 1.5px solid var(--border);
+        background: var(--surface);
+        cursor: pointer;
+        transition: border-color .15s;
+    }
+
+    .month-stamp:hover {
+        border-color: var(--tutor);
+    }
+
+    .month-stamp-year {
+        font-family: 'DM Mono', monospace;
+        font-size: 13px;
+        color: var(--text-dim);
+        letter-spacing: .5px;
+    }
+
+    .month-stamp-num {
+        font-family: 'DM Mono', monospace;
+        font-size: 36px;
+        font-weight: 700;
+        line-height: 1.15;
+        color: var(--tutor);
+    }
+
+    .month-stamp-label {
+        font-size: 11px;
+        font-weight: 600;
+        color: var(--text-dim);
+        letter-spacing: 1.5px;
+    }
+
+    .month-picker {
+        position: absolute;
+        top: calc(100% + 8px);
+        left: 50%;
+        transform: translateX(-50%);
+        width: 240px;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        box-shadow: 0 8px 24px rgba(0, 0, 0, .18);
+        padding: 12px;
+        z-index: 30;
+    }
+
+    .month-picker-year {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 16px;
+        font-size: 14px;
+        font-weight: 700;
+        margin-bottom: 12px;
+    }
+
+    .month-picker-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 8px;
+    }
+
+    .month-picker-cell {
+        padding: 11px 0;
+        border-radius: var(--radius-sm);
+        border: 1px solid transparent;
+        background: var(--surface2);
+        color: var(--text-sub);
+        font-family: 'DM Mono', monospace;
+        font-size: 14px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all .15s;
+    }
+
+    .month-picker-cell:hover {
+        border-color: var(--tutor);
+        color: var(--tutor);
+    }
+
+    .month-picker-cell.active {
+        background: var(--tutor);
+        border-color: var(--tutor);
+        color: #fff;
+    }
+
+    .ledger-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    .ledger-table th {
+        font-size: 11px;
+        font-weight: 600;
+        color: var(--text-sub);
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        padding: 10px 14px;
+        text-align: left;
+        border-bottom: 1px solid var(--border);
+    }
+
+    .ledger-table td {
+        padding: 10px 14px;
+        border-bottom: 1px solid var(--border);
+        vertical-align: middle;
+    }
+
+    .ledger-table tr:last-child td {
+        border-bottom: none;
+    }
+
+    .ledger-table tr:hover td {
+        background: var(--surface2);
+    }
+
+    .ledger-empty {
+        text-align: center;
+        padding: 32px 0;
+        color: var(--text-dim);
+        font-size: 13px;
+    }
+
+    .ledger-date-stamp {
+        width: 40px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 1px;
+        padding: 5px 0;
+        border-radius: var(--radius-sm);
+        border: 1.5px solid var(--border);
+        background: var(--surface2);
+    }
+
+    .stamp-day {
+        font-family: 'DM Mono', monospace;
+        font-size: 15px;
+        font-weight: 700;
+        line-height: 1;
+        color: var(--tutor);
+    }
+
+    .stamp-dow {
+        font-size: 9px;
+        font-weight: 600;
+        color: var(--text-dim);
+        letter-spacing: .5px;
+    }
+
+    .ledger-program-name {
+        font-size: 13px;
+        font-weight: 600;
+        margin-bottom: 4px;
+    }
+
+    .ledger-type-chip {
+        background: rgba(var(--tutor-rgb), .1);
+        border-color: rgba(var(--tutor-rgb), .3);
+        color: var(--tutor);
+    }
+
+    .ledger-attend {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        min-width: 200px;
+    }
+
+    .ledger-attend-frac {
+        font-family: 'DM Mono', monospace;
+        font-size: 12px;
+        color: var(--text-sub);
+        flex-shrink: 0;
+        width: 34px;
+    }
+
+    .ledger-bar {
+        flex: 1;
+        height: 6px;
+        border-radius: 3px;
+        background: var(--border);
+        overflow: hidden;
+    }
+
+    .ledger-bar-fill {
+        height: 100%;
+        border-radius: 3px;
+    }
+
+    .ledger-bar-fill.tier-high {
+        background: var(--green);
+    }
+
+    .ledger-bar-fill.tier-mid {
+        background: var(--accent3);
+    }
+
+    .ledger-bar-fill.tier-low {
+        background: var(--red);
+    }
+
+    .ledger-attend-pct {
+        font-family: 'DM Mono', monospace;
+        font-size: 13px;
+        font-weight: 600;
+        flex-shrink: 0;
+        width: 36px;
+        text-align: right;
+    }
+
+    .ledger-attend-pct.tier-high {
+        color: var(--green);
+    }
+
+    .ledger-attend-pct.tier-mid {
+        color: var(--accent3);
+    }
+
+    .ledger-attend-pct.tier-low {
+        color: var(--red);
+    }
+
+    /* ═══════════════════════════════════════════════
        PAGE: 일정 변경 요청 / 모달
     ══════════════════════════════════════════════════ */
 
@@ -743,56 +980,6 @@
     .form-field textarea {
         resize: vertical;
         min-height: 72px;
-    }
-
-    .modal-overlay {
-        display: none;
-        position: fixed;
-        inset: 0;
-        background: rgba(0, 0, 0, .5);
-        z-index: 500;
-        align-items: center;
-        justify-content: center;
-        backdrop-filter: blur(4px);
-    }
-
-    .modal-overlay.open {
-        display: flex;
-    }
-
-    .modal-box {
-        background: var(--surface);
-        border: 1px solid var(--border);
-        border-radius: var(--r);
-        padding: 28px;
-        width: min(480px, 90vw);
-        max-height: 80vh;
-        overflow-y: auto;
-    }
-
-    .modal-header {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        margin-bottom: 20px;
-    }
-
-    .modal-title {
-        font-size: 16px;
-        font-weight: 700;
-    }
-
-    .modal-close {
-        background: none;
-        border: none;
-        color: var(--text-sub);
-        font-size: 20px;
-        cursor: pointer;
-        padding: 4px;
-    }
-
-    .modal-close:hover {
-        color: var(--text);
     }
 
     /* ── 반응형 ── */

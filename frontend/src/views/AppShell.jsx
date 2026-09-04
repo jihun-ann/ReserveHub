@@ -1,4 +1,5 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
+import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
 import { closeSidebar, toggleCollapse, openSidebar } from "./default.js";
 import { getTheme, toggleTheme } from "../theme.js";
@@ -6,6 +7,7 @@ import "./manager/ManagerView.css";
 import "./tutor/TutorView.css";
 import "./owner/OwnerView.css";
 import "./user/UserView.css";
+import "./taxaccountant/TaxAccountantView.css";
 import { getCurrentUser, loadCurrentUser, clearSession, displayName } from "../api/http.js";
 import { listPlatforms, listAllScheduleRequests } from "../api/common.js";
 
@@ -21,6 +23,7 @@ import ManagerMypageView from "./manager/ManagerMypageView.jsx";
 
 import TutorCalendarView from "./tutor/TutorCalendarView.jsx";
 import TutorAttendanceView from "./tutor/TutorAttendanceView.jsx";
+import TutorAttendanceHistoryView from "./tutor/TutorAttendanceHistoryView.jsx";
 import TutorScheduleRequestView from "./tutor/TutorScheduleRequestView.jsx";
 import TutorMypageView from "./tutor/TutorMypageView.jsx";
 
@@ -33,24 +36,36 @@ import UserCalendarView from "./user/UserCalendarView.jsx";
 import UserReservationView from "./user/UserReservationView.jsx";
 import UserMypageView from "./user/UserMypageView.jsx";
 
+import TaxAccountantRevenueView from "./taxaccountant/TaxAccountantRevenueView.jsx";
+import TaxAccountantStaffView from "./taxaccountant/TaxAccountantStaffView.jsx";
+import TaxAccountantCalendarView from "./taxaccountant/TaxAccountantCalendarView.jsx";
+import TaxAccountantMypageView from "./taxaccountant/TaxAccountantMypageView.jsx";
+
+import ManagerActivityLogView from "./manager/ManagerActivityLogView.jsx";
+
 // 우선순위: 플랫폼 진입 시 기본으로 강조할 역할 하나를 고르는 순서(스태프 성격이 강한 순)이자,
 // 메뉴 섹션을 나열하는 순서이기도 하다.
-const ROLE_PRIORITY = ["OWNER", "MANAGER", "TUTOR", "USER"];
+const ROLE_PRIORITY = ["OWNER", "MANAGER", "TUTOR", "USER", "TAX_ACCOUNTANT"];
 
-// 각 역할의 기존 화면 전체(레이아웃 포함)가 이미 #owner-app/#manager-app/#tutor-app/#user-app로
-// 스코프된 CSS를 갖고 있어서, 셸 루트의 id만 바꾸면 색상 테마가 그대로 따라온다.
+// 각 역할의 기존 화면 전체(레이아웃 포함)가 이미 #owner-app/#manager-app/#tutor-app/#user-app/
+// #taxaccountant-app로 스코프된 CSS를 갖고 있어서, 셸 루트의 id만 바꾸면 색상 테마가 그대로 따라온다.
 const SHELL_ID = {
 	OWNER: "owner-app",
 	MANAGER: "manager-app",
 	TUTOR: "tutor-app",
-	USER: "user-app"
+	USER: "user-app",
+	TAX_ACCOUNTANT: "taxaccountant-app"
 };
-const ROLE_LABEL = { OWNER: "대표", MANAGER: "매니저", TUTOR: "강사", USER: "수강생" };
+const ROLE_LABEL = { OWNER: "대표", MANAGER: "매니저", TUTOR: "강사", USER: "수강생", TAX_ACCOUNTANT: "세무사" };
+// 사이드바의 4단계 플랫폼 전환 영역 전용 라벨 — 본문/역할표시(ROLE_LABEL)와는 별개로,
+// 이 스위처에서는 요청받은 명칭(오너/관리자/튜터/사용자)을 그대로 쓴다.
+const TIER_LABEL = { OWNER: "오너", MANAGER: "관리자", TUTOR: "튜터", USER: "사용자", TAX_ACCOUNTANT: "세무사" };
 const DEFAULT_CONTEXT = {
 	OWNER: "dashboard",
 	MANAGER: "dashboard",
 	TUTOR: "calendar",
-	USER: "calendar"
+	USER: "calendar",
+	TAX_ACCOUNTANT: "revenue"
 };
 
 const COMMON_MENU = [
@@ -60,6 +75,9 @@ const COMMON_MENU = [
 // 강사/매니저는 업무가 겹쳐 역할 섹션이 같이 뜨는 경우가 많다 — 캘린더/내 정보를 섹션마다
 // 중복 노출하는 대신 사이드바 맨 아래에 공유 메뉴 하나로 뺀다.
 const SHARED_BOTTOM_ROLES = ["TUTOR", "MANAGER"];
+// 세무사는 본인 레슨/예약이 없는 외부 조회 역할이라 캘린더가 의미 없다 — UserCalendarView는
+// #user-app 전용 CSS라 다른 셸에서 그냥 깨져 보이기도 해서, 아예 메뉴에서 뺀다.
+const NO_CALENDAR_ROLES = ["TAX_ACCOUNTANT"];
 const ROLE_MENU = {
 	OWNER: [
 		{ id: "dashboard", label: "대시보드", icon: "📊" },
@@ -73,13 +91,20 @@ const ROLE_MENU = {
 		{ id: "tutor", label: "강사 관리", icon: "🧑‍🏫" },
 		{ id: "payment", label: "수강권 / 결제", icon: "💳" },
 		{ id: "calc", label: "상담 계산툴", icon: "🧮" },
-		{ id: "history", label: "수업 이력", icon: "📋" }
+		{ id: "history", label: "수업 이력", icon: "📋" },
+		{ id: "activityLog", label: "활동 이력", icon: "🕒" }
 	],
 	TUTOR: [
 		{ id: "attendance", label: "출석 관리", icon: "✅" },
+		{ id: "attendHistory", label: "출석 이력", icon: "📋" },
 		{ id: "schedule", label: "일정 변경 요청", icon: "📋" }
 	],
-	USER: [{ id: "reservation", label: "예약하기", icon: "🎯" }]
+	USER: [{ id: "reservation", label: "예약하기", icon: "🎯" }],
+	TAX_ACCOUNTANT: [
+		{ id: "revenue", label: "매출 집계", icon: "💰" },
+		{ id: "payroll", label: "직원 정보", icon: "🧾" },
+		{ id: "finCalendar", label: "재무 일정", icon: "🗓" }
+	]
 };
 
 function pickActiveRole(roles) {
@@ -114,6 +139,65 @@ export default function AppShell() {
 	const [theme, setTheme] = useState(getTheme());
 	const [loading, setLoading] = useState(true);
 	const [ownerRequests, setOwnerRequests] = useState([]);
+
+	// 플랫폼 전환 패널 — 평소엔 닫혀있고(switcherOpen=false) 현재 플랫폼만 보인다.
+	// pickedRole이 null이면 패널 안에 역할 목록을, 값이 있으면 그 역할의 플랫폼 목록을 보여준다.
+	const [switcherOpen, setSwitcherOpen] = useState(false);
+	const [pickedRole, setPickedRole] = useState(null);
+	const [flyoutPos, setFlyoutPos] = useState({ top: 0, left: 0 });
+	const switcherRef = useRef(null);
+	const flyoutRef = useRef(null);
+	const roleRowRefs = useRef({});
+	const closeTimeoutRef = useRef(null);
+
+	function closeSwitcher() {
+		setSwitcherOpen(false);
+		setPickedRole(null);
+	}
+
+	// flyout이 포털(document.body)이라 tier-current와 마우스 영역이 붙어있지 않다 — 그 사이
+	// 몇 px 간격을 지나가는 순간 mouseleave가 먼저 잡혀서 닫혀버리는 걸 막기 위해, 바로 닫지
+	// 않고 살짝 지연시켰다가, 그 안에 tier-current나 flyout으로 다시 들어오면 취소한다.
+	function cancelScheduledClose() {
+		if (closeTimeoutRef.current) {
+			clearTimeout(closeTimeoutRef.current);
+			closeTimeoutRef.current = null;
+		}
+	}
+	function scheduleClose() {
+		cancelScheduledClose();
+		closeTimeoutRef.current = setTimeout(closeSwitcher, 200);
+	}
+	useEffect(() => () => cancelScheduledClose(), []);
+
+	// .sidebar가 overflow:hidden이라(접힘 너비 트랜지션 때문에 필요) 그 안에서 옆으로 튀어나오는
+	// tier-side-flyout은 사이드바 경계에서 잘려 안 보인다 — document.body에 포털로 띄우고,
+	// 클릭한 줄의 화면 좌표(viewport 기준)를 재서 position:fixed로 그 옆에 위치시킨다.
+	function toggleRoleFlyout(role) {
+		setPickedRole((prev) => {
+			if (prev === role) return null;
+			const rowEl = roleRowRefs.current[role];
+			if (rowEl) {
+				const rect = rowEl.getBoundingClientRect();
+				const left = Math.min(rect.right + 6, window.innerWidth - 200);
+				setFlyoutPos({ top: rect.top, left });
+			}
+			return role;
+		});
+	}
+
+	// 모바일/터치에서는 hover가 없어 클릭으로 열리는데, 그 경우 바깥을 눌러야 닫히도록 처리한다.
+	// tier-side-flyout은 포털이라 실제 DOM에서는 switcherRef 바깥(body 밑)에 있으므로 따로 확인한다.
+	useEffect(() => {
+		if (!switcherOpen) return;
+		function handleOutsideClick(e) {
+			const insideSwitcher = switcherRef.current?.contains(e.target);
+			const insideFlyout = flyoutRef.current?.contains(e.target);
+			if (!insideSwitcher && !insideFlyout) closeSwitcher();
+		}
+		document.addEventListener("mousedown", handleOutsideClick);
+		return () => document.removeEventListener("mousedown", handleOutsideClick);
+	}, [switcherOpen]);
 
 	const refreshPlatforms = useCallback(async () => {
 		const data = await listPlatforms();
@@ -198,16 +282,26 @@ export default function AppShell() {
 	const currentRoles = currentPlatform?.roles || [];
 	const isMergedPlatform = currentRoles.length > 1 && !currentRoles.includes("USER");
 
-	function selectPlatform(platform) {
-		if (platform.id !== currentPlatformId) {
-			setCurrentPlatformId(platform.id);
-			return;
-		}
-		const roles = platform.roles || [];
-		if (roles.length <= 1 || !roles.includes("USER")) return;
-		const nextRole = roles[(roles.indexOf(activeRole) + 1) % roles.length];
-		setActiveRole(nextRole);
-		setCurrentContext(DEFAULT_CONTEXT[nextRole] || "calendar");
+	// 플랫폼 전환 패널에서 역할별 목록 중 하나를 골랐을 때 — 플랫폼과 역할을 함께 확정하고
+	// 패널을 닫는다 (한 플랫폼이 여러 역할을 가져도 어느 역할 목록에서 눌렀는지로 역할이 정해진다).
+	function selectTierPlatform(role, platform) {
+		setCurrentPlatformId(platform.id);
+		setActiveRole(role);
+		setCurrentContext(DEFAULT_CONTEXT[role] || "calendar");
+		closeSwitcher();
+	}
+
+	// 마우스를 올렸을 때 tier-current-btn 위/아래로 나오는 역할 한 줄 — 클릭하면 그 역할의
+	// 플랫폼 목록이 옆으로 튀어나온다(tier-side-flyout, tier-current 바로 아래에 별도로 그려짐).
+	function renderRoleRow(role) {
+		return (
+			<div className="tier-role-row" key={role} ref={(el) => (roleRowRefs.current[role] = el)}>
+				<button type="button" className="tier-role-item" onClick={() => toggleRoleFlyout(role)}>
+					<span>{TIER_LABEL[role]}</span>
+					<span className="tier-role-caret">›</span>
+				</button>
+			</div>
+		);
 	}
 
 	function selectMenuItem(role, itemId) {
@@ -225,12 +319,15 @@ export default function AppShell() {
 		: activeRole
 			? [activeRole]
 			: [];
-	const menuSections = sectionRoles.map((role) => ({
-		role,
-		items: SHARED_BOTTOM_ROLES.includes(role)
-			? ROLE_MENU[role] || []
-			: [...(ROLE_MENU[role] || []), ...COMMON_MENU]
-	}));
+	const menuSections = sectionRoles.map((role) => {
+		const commonMenu = NO_CALENDAR_ROLES.includes(role)
+			? COMMON_MENU.filter((m) => m.id !== "calendar")
+			: COMMON_MENU;
+		return {
+			role,
+			items: SHARED_BOTTOM_ROLES.includes(role) ? ROLE_MENU[role] || [] : [...(ROLE_MENU[role] || []), ...commonMenu]
+		};
+	});
 	const showSharedMenu = sectionRoles.some((role) => SHARED_BOTTOM_ROLES.includes(role));
 	const activeSection = menuSections.find((s) => s.role === activeRole);
 	const topbarTitle =
@@ -238,6 +335,15 @@ export default function AppShell() {
 		(showSharedMenu ? COMMON_MENU.find((m) => m.id === currentContext)?.label : undefined) ||
 		"";
 	const pendingOwnerCount = ownerRequests.filter((r) => r.status === "PENDING").length;
+
+	// 현재 플랫폼(tier-current-btn)을 기준으로, ROLE_PRIORITY 순서상 그보다 앞선 역할은 위에,
+	// 뒤쪽 역할은 아래에 나열한다 — 배정된 플랫폼이 없는 역할은 애초에 후보에서 빠진다.
+	// switcherOpen과 무관하게 항상 DOM에 그려두고, CSS(grid-template-rows)로 접었다 펴서
+	// 열고 닫을 때 영역 자체가 부드럽게 늘어나고 tier-current-btn이 밀려나도록 한다.
+	const enabledRoles = ROLE_PRIORITY.filter((role) => platforms.some((p) => p.roles.includes(role)));
+	const currentRoleIndex = enabledRoles.indexOf(activeRole);
+	const aboveRoles = enabledRoles.slice(0, currentRoleIndex);
+	const belowRoles = enabledRoles.slice(currentRoleIndex + 1);
 
 	return (
 		<div className="app" id={SHELL_ID[activeRole] || "manager-app"}>
@@ -263,58 +369,70 @@ export default function AppShell() {
 					</div>
 				</div>
 
-				<div className="plat-switch">
-					<div className="plat-switch-label">플랫폼</div>
+				<div className="tier-switch">
+					<div className="tier-switch-label">플랫폼 전환</div>
 					{!loading && platforms.length === 0 && (
 						<div style={{ fontSize: "11px", color: "var(--text-dim)", padding: "4px 2px" }}>
 							배정된 플랫폼이 없습니다
 						</div>
 					)}
-					{platforms.map((p) => {
-						const multiRole = p.roles.length > 1;
-						const togglesRole = multiRole && p.roles.includes("USER");
-						return (
+					{currentPlatform && (
+						<div
+							className="tier-current"
+							ref={switcherRef}
+							onMouseEnter={() => {
+								cancelScheduledClose();
+								setSwitcherOpen(true);
+							}}
+							onMouseLeave={scheduleClose}
+						>
+							<div className={`tier-expand${switcherOpen ? " open" : ""}`}>
+								<div className="tier-expand-inner">{aboveRoles.map(renderRoleRow)}</div>
+							</div>
 							<button
-								key={p.id}
-								className={`plat-tab-btn ${currentPlatformId === p.id ? "active" : ""}`}
-								title={
-									togglesRole
-										? "다시 클릭하면 이 플랫폼에서의 다른 역할로 전환합니다"
-										: multiRole
-											? p.roles.map((r) => ROLE_LABEL[r]).join(" / ")
-											: undefined
-								}
-								onClick={() => selectPlatform(p)}
+								type="button"
+								className="tier-current-btn"
+								ref={(el) => (roleRowRefs.current[activeRole] = el)}
+								onClick={() => {
+									setSwitcherOpen(true);
+									toggleRoleFlyout(activeRole);
+								}}
 							>
-								<div className="plat-dot" style={{ background: p.colorHex }}></div>
-								<span>{p.name}</span>
-								{togglesRole && currentPlatformId === p.id && (
-									<span
-										style={{
-											marginLeft: "auto",
-											fontSize: "10px",
-											color: "var(--text-dim)",
-											flexShrink: 0
-										}}
-									>
-										{ROLE_LABEL[activeRole]} ⇄
-									</span>
-								)}
-								{multiRole && !togglesRole && (
-									<span
-										style={{
-											marginLeft: "auto",
-											fontSize: "10px",
-											color: "var(--text-dim)",
-											flexShrink: 0
-										}}
-									>
-										{p.roles.map((r) => ROLE_LABEL[r]).join("·")}
-									</span>
-								)}
+								<span className="plat-dot" style={{ background: currentPlatform.colorHex }}></span>
+								<span>{currentPlatform.name}</span>
+								<span className="tier-current-caret">▾</span>
 							</button>
-						);
-					})}
+							<div className={`tier-expand${switcherOpen ? " open" : ""}`}>
+								<div className="tier-expand-inner">{belowRoles.map(renderRoleRow)}</div>
+							</div>
+
+							{pickedRole &&
+								createPortal(
+									<div
+										ref={flyoutRef}
+										className="tier-side-flyout"
+										style={{ top: flyoutPos.top, left: flyoutPos.left }}
+										onMouseEnter={cancelScheduledClose}
+										onMouseLeave={scheduleClose}
+									>
+										{platforms
+											.filter((p) => p.roles.includes(pickedRole))
+											.map((p) => (
+												<button
+													type="button"
+													key={p.id}
+													className={`tier-dropdown-item${currentPlatformId === p.id && activeRole === pickedRole ? " active" : ""}`}
+													onClick={() => selectTierPlatform(pickedRole, p)}
+												>
+													<span className="plat-dot" style={{ background: p.colorHex }}></span>
+													<span>{p.name}</span>
+												</button>
+											))}
+									</div>,
+									document.body
+								)}
+						</div>
+					)}
 				</div>
 
 				<div className="user-card">
@@ -422,6 +540,9 @@ export default function AppShell() {
 					return <ManagerCalendarView platformId={currentPlatformId} />;
 				case "TUTOR":
 					return <TutorCalendarView />;
+				case "TAX_ACCOUNTANT":
+					// 메뉴에서 뺐지만, 예전에 저장된 nav 복원 등으로 혹시 여기 들어와도 안전하게 처리.
+					return null;
 				default:
 					return <UserCalendarView />;
 			}
@@ -436,6 +557,8 @@ export default function AppShell() {
 					);
 				case "TUTOR":
 					return <TutorMypageView />;
+				case "TAX_ACCOUNTANT":
+					return <TaxAccountantMypageView />;
 				default:
 					return <UserMypageView />;
 			}
@@ -495,6 +618,8 @@ export default function AppShell() {
 					);
 				case "history":
 					return <ManagerStudyHistoryView platformId={currentPlatformId} />;
+				case "activityLog":
+					return <ManagerActivityLogView platformId={currentPlatformId} />;
 				default:
 					return null;
 			}
@@ -503,9 +628,28 @@ export default function AppShell() {
 		if (activeRole === "TUTOR") {
 			switch (currentContext) {
 				case "attendance":
-					return <TutorAttendanceView />;
+					return <TutorAttendanceView platformId={currentPlatformId} />;
+				case "attendHistory":
+					return <TutorAttendanceHistoryView platformId={currentPlatformId} />;
 				case "schedule":
-					return <TutorScheduleRequestView />;
+					return <TutorScheduleRequestView platformId={currentPlatformId} />;
+				default:
+					return null;
+			}
+		}
+
+		if (activeRole === "TAX_ACCOUNTANT") {
+			switch (currentContext) {
+				case "revenue":
+					return (
+						<TaxAccountantRevenueView platformId={currentPlatformId} platformName={currentPlatform?.name} />
+					);
+				case "payroll":
+					return <TaxAccountantStaffView platformId={currentPlatformId} />;
+				case "finCalendar":
+					return (
+						<TaxAccountantCalendarView platformId={currentPlatformId} platformName={currentPlatform?.name} />
+					);
 				default:
 					return null;
 			}

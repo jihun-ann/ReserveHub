@@ -1,5 +1,8 @@
 package com.hub.reservehub.domain.platform;
 
+import com.hub.reservehub.domain.approval.ActionLog;
+import com.hub.reservehub.domain.approval.ActionLogRepository;
+import com.hub.reservehub.domain.approval.ActionTarget;
 import com.hub.reservehub.domain.pass.UserPassRepository;
 import com.hub.reservehub.security.AuthenticatedUser;
 import java.util.ArrayList;
@@ -16,19 +19,25 @@ public class PlatformService {
 
     private final PlatformRepository platformRepository;
     private final PlatformStaffRepository platformStaffRepository;
+    private final PlatformTaxAccountantRepository platformTaxAccountantRepository;
     private final UserPassRepository userPassRepository;
     private final PlatformAccessGuard platformAccessGuard;
+    private final ActionLogRepository actionLogRepository;
 
     public PlatformService(
             PlatformRepository platformRepository,
             PlatformStaffRepository platformStaffRepository,
+            PlatformTaxAccountantRepository platformTaxAccountantRepository,
             UserPassRepository userPassRepository,
-            PlatformAccessGuard platformAccessGuard
+            PlatformAccessGuard platformAccessGuard,
+            ActionLogRepository actionLogRepository
     ) {
         this.platformRepository = platformRepository;
         this.platformStaffRepository = platformStaffRepository;
+        this.platformTaxAccountantRepository = platformTaxAccountantRepository;
         this.userPassRepository = userPassRepository;
         this.platformAccessGuard = platformAccessGuard;
+        this.actionLogRepository = actionLogRepository;
     }
 
     @Transactional
@@ -60,6 +69,8 @@ public class PlatformService {
                 .forEach(staff -> platformIds.add(staff.getPlatformId()));
         userPassRepository.findByUserId(user.getId())
                 .forEach(userPass -> platformIds.add(userPass.getPlatformId()));
+        platformTaxAccountantRepository.findByUserIdAndIsActiveTrue(user.getId())
+                .forEach(grant -> platformIds.add(grant.getPlatformId()));
         return platformRepository.findAllById(platformIds);
     }
 
@@ -82,6 +93,9 @@ public class PlatformService {
         if (hasPass) {
             roles.add("USER");
         }
+        if (platformTaxAccountantRepository.existsByPlatformIdAndUserIdAndIsActiveTrue(platformId, user.getId())) {
+            roles.add("TAX_ACCOUNTANT");
+        }
         return roles;
     }
 
@@ -96,7 +110,11 @@ public class PlatformService {
             throw new IllegalStateException("이미 다른 플랫폼의 MANAGER로 배정된 사용자입니다.");
         }
 
-        return platformStaffRepository.save(new PlatformStaff(platformId, targetUserId, staffRole));
+        PlatformStaff staff = platformStaffRepository.save(new PlatformStaff(platformId, targetUserId, staffRole));
+        actionLogRepository.save(ActionLog.of(
+                platformId, actor.getId(), ActionTarget.STAFF_CHANGE, staff.getId(), "ASSIGN_" + staffRole.name(), null
+        ));
+        return staff;
     }
 
     @Transactional
@@ -114,6 +132,7 @@ public class PlatformService {
             throw new IllegalArgumentException("Staff assignment not found");
         }
         staffList.forEach(PlatformStaff::leave);
+        actionLogRepository.save(ActionLog.of(platformId, actor.getId(), ActionTarget.STAFF_CHANGE, targetUserId, "REMOVE", null));
     }
 
     @Transactional(readOnly = true)
@@ -136,6 +155,9 @@ public class PlatformService {
         } else {
             platform.activate();
         }
+        actionLogRepository.save(ActionLog.of(
+                platformId, owner.getId(), ActionTarget.PLATFORM_CHANGE, platformId, suspended ? "SUSPEND" : "ACTIVATE", null
+        ));
         return platform;
     }
 }

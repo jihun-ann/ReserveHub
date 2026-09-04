@@ -38,6 +38,17 @@ public class User extends BaseEntity {
     @Nullable
     private String phone;
 
+    // 정산/급여 계좌 — 세무사가 플랫폼별 강사·매니저 정산 정보를 조회할 때 쓴다. 본인이 마이페이지에서
+    // 직접 등록한다 (계좌는 플랫폼이 아니라 사람에 딸린 정보라 User에 둔다).
+    @Nullable
+    private String bankName;
+
+    @Nullable
+    private String bankAccountNumber;
+
+    @Nullable
+    private String bankAccountHolder;
+
     protected User() {
         // JPA only.
     }
@@ -88,5 +99,26 @@ public class User extends BaseEntity {
         this.name = name;
         this.phone = phone;
         this.email = email;
+    }
+
+    @Nullable
+    public String getBankName() {
+        return bankName;
+    }
+
+    @Nullable
+    public String getBankAccountNumber() {
+        return bankAccountNumber;
+    }
+
+    @Nullable
+    public String getBankAccountHolder() {
+        return bankAccountHolder;
+    }
+
+    public void updateBankInfo(@Nullable String bankName, @Nullable String bankAccountNumber, @Nullable String bankAccountHolder) {
+        this.bankName = bankName;
+        this.bankAccountNumber = bankAccountNumber;
+        this.bankAccountHolder = bankAccountHolder;
     }
 }

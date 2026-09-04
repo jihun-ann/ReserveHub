@@ -12,16 +12,23 @@ public class MemberMemoService {
 
     private final MemberMemoRepository memberMemoRepository;
     private final PlatformAccessGuard platformAccessGuard;
+    private final ActionLogRepository actionLogRepository;
 
-    public MemberMemoService(MemberMemoRepository memberMemoRepository, PlatformAccessGuard platformAccessGuard) {
+    public MemberMemoService(
+            MemberMemoRepository memberMemoRepository, PlatformAccessGuard platformAccessGuard,
+            ActionLogRepository actionLogRepository
+    ) {
         this.memberMemoRepository = memberMemoRepository;
         this.platformAccessGuard = platformAccessGuard;
+        this.actionLogRepository = actionLogRepository;
     }
 
     @Transactional
     public MemberMemo create(UUID platformId, AuthenticatedUser actor, UUID targetUserId, String content) {
         platformAccessGuard.verify(platformId, actor);
-        return memberMemoRepository.save(new MemberMemo(platformId, targetUserId, actor.getId(), content));
+        MemberMemo memo = memberMemoRepository.save(new MemberMemo(platformId, targetUserId, actor.getId(), content));
+        actionLogRepository.save(ActionLog.of(platformId, actor.getId(), ActionTarget.MEMBER_MEMO, memo.getId(), "CREATE", null));
+        return memo;
     }
 
     @Transactional(readOnly = true)

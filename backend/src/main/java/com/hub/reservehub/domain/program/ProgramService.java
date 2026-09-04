@@ -1,5 +1,8 @@
 package com.hub.reservehub.domain.program;
 
+import com.hub.reservehub.domain.approval.ActionLog;
+import com.hub.reservehub.domain.approval.ActionLogRepository;
+import com.hub.reservehub.domain.approval.ActionTarget;
 import com.hub.reservehub.domain.platform.PlatformAccessGuard;
 import com.hub.reservehub.domain.platform.StaffRole;
 import com.hub.reservehub.security.AuthenticatedUser;
@@ -20,11 +23,16 @@ public class ProgramService {
     private final ProgramRepository programRepository;
     private final SlotRepository slotRepository;
     private final PlatformAccessGuard platformAccessGuard;
+    private final ActionLogRepository actionLogRepository;
 
-    public ProgramService(ProgramRepository programRepository, SlotRepository slotRepository, PlatformAccessGuard platformAccessGuard) {
+    public ProgramService(
+            ProgramRepository programRepository, SlotRepository slotRepository,
+            PlatformAccessGuard platformAccessGuard, ActionLogRepository actionLogRepository
+    ) {
         this.programRepository = programRepository;
         this.slotRepository = slotRepository;
         this.platformAccessGuard = platformAccessGuard;
+        this.actionLogRepository = actionLogRepository;
     }
 
     @Transactional
@@ -33,7 +41,9 @@ public class ProgramService {
             short capacity, short durationMin, @Nullable String description
     ) {
         platformAccessGuard.verifyRole(platformId, actor, StaffRole.MANAGER);
-        return programRepository.save(new Program(platformId, name, type, capacity, durationMin, description));
+        Program program = programRepository.save(new Program(platformId, name, type, capacity, durationMin, description));
+        actionLogRepository.save(ActionLog.of(platformId, actor.getId(), ActionTarget.PROGRAM_CHANGE, program.getId(), "CREATE", null));
+        return program;
     }
 
     @Transactional(readOnly = true)
@@ -53,6 +63,7 @@ public class ProgramService {
         Program program = findProgram(programId);
         platformAccessGuard.verifyRole(program.getPlatformId(), actor, StaffRole.MANAGER);
         program.deactivate();
+        actionLogRepository.save(ActionLog.of(program.getPlatformId(), actor.getId(), ActionTarget.PROGRAM_CHANGE, program.getId(), "DEACTIVATE", null));
     }
 
     @Transactional
@@ -62,7 +73,9 @@ public class ProgramService {
     ) {
         Program program = findProgram(programId);
         platformAccessGuard.verifyRole(program.getPlatformId(), actor, StaffRole.MANAGER);
-        return slotRepository.save(new Slot(programId, instructorId, dayOfWeek, startTime, endTime, validFrom, validUntil));
+        Slot slot = slotRepository.save(new Slot(programId, instructorId, dayOfWeek, startTime, endTime, validFrom, validUntil));
+        actionLogRepository.save(ActionLog.of(program.getPlatformId(), actor.getId(), ActionTarget.PROGRAM_CHANGE, slot.getId(), "ADD_SLOT", null));
+        return slot;
     }
 
     @Transactional(readOnly = true)
@@ -77,6 +90,7 @@ public class ProgramService {
         Slot slot = slotRepository.findById(slotId)
                 .orElseThrow(() -> new IllegalArgumentException("Slot not found"));
         slot.deactivate();
+        actionLogRepository.save(ActionLog.of(program.getPlatformId(), actor.getId(), ActionTarget.PROGRAM_CHANGE, slot.getId(), "DEACTIVATE_SLOT", null));
     }
 
     @Transactional(readOnly = true)

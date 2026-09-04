@@ -25,7 +25,7 @@ export default function TutorCalendarView() {
 		const daysInMonth = new Date(calYear, calMonth, 0).getDate();
 		const from = isoDate(calYear, calMonth, 1);
 		const to = isoDate(calYear, calMonth, daysInMonth);
-		const platformList = await listPlatforms();
+		const platformList = (await listPlatforms()).filter((p) => p.roles.includes("TUTOR"));
 		setPlatforms(platformList);
 		const [lessonList, eventList] = await Promise.all([
 			listMyLessons(from, to),
