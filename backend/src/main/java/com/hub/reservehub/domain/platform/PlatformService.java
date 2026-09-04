@@ -144,6 +144,22 @@ public class PlatformService {
     }
 
     @Transactional
+    // 소득유형(근로/사업/기타/일용) 지정 — 원천징수 계산에 쓰인다. MANAGER 이상만 변경 가능.
+    // 한 사람이 이 플랫폼에서 여러 StaffRole(예: MANAGER+TUTOR)을 동시에 가질 수 있으므로 활성 배정
+    // 전부에 동일하게 적용한다 — 소득유형은 역할이 아니라 사람에 딸린 정보이기 때문.
+    public List<PlatformStaff> updateStaffIncomeType(UUID platformId, AuthenticatedUser actor, UUID targetUserId, IncomeType incomeType) {
+        platformAccessGuard.verifyRole(platformId, actor, StaffRole.MANAGER);
+        List<PlatformStaff> staffList = platformStaffRepository.findByPlatformIdAndUserId(platformId, targetUserId).stream()
+                .filter(PlatformStaff::isActive)
+                .toList();
+        if (staffList.isEmpty()) {
+            throw new IllegalArgumentException("Staff assignment not found");
+        }
+        staffList.forEach(staff -> staff.changeIncomeType(incomeType));
+        return staffList;
+    }
+
+    @Transactional
     // OWNER only; ownership is already enforced by the guard (non-owning users never pass the OWNER branch).
     // OWNER만 호출 가능하며, 소유권 검증은 가드에서 이미 처리된다 (OWNER 분기는 소유자만 통과).
     public Platform setSuspended(UUID platformId, AuthenticatedUser owner, boolean suspended) {

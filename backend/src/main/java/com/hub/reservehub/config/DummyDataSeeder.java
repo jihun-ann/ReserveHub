@@ -22,10 +22,12 @@ import com.hub.reservehub.domain.calendar.ShareScope;
 import com.hub.reservehub.domain.lesson.AttendStatus;
 import com.hub.reservehub.domain.lesson.Lesson;
 import com.hub.reservehub.domain.lesson.LessonService;
+import com.hub.reservehub.domain.pass.CashReceiptStatus;
 import com.hub.reservehub.domain.pass.DiscountPolicy;
 import com.hub.reservehub.domain.pass.DiscountPolicyService;
 import com.hub.reservehub.domain.pass.DiscountType;
 import com.hub.reservehub.domain.pass.OrderService;
+import com.hub.reservehub.domain.pass.PaymentMethod;
 import com.hub.reservehub.domain.pass.Pass;
 import com.hub.reservehub.domain.pass.PassService;
 import com.hub.reservehub.domain.pass.PassType;
@@ -130,9 +132,9 @@ public class DummyDataSeeder implements CommandLineRunner {
         Pass tutorOwnPass = passService.list(platform.getId()).get(0);
         var tutorOrder = orderService.createOrder(
                 platform.getId(), tutorPrincipal, tutor.getId(),
-                List.of(new OrderService.PassSelection(tutorOwnPass.getId(), (short) 1)), List.of(), null
+                List.of(new OrderService.PassSelection(tutorOwnPass.getId(), (short) 1, null, null, null, null)), List.of(), null
         );
-        orderService.pay(tutorOrder.getId(), tutorPrincipal);
+        orderService.pay(tutorOrder.getId(), tutorPrincipal, PaymentMethod.CARD, CashReceiptStatus.NOT_ISSUED, null);
 
         // manager@test.com도 같은 테스트 스튜디오에서 수강권을 구매한 고객이기도 한 시나리오 —
         // MANAGER(관리자)+USER(사용자) 멀티롤 케이스를 테스트 스튜디오에서 재현한다.
@@ -140,9 +142,9 @@ public class DummyDataSeeder implements CommandLineRunner {
         Pass managerOwnPass = passService.list(platform.getId()).get(0);
         var managerOrder = orderService.createOrder(
                 platform.getId(), managerPrincipal, manager.getId(),
-                List.of(new OrderService.PassSelection(managerOwnPass.getId(), (short) 1)), List.of(), null
+                List.of(new OrderService.PassSelection(managerOwnPass.getId(), (short) 1, null, null, null, null)), List.of(), null
         );
-        orderService.pay(managerOrder.getId(), managerPrincipal);
+        orderService.pay(managerOrder.getId(), managerPrincipal, PaymentMethod.CARD, CashReceiptStatus.NOT_ISSUED, null);
 
         // 같은 owner가 소유한 플랫폼이 여러 개일 때의 목록/전환 UI를 테스트하기 위한 추가 플랫폼.
         // 강사는 두 플랫폼(필라테스 스튜디오 + 요가 스튜디오)에 동시 소속되어 요일이 겹치지 않는
@@ -206,9 +208,9 @@ public class DummyDataSeeder implements CommandLineRunner {
         Pass studioPass = passService.list(platform1Id).get(0);
         var studioOrder = orderService.createOrder(
                 platform1Id, ownerPrincipal, multiRole.getId(),
-                List.of(new OrderService.PassSelection(studioPass.getId(), (short) 1)), List.of(), null
+                List.of(new OrderService.PassSelection(studioPass.getId(), (short) 1, null, null, null, null)), List.of(), null
         );
-        orderService.pay(studioOrder.getId(), ownerPrincipal);
+        orderService.pay(studioOrder.getId(), ownerPrincipal, PaymentMethod.CARD, CashReceiptStatus.NOT_ISSUED, null);
 
         platformService.assignStaff(platform2Id, ownerPrincipal, multiRole.getId(), StaffRole.MANAGER);
         platformService.assignStaff(platform2Id, ownerPrincipal, multiRole.getId(), StaffRole.TUTOR);
@@ -219,9 +221,9 @@ public class DummyDataSeeder implements CommandLineRunner {
         platformService.assignStaff(platform3Id, ownerPrincipal, multiRole.getId(), StaffRole.TUTOR);
         var dancePassOrder = orderService.createOrder(
                 platform3Id, ownerPrincipal, multiRole.getId(),
-                List.of(new OrderService.PassSelection(dancePass.getId(), (short) 1)), List.of(), null
+                List.of(new OrderService.PassSelection(dancePass.getId(), (short) 1, null, null, null, null)), List.of(), null
         );
-        orderService.pay(dancePassOrder.getId(), ownerPrincipal);
+        orderService.pay(dancePassOrder.getId(), ownerPrincipal, PaymentMethod.CARD, CashReceiptStatus.NOT_ISSUED, null);
     }
 
     // reservationId/originalSlot은 실제 예약 없이 승인 관리 화면을 테스트하기 위한 더미 UUID (FK 강제 없음).
@@ -277,17 +279,17 @@ public class DummyDataSeeder implements CommandLineRunner {
         // member1: 할인 없이 그룹 월정액 결제 → 활성 상태.
         var order1 = orderService.createOrder(
                 platformId, ownerPrincipal, member1.getId(),
-                List.of(new OrderService.PassSelection(groupPass.getId(), (short) 1)), List.of(), null
+                List.of(new OrderService.PassSelection(groupPass.getId(), (short) 1, null, null, null, null)), List.of(), null
         );
-        orderService.pay(order1.getId(), ownerPrincipal);
+        orderService.pay(order1.getId(), ownerPrincipal, PaymentMethod.CARD, CashReceiptStatus.NOT_ISSUED, null);
 
         // member2: 할인 정책을 적용해 체험권 결제 → 만료 임박 상태 + 결제 현황에 할인 내역 노출.
         var order2 = orderService.createOrder(
                 platformId, ownerPrincipal, member2.getId(),
-                List.of(new OrderService.PassSelection(trialPass.getId(), (short) 1)),
+                List.of(new OrderService.PassSelection(trialPass.getId(), (short) 1, null, null, null, null)),
                 List.of(longTermDiscount.getId()), "장기 등록 할인 적용"
         );
-        orderService.pay(order2.getId(), ownerPrincipal);
+        orderService.pay(order2.getId(), ownerPrincipal, PaymentMethod.CARD, CashReceiptStatus.NOT_ISSUED, null);
 
         // member3: 실제 주문 API는 항상 오늘 기준으로 시작일을 잡기 때문에 과거에 만료된 건은
         // 재현할 수 없다 — 만료 상태 화면 테스트용으로 UserPass만 직접 과거 날짜로 만든다
@@ -392,9 +394,9 @@ public class DummyDataSeeder implements CommandLineRunner {
         for (User member : List.of(member4, member5)) {
             var order = orderService.createOrder(
                     platformId, ownerPrincipal, member.getId(),
-                    List.of(new OrderService.PassSelection(yogaPass.getId(), (short) 1)), List.of(), null
+                    List.of(new OrderService.PassSelection(yogaPass.getId(), (short) 1, null, null, null, null)), List.of(), null
             );
-            orderService.pay(order.getId(), ownerPrincipal);
+            orderService.pay(order.getId(), ownerPrincipal, PaymentMethod.CARD, CashReceiptStatus.NOT_ISSUED, null);
         }
 
         return List.of(member4, member5);

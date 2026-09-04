@@ -36,6 +36,11 @@ public class PlatformStaff {
     @Nullable
     private Instant leftAt;
 
+    // 원천징수 계산용 소득 구분 — 배정 시점엔 미정일 수 있어 nullable.
+    @Nullable
+    @Enumerated(EnumType.STRING)
+    private IncomeType incomeType;
+
     protected PlatformStaff() {
         // JPA only.
     }
@@ -74,6 +79,15 @@ public class PlatformStaff {
     @Nullable
     public Instant getLeftAt() {
         return leftAt;
+    }
+
+    @Nullable
+    public IncomeType getIncomeType() {
+        return incomeType;
+    }
+
+    public void changeIncomeType(IncomeType incomeType) {
+        this.incomeType = incomeType;
     }
 
     // Soft-deletes the assignment instead of removing history (AGENT.md 4-4).

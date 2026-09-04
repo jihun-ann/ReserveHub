@@ -1,5 +1,6 @@
 package com.hub.reservehub.api.v1;
 
+import com.hub.reservehub.domain.platform.IncomeType;
 import com.hub.reservehub.domain.platform.TaxAccountantService;
 import com.hub.reservehub.domain.user.User;
 import com.hub.reservehub.security.AuthenticatedUser;
@@ -7,15 +8,18 @@ import com.hub.reservehub.security.CurrentAuthenticatedUser;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
 import java.util.List;
 import java.util.UUID;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.lang.Nullable;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -53,10 +57,23 @@ public class TaxAccountantController {
 
     @GetMapping("/api/v1/platforms/{platformId}/tax-accountants")
     @PreAuthorize("hasRole('OWNER')")
-    public List<UserSummary> list(@PathVariable UUID platformId) {
+    public List<GrantedAccountantResponse> list(@PathVariable UUID platformId) {
         return taxAccountantService.listGranted(platformId, currentAuthenticatedUser.get()).stream()
-                .map(UserSummary::from)
+                .map(GrantedAccountantResponse::from)
                 .toList();
+    }
+
+    @PatchMapping("/api/v1/platforms/{platformId}/tax-accountants/{userId}/income-type")
+    @PreAuthorize("hasRole('OWNER')")
+    public GrantedAccountantResponse updateIncomeType(
+            @PathVariable UUID platformId, @PathVariable UUID userId, @Valid @RequestBody UpdateIncomeTypeRequest request
+    ) {
+        taxAccountantService.updateIncomeType(platformId, currentAuthenticatedUser.get(), userId, request.incomeType());
+        return taxAccountantService.listGranted(platformId, currentAuthenticatedUser.get()).stream()
+                .filter(g -> g.user().getId().equals(userId))
+                .findFirst()
+                .map(GrantedAccountantResponse::from)
+                .orElseThrow(() -> new IllegalArgumentException("Tax accountant not found"));
     }
 
     @GetMapping("/api/v1/platforms/{platformId}/staff-payroll")
@@ -82,14 +99,28 @@ public class TaxAccountantController {
         }
     }
 
+    public record UpdateIncomeTypeRequest(@NotNull IncomeType incomeType) {
+    }
+
+    public record GrantedAccountantResponse(UUID id, String username, String email, String name, String phone, @Nullable IncomeType incomeType) {
+        public static GrantedAccountantResponse from(TaxAccountantService.GrantedAccountant grant) {
+            return new GrantedAccountantResponse(
+                    grant.user().getId(), grant.user().getUsername(), grant.user().getEmail(),
+                    grant.user().getName(), grant.user().getPhone(), grant.incomeType()
+            );
+        }
+    }
+
     public record StaffPayrollResponse(
             UUID userId, String name, String email, String phone, String role,
-            String bankName, String bankAccountNumber, String bankAccountHolder
+            String bankName, String bankAccountNumber, String bankAccountHolder,
+            @Nullable IncomeType incomeType, @Nullable String withholdingRateLabel
     ) {
         public static StaffPayrollResponse from(TaxAccountantService.StaffPayrollEntry entry) {
             return new StaffPayrollResponse(
                     entry.userId(), entry.name(), entry.email(), entry.phone(), entry.role(),
-                    entry.bankName(), entry.bankAccountNumber(), entry.bankAccountHolder()
+                    entry.bankName(), entry.bankAccountNumber(), entry.bankAccountHolder(),
+                    entry.incomeType(), entry.withholdingRateLabel()
             );
         }
     }

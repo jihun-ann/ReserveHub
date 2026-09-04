@@ -48,6 +48,14 @@ export const revokeTaxAccountant = (platformId, userId) =>
 
 export const listStaffPayroll = (platformId) => apiGet(`/api/v1/platforms/${platformId}/staff-payroll`);
 
+export const INCOME_TYPE_LABEL = { EMPLOYMENT: "근로소득자", BUSINESS: "사업소득자", OTHER: "기타소득자", DAILY: "일용근로자" };
+
+export const updateStaffIncomeType = (platformId, userId, incomeType) =>
+	apiPatch(`/api/v1/platforms/${platformId}/staff/${userId}/income-type`, { incomeType });
+
+export const updateTaxAccountantIncomeType = (platformId, userId, incomeType) =>
+	apiPatch(`/api/v1/platforms/${platformId}/tax-accountants/${userId}/income-type`, { incomeType });
+
 export const FINANCIAL_REQUEST_TYPE_LABEL = { PAYDAY: "월급날", EXPENSE: "지출일", STATEMENT: "명세서 제출" };
 
 export const createFinancialRequest = (platformId, payload) =>
@@ -96,6 +104,9 @@ export const rejectScheduleRequest = (id, memo) =>
 
 export const listMembers = (platformId) => apiGet(`/api/v1/platforms/${platformId}/members`);
 
+export const updateMemberGuardian = (platformId, userId, guardianName, guardianPhone) =>
+	apiPatch(`/api/v1/platforms/${platformId}/members/${userId}/guardian`, { guardianName, guardianPhone });
+
 export const listMemberMemos = (platformId, userId) =>
 	apiGet(`/api/v1/platforms/${platformId}/members/${userId}/memos`);
 
@@ -127,6 +138,32 @@ export const createDiscountPolicy = (platformId, payload) =>
 export const deactivateDiscountPolicy = (id) => apiDelete(`/api/v1/discount-policies/${id}`);
 
 export const listOrders = (platformId) => apiGet(`/api/v1/platforms/${platformId}/orders`);
+
+export const ORDER_STATUS_LABEL = { PENDING: "미납", PARTIAL: "부분납", PAID: "결제완료", CANCELLED: "취소", REFUNDED: "환불" };
+
+export const PAYMENT_METHOD_LABEL = { CARD: "카드", BANK_TRANSFER: "계좌이체", CASH: "현금", OTHER: "기타" };
+
+export const CASH_RECEIPT_STATUS_LABEL = { ISSUED: "발급", NOT_ISSUED: "미발급", SELF_ISSUED: "자진발급" };
+
+export const TAX_TYPE_LABEL = { TAXABLE: "과세", EXEMPT: "면세" };
+
+export const createOrder = (platformId, payload) => apiPost(`/api/v1/platforms/${platformId}/orders`, payload);
+
+export const payOrder = (id, payload) => apiPost(`/api/v1/orders/${id}/pay`, payload);
+
+export const partialPayOrder = (id, payload) => apiPost(`/api/v1/orders/${id}/partial-pay`, payload);
+
+// 기존 회원에게 새 결제(재등록/월별 반복 결제 등)를 등록하고 바로 결제 확정까지 처리한다.
+export async function registerMemberPayment(platformId, buyerUserId, item, payment) {
+	const order = await createOrder(platformId, { buyerUserId, items: [item] });
+	return payOrder(order.id, payment);
+}
+
+export const getRevenueRecords = (platformId, year, month, includeTax = true) =>
+	apiGet(`/api/v1/platforms/${platformId}/revenue/records?year=${year}&month=${month}&includeTax=${includeTax}`);
+
+export const getRevenueSummary = (platformId, year, month, includeTax = true) =>
+	apiGet(`/api/v1/platforms/${platformId}/revenue/summary?year=${year}&month=${month}&includeTax=${includeTax}`);
 
 export const PROGRAM_TYPE_LABEL = { GROUP: "그룹 레슨", PRIVATE: "개인 레슨", SEMIPRIVATE: "소그룹 레슨" };
 
@@ -173,19 +210,32 @@ export async function listCalendarEventsForPlatforms(platforms, from, to) {
 
 export const createCalendarEvent = (payload) => apiPost("/api/v1/calendar-events", payload);
 
-export const refundOrder = (id, memo) => apiPost(`/api/v1/orders/${id}/refund`, memo ? { memo } : undefined);
+export const refundOrder = (id, memo, amount) =>
+	apiPost(`/api/v1/orders/${id}/refund`, memo || amount ? { memo, amount } : undefined);
+
+// 로그인 아이디(username)는 이메일 앞부분 + 임의 접미사로 자동 생성한다 — 백엔드는 username을 이메일과
+// 별개의 필수 고유 식별자로 요구하지만, 이 화면들에는 아이디를 별도로 입력받는 필드가 없기 때문이다.
+function deriveUsername(email) {
+	const base = (email.split("@")[0] || "user").replace(/[^a-zA-Z0-9_]/g, "").slice(0, 15) || "user";
+	const suffix = Math.random().toString(36).slice(2, 6);
+	return (base + suffix).slice(0, 20);
+}
 
 export const createUserAccount = (email, password, name, phone, role = "USER") =>
-	apiPost("/api/v1/users", { email, password, name, phone, role });
+	apiPost("/api/v1/users", { username: deriveUsername(email), email, password, name, phone, role });
 
-// 회원 등록: 계정 생성 -> 수강권 주문 -> 결제 확정까지 이어서 처리한다 (백엔드가 이 세 단계로 나뉘어 있음).
-export async function enrollMember(platformId, email, password, name, phone, passId) {
+// 회원 등록: 계정 생성 -> 수강권 주문 -> 결제 확정 -> (있으면) 보호자 정보 저장까지 이어서 처리한다.
+// item: { passId, programId, enrollStart, enrollEnd, taxType }, payment: { paymentMethod, cashReceiptStatus, receiptNumber }
+export async function enrollMember(platformId, email, password, name, phone, item, payment, guardian) {
 	const user = await createUserAccount(email, password, name, phone);
-	const order = await apiPost(`/api/v1/platforms/${platformId}/orders`, {
+	const order = await createOrder(platformId, {
 		buyerUserId: user.id,
-		items: [{ passId, quantity: 1 }]
+		items: [{ ...item, quantity: 1 }]
 	});
-	await apiPost(`/api/v1/orders/${order.id}/pay`);
+	await payOrder(order.id, payment);
+	if (guardian?.guardianName || guardian?.guardianPhone) {
+		await updateMemberGuardian(platformId, user.id, guardian.guardianName, guardian.guardianPhone);
+	}
 	return user;
 }
 

@@ -51,6 +51,22 @@ public class MemberService {
                 .toList();
     }
 
+    @Transactional
+    // 매니저가 학생(회원)의 보호자 정보를 입력/수정한다 — 계정 소유자의 마이페이지 프로필과 별개로,
+    // 회원이 이 플랫폼의 수강생일 때만 매니저가 대신 관리하는 정보다.
+    public User updateGuardian(UUID platformId, AuthenticatedUser actor, UUID targetUserId, String guardianName, String guardianPhone) {
+        platformAccessGuard.verify(platformId, actor);
+        boolean isMember = userPassRepository.findByPlatformId(platformId).stream()
+                .anyMatch(up -> up.getUserId().equals(targetUserId));
+        if (!isMember) {
+            throw new IllegalArgumentException("Member not found on this platform");
+        }
+        User user = userRepository.findById(targetUserId)
+                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+        user.updateGuardian(guardianName, guardianPhone);
+        return user;
+    }
+
     public record MemberPass(UserPass userPass, Pass pass, User user) {
     }
 }

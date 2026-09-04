@@ -3,7 +3,8 @@ import { openModal, closeModal } from "../default.js";
 import {
 	listPasses, createPass, deactivatePass,
 	DISCOUNT_TYPES, listDiscountPolicies, createDiscountPolicy, deactivateDiscountPolicy,
-	listOrders, refundOrder, getUser, listMembers
+	listOrders, refundOrder, partialPayOrder, getUser, listMembers, listPrograms,
+	ORDER_STATUS_LABEL, PAYMENT_METHOD_LABEL, CASH_RECEIPT_STATUS_LABEL
 } from "../../api/common.js";
 
 const PASS_TYPES = [
@@ -13,27 +14,28 @@ const PASS_TYPES = [
 	{ value: "CUSTOM", label: "기타" }
 ];
 
-const ORDER_STATUS_LABEL = {
-	PENDING: { label: "결제 대기", cls: "bs-pending" },
-	PAID: { label: "완료", cls: "bs-active" },
-	CANCELED: { label: "취소", cls: "bs-expired" },
-	REFUNDED: { label: "환불됨", cls: "bs-expired" }
-};
+const STATUS_CLS = { PENDING: "bs-pending", PARTIAL: "bs-soon", PAID: "bs-active", CANCELLED: "bs-expired", REFUNDED: "bs-expired" };
 
 export default function ManagerPaymentView({ platformId }) {
 	const [activeTab, setActiveTab] = useState("pass");
 	const [loading, setLoading] = useState(true);
 
 	const [passes, setPasses] = useState([]);
+	const [programs, setPrograms] = useState([]);
 	const [subscriberCounts, setSubscriberCounts] = useState({});
 	const [discounts, setDiscounts] = useState([]);
 	const [orders, setOrders] = useState([]);
-	const [buyerEmails, setBuyerEmails] = useState({});
+	const [buyers, setBuyers] = useState({});
 
 	const [passForm, setPassForm] = useState({ name: "", type: "MONTHLY", price: "", sessionCount: "", validDays: "" });
 	const [passError, setPassError] = useState("");
 	const [discountForm, setDiscountForm] = useState({ name: "", type: "LONG_TERM", rate: "", conditionValue: "" });
 	const [discountError, setDiscountError] = useState("");
+
+	const [refundTarget, setRefundTarget] = useState(null);
+	const [refundAmount, setRefundAmount] = useState("");
+	const [payMoreTarget, setPayMoreTarget] = useState(null);
+	const [payMoreAmount, setPayMoreAmount] = useState("");
 
 	const refresh = useCallback(async () => {
 		if (!platformId) {
@@ -44,23 +46,25 @@ export default function ManagerPaymentView({ platformId }) {
 			return;
 		}
 		setLoading(true);
-		const [passList, discountList, orderList, members] = await Promise.all([
+		const [passList, discountList, orderList, members, programList] = await Promise.all([
 			listPasses(platformId),
 			listDiscountPolicies(platformId),
 			listOrders(platformId),
-			listMembers(platformId)
+			listMembers(platformId),
+			listPrograms(platformId)
 		]);
 		setPasses(passList);
 		setDiscounts(discountList);
 		setOrders(orderList);
+		setPrograms(programList);
 
 		const counts = {};
 		members.forEach((m) => { counts[m.passName] = (counts[m.passName] || 0) + 1; });
 		setSubscriberCounts(counts);
 
 		const buyerIds = [...new Set(orderList.map((o) => o.userId))];
-		const buyers = await Promise.all(buyerIds.map((id) => getUser(id)));
-		setBuyerEmails(Object.fromEntries(buyerIds.map((id, i) => [id, buyers[i].name || buyers[i].email])));
+		const buyerUsers = await Promise.all(buyerIds.map((id) => getUser(id)));
+		setBuyers(Object.fromEntries(buyerIds.map((id, i) => [id, buyerUsers[i]])));
 
 		setLoading(false);
 	}, [platformId]);
@@ -116,8 +120,34 @@ export default function ManagerPaymentView({ platformId }) {
 		await refresh();
 	}
 
-	async function doRefund(id) {
-		await refundOrder(id);
+	function openRefundModal(order) {
+		setRefundTarget(order);
+		setRefundAmount("");
+		openModal("refundModal");
+	}
+
+	async function doRefund() {
+		if (!refundTarget) return;
+		await refundOrder(refundTarget.id, null, refundAmount ? Number(refundAmount) : null);
+		closeModal("refundModal");
+		await refresh();
+	}
+
+	function openPayMoreModal(order) {
+		setPayMoreTarget(order);
+		setPayMoreAmount("");
+		openModal("payMoreModal");
+	}
+
+	async function doPayMore() {
+		if (!payMoreTarget || !payMoreAmount) return;
+		await partialPayOrder(payMoreTarget.id, {
+			amount: Number(payMoreAmount),
+			paymentMethod: payMoreTarget.paymentMethod || "CARD",
+			cashReceiptStatus: payMoreTarget.cashReceiptStatus || "NOT_ISSUED",
+			receiptNumber: payMoreTarget.receiptNumber || null
+		});
+		closeModal("payMoreModal");
 		await refresh();
 	}
 
@@ -210,31 +240,58 @@ export default function ManagerPaymentView({ platformId }) {
 					<div style={{ overflowX: "auto" }}>
 						<table className="data-table">
 							<thead>
-								<tr><th>결제일</th><th>회원</th><th>수강권</th><th>금액</th><th>할인</th><th>최종</th><th>상태</th><th></th></tr>
+								<tr>
+									<th>결제일</th><th>회원</th><th>보호자</th><th>수강권</th><th>과목/반</th><th>수강기간</th>
+									<th>금액</th><th>할인</th><th>실수납</th><th>결제수단</th><th>현금영수증</th><th>증빙번호</th>
+									<th>상태</th><th>환불금액</th><th>환불일</th><th></th>
+								</tr>
 							</thead>
 							<tbody>
 								{loading ? (
-									<tr><td colSpan={8} style={{ textAlign: "center", padding: "24px", color: "var(--text-dim)" }}>불러오는 중...</td></tr>
+									<tr><td colSpan={16} style={{ textAlign: "center", padding: "24px", color: "var(--text-dim)" }}>불러오는 중...</td></tr>
 								) : orders.length === 0 ? (
-									<tr><td colSpan={8} style={{ textAlign: "center", padding: "24px", color: "var(--text-dim)" }}>결제 내역이 없습니다</td></tr>
+									<tr><td colSpan={16} style={{ textAlign: "center", padding: "24px", color: "var(--text-dim)" }}>결제 내역이 없습니다</td></tr>
 								) : (
 									orders.map((o) => {
-										const st = ORDER_STATUS_LABEL[o.status] || { label: o.status, cls: "" };
+										const statusLabel = ORDER_STATUS_LABEL[o.status] || o.status;
+										const cls = STATUS_CLS[o.status] || "";
 										const passNames = o.items.map((i) => passes.find((p) => p.id === i.passId)?.name || "-").join(", ");
+										const programNames = [...new Set(
+											o.items.map((i) => (i.programId && programs.find((p) => p.id === i.programId)?.name) || null).filter(Boolean)
+										)].join(", ") || "-";
+										const period = o.items[0]?.enrollStart
+											? `${o.items[0].enrollStart} ~ ${o.items[0].enrollEnd || ""}`
+											: "-";
+										const buyer = buyers[o.userId];
 										return (
 											<tr key={o.id}>
 												<td style={{ fontFamily: "'DM Mono',monospace", fontSize: "12px" }}>
 													{o.paidAt ? new Date(o.paidAt).toLocaleDateString() : "-"}
 												</td>
-												<td style={{ fontWeight: 600 }}>{buyerEmails[o.userId] || "-"}</td>
+												<td style={{ fontWeight: 600 }}>{buyer?.name || buyer?.email || "-"}</td>
+												<td style={{ fontSize: "12px" }}>
+													{buyer?.guardianName ? `${buyer.guardianName}${buyer.guardianPhone ? " / " + buyer.guardianPhone : ""}` : "-"}
+												</td>
 												<td>{passNames}</td>
+												<td>{programNames}</td>
+												<td style={{ fontSize: "12px" }}>{period}</td>
 												<td style={{ fontFamily: "'DM Mono',monospace" }}>{o.originalAmount.toLocaleString()}</td>
 												<td style={{ fontFamily: "'DM Mono',monospace", color: "var(--accent3)" }}>-{o.discountAmount.toLocaleString()}</td>
-												<td style={{ fontFamily: "'DM Mono',monospace", color: "var(--manager)" }}>{o.finalAmount.toLocaleString()}</td>
-												<td><span className={`badge ${st.cls}`} style={{ fontSize: "10px" }}>{st.label}</span></td>
-												<td>
-													{o.status === "PAID" && (
-														<button className="btn btn-ghost btn-sm" onClick={() => doRefund(o.id)}>환불</button>
+												<td style={{ fontFamily: "'DM Mono',monospace", color: "var(--manager)" }}>{o.paidAmount.toLocaleString()}</td>
+												<td>{o.paymentMethod ? PAYMENT_METHOD_LABEL[o.paymentMethod] : "-"}</td>
+												<td>{CASH_RECEIPT_STATUS_LABEL[o.cashReceiptStatus] || "-"}</td>
+												<td style={{ fontFamily: "'DM Mono',monospace", fontSize: "12px" }}>{o.receiptNumber || "-"}</td>
+												<td><span className={`badge ${cls}`} style={{ fontSize: "10px" }}>{statusLabel}</span></td>
+												<td style={{ fontFamily: "'DM Mono',monospace" }}>{o.refundAmount ? o.refundAmount.toLocaleString() : "-"}</td>
+												<td style={{ fontFamily: "'DM Mono',monospace", fontSize: "12px" }}>
+													{o.refundedAt ? new Date(o.refundedAt).toLocaleDateString() : "-"}
+												</td>
+												<td style={{ display: "flex", gap: "4px" }}>
+													{o.status === "PARTIAL" && (
+														<button className="btn btn-ghost btn-sm" onClick={() => openPayMoreModal(o)}>추가 납부</button>
+													)}
+													{(o.status === "PAID" || o.status === "PARTIAL") && (
+														<button className="btn btn-ghost btn-sm" onClick={() => openRefundModal(o)}>환불</button>
 													)}
 												</td>
 											</tr>
@@ -317,6 +374,47 @@ export default function ManagerPaymentView({ platformId }) {
 					<div style={{ display: "flex", justifyContent: "flex-end", gap: "8px", marginTop: "8px" }}>
 						<button className="btn btn-ghost" onClick={() => closeModal("discountModal")}>취소</button>
 						<button className="btn btn-primary" onClick={submitDiscount}>저장</button>
+					</div>
+				</div>
+			</div>
+		</div>
+
+		<div className="modal-overlay" id="refundModal">
+			<div className="modal-box">
+				<div className="modal-header">
+					<div className="modal-title">환불 처리</div>
+					<button className="modal-close" onClick={() => closeModal("refundModal")}>✕</button>
+				</div>
+				<div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+					<div className="form-field">
+						<label>환불 금액 (비워두면 잔여 전액 환불)</label>
+						<input
+							type="number" value={refundAmount} onChange={(e) => setRefundAmount(e.target.value)}
+							placeholder={refundTarget ? `최대 ${(refundTarget.paidAmount - refundTarget.refundAmount).toLocaleString()}` : ""}
+						/>
+					</div>
+					<div style={{ display: "flex", justifyContent: "flex-end", gap: "8px", marginTop: "8px" }}>
+						<button className="btn btn-ghost" onClick={() => closeModal("refundModal")}>취소</button>
+						<button className="btn btn-primary" onClick={doRefund}>환불 확정</button>
+					</div>
+				</div>
+			</div>
+		</div>
+
+		<div className="modal-overlay" id="payMoreModal">
+			<div className="modal-box">
+				<div className="modal-header">
+					<div className="modal-title">추가 납부</div>
+					<button className="modal-close" onClick={() => closeModal("payMoreModal")}>✕</button>
+				</div>
+				<div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+					<div className="form-field">
+						<label>납부 금액 (잔액 {payMoreTarget ? (payMoreTarget.finalAmount - payMoreTarget.paidAmount).toLocaleString() : 0}원)</label>
+						<input type="number" value={payMoreAmount} onChange={(e) => setPayMoreAmount(e.target.value)} />
+					</div>
+					<div style={{ display: "flex", justifyContent: "flex-end", gap: "8px", marginTop: "8px" }}>
+						<button className="btn btn-ghost" onClick={() => closeModal("payMoreModal")}>취소</button>
+						<button className="btn btn-primary" onClick={doPayMore}>납부 확정</button>
 					</div>
 				</div>
 			</div>

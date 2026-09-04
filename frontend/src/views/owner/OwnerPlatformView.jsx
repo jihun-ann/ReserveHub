@@ -7,12 +7,15 @@ import {
 	createProgram,
 	grantTaxAccountant,
 	hexAlpha,
+	INCOME_TYPE_LABEL,
 	listActionLogs,
 	listPrograms,
 	listStaff,
 	listTaxAccountants,
 	revokeTaxAccountant,
-	setPlatformSuspended
+	setPlatformSuspended,
+	updateStaffIncomeType,
+	updateTaxAccountantIncomeType
 } from "../../api/common.js";
 import { formatDateTime } from "../../utils/formatDateTime.js";
 
@@ -67,10 +70,8 @@ export default function OwnerPlatformView({ platforms, currentPlatformId, onSele
 
 	const plat = platforms.find((p) => p.id === currentPlatformId) || null;
 
-	useEffect(() => {
-		if (!plat) return;
-		listPrograms(plat.id).then(setPrograms).catch(() => setPrograms([]));
-		listStaff(plat.id)
+	function refreshStaff(platformId) {
+		listStaff(platformId)
 			.then(async (rows) => {
 				const withEmail = await Promise.all(
 					rows.map(async (s) => {
@@ -85,6 +86,12 @@ export default function OwnerPlatformView({ platforms, currentPlatformId, onSele
 				setStaff(withEmail);
 			})
 			.catch(() => setStaff([]));
+	}
+
+	useEffect(() => {
+		if (!plat) return;
+		listPrograms(plat.id).then(setPrograms).catch(() => setPrograms([]));
+		refreshStaff(plat.id);
 		refreshTaxAccountants(plat.id);
 		listActionLogs(plat.id).then(setActivityLogs).catch(() => setActivityLogs([]));
 	}, [plat?.id]);
@@ -115,6 +122,24 @@ export default function OwnerPlatformView({ platforms, currentPlatformId, onSele
 			refreshTaxAccountants(plat.id);
 		} catch (err) {
 			alert(err.message || "접근 해제에 실패했습니다.");
+		}
+	}
+
+	async function changeStaffIncomeType(userId, incomeType) {
+		try {
+			await updateStaffIncomeType(plat.id, userId, incomeType);
+			refreshStaff(plat.id);
+		} catch (err) {
+			alert(err.message || "소득유형 변경에 실패했습니다.");
+		}
+	}
+
+	async function changeTaxAccountantIncomeType(userId, incomeType) {
+		try {
+			await updateTaxAccountantIncomeType(plat.id, userId, incomeType);
+			refreshTaxAccountants(plat.id);
+		} catch (err) {
+			alert(err.message || "소득유형 변경에 실패했습니다.");
 		}
 	}
 
@@ -308,6 +333,14 @@ export default function OwnerPlatformView({ platforms, currentPlatformId, onSele
 											<div style={{ flex: 1 }}>
 												<div style={{ fontSize: "14px", fontWeight: 700 }}>{s.email}</div>
 											</div>
+											<select
+												value={s.incomeType || ""}
+												onChange={(e) => changeStaffIncomeType(s.userId, e.target.value)}
+												style={{ fontSize: "12px", padding: "4px 8px" }}
+											>
+												<option value="" disabled>소득유형 선택</option>
+												{Object.entries(INCOME_TYPE_LABEL).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+											</select>
 											<span className="plat-status ps-active" style={{ fontSize: "10px" }}>재직</span>
 										</div>
 									))}
@@ -331,6 +364,14 @@ export default function OwnerPlatformView({ platforms, currentPlatformId, onSele
 													<div style={{ fontSize: "14px", fontWeight: 700 }}>{a.name}</div>
 													<div style={{ fontSize: "11px", color: "var(--text-sub)" }}>{a.email}</div>
 												</div>
+												<select
+													value={a.incomeType || ""}
+													onChange={(e) => changeTaxAccountantIncomeType(a.id, e.target.value)}
+													style={{ fontSize: "12px", padding: "4px 8px" }}
+												>
+													<option value="" disabled>소득유형 선택</option>
+													{Object.entries(INCOME_TYPE_LABEL).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+												</select>
 												<button className="btn btn-sm btn-danger" onClick={() => removeTaxAccountant(a.id)}>접근 해제</button>
 											</div>
 										))}

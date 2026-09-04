@@ -2,6 +2,8 @@ package com.hub.reservehub.domain.platform;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.Id;
 import java.time.Instant;
@@ -34,6 +36,11 @@ public class PlatformTaxAccountant {
 
     @Nullable
     private Instant leftAt;
+
+    // 세무사 본인의 소득 구분(보통 사업소득자) — 지정 전엔 nullable.
+    @Nullable
+    @Enumerated(EnumType.STRING)
+    private IncomeType incomeType;
 
     protected PlatformTaxAccountant() {
         // JPA only.
@@ -68,6 +75,15 @@ public class PlatformTaxAccountant {
     @Nullable
     public Instant getLeftAt() {
         return leftAt;
+    }
+
+    @Nullable
+    public IncomeType getIncomeType() {
+        return incomeType;
+    }
+
+    public void changeIncomeType(IncomeType incomeType) {
+        this.incomeType = incomeType;
     }
 
     public void leave() {

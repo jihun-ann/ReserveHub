@@ -2,13 +2,17 @@ package com.hub.reservehub.api.v1;
 
 import com.hub.reservehub.domain.pass.MemberService;
 import com.hub.reservehub.domain.pass.UserPassStatus;
+import com.hub.reservehub.domain.user.User;
 import com.hub.reservehub.security.CurrentAuthenticatedUser;
+import jakarta.validation.Valid;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
@@ -34,13 +38,31 @@ public class MemberController {
                 .toList();
     }
 
+    @PatchMapping("/api/v1/platforms/{platformId}/members/{userId}/guardian")
+    public GuardianResponse updateGuardian(
+            @PathVariable UUID platformId, @PathVariable UUID userId, @Valid @RequestBody UpdateGuardianRequest request
+    ) {
+        User user = memberService.updateGuardian(
+                platformId, currentAuthenticatedUser.get(), userId, request.guardianName(), request.guardianPhone()
+        );
+        return new GuardianResponse(user.getId(), user.getGuardianName(), user.getGuardianPhone());
+    }
+
+    public record UpdateGuardianRequest(String guardianName, String guardianPhone) {
+    }
+
+    public record GuardianResponse(UUID userId, String guardianName, String guardianPhone) {
+    }
+
     public record MemberResponse(
-            UUID userId, String email, String name, String phone, String passName, Integer sessionsTotal,
+            UUID userId, String email, String name, String phone, String guardianName, String guardianPhone,
+            String passName, Integer sessionsTotal,
             int sessionsUsed, UserPassStatus status, LocalDate startedAt, LocalDate expiresAt
     ) {
         static MemberResponse from(MemberService.MemberPass mp) {
             return new MemberResponse(
                     mp.user().getId(), mp.user().getEmail(), mp.user().getName(), mp.user().getPhone(),
+                    mp.user().getGuardianName(), mp.user().getGuardianPhone(),
                     mp.pass().getName(), mp.userPass().getSessionsTotal(),
                     mp.userPass().getSessionsUsed(), mp.userPass().getStatus(),
                     mp.userPass().getStartedAt(), mp.userPass().getExpiresAt()

@@ -12,6 +12,7 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+import org.springframework.lang.Nullable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -69,24 +70,44 @@ public class TaxAccountantService {
     }
 
     @Transactional(readOnly = true)
-    public List<User> listGranted(UUID platformId, AuthenticatedUser owner) {
+    public List<GrantedAccountant> listGranted(UUID platformId, AuthenticatedUser owner) {
         requireOwner(platformId, owner);
-        List<UUID> userIds = platformTaxAccountantRepository.findByPlatformIdAndIsActiveTrue(platformId).stream()
-                .map(PlatformTaxAccountant::getUserId)
+        List<PlatformTaxAccountant> grants = platformTaxAccountantRepository.findByPlatformIdAndIsActiveTrue(platformId);
+        Map<UUID, User> usersById = userRepository.findAllById(grants.stream().map(PlatformTaxAccountant::getUserId).toList())
+                .stream().collect(Collectors.toMap(User::getId, Function.identity()));
+        return grants.stream()
+                .map(grant -> usersById.get(grant.getUserId()))
+                .filter(java.util.Objects::nonNull)
+                .map(user -> new GrantedAccountant(user, grants.stream()
+                        .filter(g -> g.getUserId().equals(user.getId())).findFirst().map(PlatformTaxAccountant::getIncomeType).orElse(null)))
                 .toList();
-        return userRepository.findAllById(userIds);
+    }
+
+    public record GrantedAccountant(User user, @Nullable IncomeType incomeType) {
+    }
+
+    @Transactional
+    // 세무사 본인의 소득 구분(보통 사업소득자) 지정 — OWNER만 변경 가능.
+    public PlatformTaxAccountant updateIncomeType(UUID platformId, AuthenticatedUser owner, UUID accountantUserId, IncomeType incomeType) {
+        requireOwner(platformId, owner);
+        PlatformTaxAccountant grant = platformTaxAccountantRepository.findByPlatformIdAndUserId(platformId, accountantUserId)
+                .orElseThrow(() -> new IllegalArgumentException("Tax accountant grant not found"));
+        grant.changeIncomeType(incomeType);
+        return grant;
     }
 
     @Transactional(readOnly = true)
-    // 오너/MANAGER/초대된 세무사만 — 오너 본인을 포함해 이 플랫폼과 관계된 사람 전원의 개인정보와
-    // 정산 계좌를 묶어 보여준다 (오너도 정산 대상일 수 있어 스태프 목록에서 빠지면 안 된다).
+    // 오너/MANAGER/초대된 세무사만 — 오너 본인과 이 플랫폼에 부여된 세무사까지 포함해 이 플랫폼과
+    // 관계된 사람 전원의 개인정보와 정산 계좌를 묶어 보여준다 ("직원 정보"에 세무사도 포함되어야 한다).
     public List<StaffPayrollEntry> listStaffPayroll(UUID platformId, AuthenticatedUser actor) {
         platformAccessGuard.verifyFinancialAccess(platformId, actor);
         Platform platform = platformRepository.findById(platformId)
                 .orElseThrow(() -> new IllegalArgumentException("Platform not found"));
         List<PlatformStaff> staffList = platformStaffRepository.findByPlatformIdAndIsActiveTrue(platformId);
+        List<PlatformTaxAccountant> accountantGrants = platformTaxAccountantRepository.findByPlatformIdAndIsActiveTrue(platformId);
 
         List<UUID> userIds = new ArrayList<>(staffList.stream().map(PlatformStaff::getUserId).distinct().toList());
+        userIds.addAll(accountantGrants.stream().map(PlatformTaxAccountant::getUserId).distinct().toList());
         userIds.add(platform.getCreatedBy());
         Map<UUID, User> usersById = userRepository.findAllById(userIds).stream()
                 .collect(Collectors.toMap(User::getId, Function.identity()));
@@ -94,21 +115,28 @@ public class TaxAccountantService {
         List<StaffPayrollEntry> entries = new ArrayList<>();
         User owner = usersById.get(platform.getCreatedBy());
         if (owner != null) {
-            entries.add(toPayrollEntry(owner, "OWNER"));
+            entries.add(toPayrollEntry(owner, "OWNER", null));
         }
         staffList.forEach(staff -> {
             User user = usersById.get(staff.getUserId());
             if (user != null) {
-                entries.add(toPayrollEntry(user, staff.getStaffRole().name()));
+                entries.add(toPayrollEntry(user, staff.getStaffRole().name(), staff.getIncomeType()));
+            }
+        });
+        accountantGrants.forEach(grant -> {
+            User user = usersById.get(grant.getUserId());
+            if (user != null) {
+                entries.add(toPayrollEntry(user, "TAX_ACCOUNTANT", grant.getIncomeType()));
             }
         });
         return entries;
     }
 
-    private StaffPayrollEntry toPayrollEntry(User user, String role) {
+    private StaffPayrollEntry toPayrollEntry(User user, String role, @Nullable IncomeType incomeType) {
         return new StaffPayrollEntry(
                 user.getId(), user.getName(), user.getEmail(), user.getPhone(), role,
-                user.getBankName(), user.getBankAccountNumber(), user.getBankAccountHolder()
+                user.getBankName(), user.getBankAccountNumber(), user.getBankAccountHolder(),
+                incomeType, incomeType != null ? WithholdingTaxCalculator.rateLabel(incomeType) : null
         );
     }
 
@@ -120,7 +148,8 @@ public class TaxAccountantService {
 
     public record StaffPayrollEntry(
             UUID userId, String name, String email, String phone, String role,
-            String bankName, String bankAccountNumber, String bankAccountHolder
+            String bankName, String bankAccountNumber, String bankAccountHolder,
+            @Nullable IncomeType incomeType, @Nullable String withholdingRateLabel
     ) {
     }
 }

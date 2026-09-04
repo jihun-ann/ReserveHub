@@ -1,6 +1,63 @@
 import { useState, useEffect, useCallback } from "react";
 import { openModal, closeModal } from "../default.js";
-import { listMembers, listMemberMemos, createMemberMemo, deleteMemberMemo, listPasses, enrollMember } from "../../api/common.js";
+import {
+	listMembers, listMemberMemos, createMemberMemo, deleteMemberMemo, listPasses, enrollMember,
+	listPrograms, registerMemberPayment, updateMemberGuardian,
+	PAYMENT_METHOD_LABEL, CASH_RECEIPT_STATUS_LABEL, TAX_TYPE_LABEL
+} from "../../api/common.js";
+
+function PaymentFields({ form, setForm, programs }) {
+	const set = (key) => (e) => setForm((f) => ({ ...f, [key]: e.target.value }));
+	return (
+		<>
+			<div className="form-field">
+				<label>수강과목/반</label>
+				<select value={form.programId} onChange={set("programId")}>
+					<option value="">선택 안 함</option>
+					{programs.map((p) => (
+						<option key={p.id} value={p.id}>{p.name}</option>
+					))}
+				</select>
+			</div>
+			<div style={{ display: "flex", gap: "8px" }}>
+				<div className="form-field" style={{ flex: 1 }}>
+					<label>수강 시작일</label>
+					<input type="date" value={form.enrollStart} onChange={set("enrollStart")} />
+				</div>
+				<div className="form-field" style={{ flex: 1 }}>
+					<label>수강 종료일</label>
+					<input type="date" value={form.enrollEnd} onChange={set("enrollEnd")} />
+				</div>
+			</div>
+			<div style={{ display: "flex", gap: "8px" }}>
+				<div className="form-field" style={{ flex: 1 }}>
+					<label>결제수단</label>
+					<select value={form.paymentMethod} onChange={set("paymentMethod")}>
+						{Object.entries(PAYMENT_METHOD_LABEL).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+					</select>
+				</div>
+				<div className="form-field" style={{ flex: 1 }}>
+					<label>세금 구분</label>
+					<select value={form.taxType} onChange={set("taxType")}>
+						{Object.entries(TAX_TYPE_LABEL).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+					</select>
+				</div>
+			</div>
+			<div style={{ display: "flex", gap: "8px" }}>
+				<div className="form-field" style={{ flex: 1 }}>
+					<label>현금영수증</label>
+					<select value={form.cashReceiptStatus} onChange={set("cashReceiptStatus")}>
+						{Object.entries(CASH_RECEIPT_STATUS_LABEL).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+					</select>
+				</div>
+				<div className="form-field" style={{ flex: 1 }}>
+					<label>증빙번호</label>
+					<input type="text" value={form.receiptNumber} onChange={set("receiptNumber")} placeholder="카드/현금영수증 승인번호" />
+				</div>
+			</div>
+		</>
+	);
+}
 
 function deriveStatus(expiresAt) {
 	const days = Math.ceil((new Date(expiresAt) - new Date()) / (1000 * 60 * 60 * 24));
@@ -20,6 +77,7 @@ export default function ManagerMemberManageView({ platformId }) {
 	const [memoText, setMemoText] = useState("");
 
 	const [passes, setPasses] = useState([]);
+	const [programs, setPrograms] = useState([]);
 	const [newName, setNewName] = useState("");
 	const [newPhone, setNewPhone] = useState("");
 	const [newEmail, setNewEmail] = useState("");
@@ -28,17 +86,36 @@ export default function ManagerMemberManageView({ platformId }) {
 	const [enrolling, setEnrolling] = useState(false);
 	const [enrollError, setEnrollError] = useState("");
 
+	const blankPaymentForm = {
+		guardianName: "", guardianPhone: "", programId: "", enrollStart: "", enrollEnd: "",
+		paymentMethod: "CARD", cashReceiptStatus: "NOT_ISSUED", receiptNumber: "", taxType: "EXEMPT"
+	};
+	const [paymentForm, setPaymentForm] = useState(blankPaymentForm);
+
+	const [payMember, setPayMember] = useState(null);
+	const [payPassId, setPayPassId] = useState("");
+	const [payForm, setPayForm] = useState(blankPaymentForm);
+	const [paying, setPaying] = useState(false);
+	const [payError, setPayError] = useState("");
+
+	const [guardianDraft, setGuardianDraft] = useState({ guardianName: "", guardianPhone: "" });
+	const [savingGuardian, setSavingGuardian] = useState(false);
+
 	const refresh = useCallback(async () => {
 		if (!platformId) {
 			setMembers([]);
 			setPasses([]);
+			setPrograms([]);
 			setLoading(false);
 			return;
 		}
 		setLoading(true);
-		const [memberList, passList] = await Promise.all([listMembers(platformId), listPasses(platformId)]);
+		const [memberList, passList, programList] = await Promise.all([
+			listMembers(platformId), listPasses(platformId), listPrograms(platformId)
+		]);
 		setMembers(memberList);
 		setPasses(passList);
+		setPrograms(programList);
 		setNewPassId((prev) => prev || passList[0]?.id || "");
 		setLoading(false);
 	}, [platformId]);
@@ -47,22 +124,79 @@ export default function ManagerMemberManageView({ platformId }) {
 		refresh();
 	}, [refresh]);
 
+	function itemFromForm(passId, form) {
+		return {
+			passId,
+			programId: form.programId || null,
+			enrollStart: form.enrollStart || null,
+			enrollEnd: form.enrollEnd || null,
+			taxType: form.taxType
+		};
+	}
+
+	function paymentFromForm(form) {
+		return {
+			paymentMethod: form.paymentMethod,
+			cashReceiptStatus: form.cashReceiptStatus,
+			receiptNumber: form.receiptNumber || null
+		};
+	}
+
 	async function submitEnroll() {
 		if (!newName.trim() || !newEmail.trim() || !newPassword.trim() || !newPassId) return;
 		setEnrolling(true);
 		setEnrollError("");
 		try {
-			await enrollMember(platformId, newEmail.trim(), newPassword.trim(), newName.trim(), newPhone.trim() || null, newPassId);
+			await enrollMember(
+				platformId, newEmail.trim(), newPassword.trim(), newName.trim(), newPhone.trim() || null,
+				itemFromForm(newPassId, paymentForm), paymentFromForm(paymentForm),
+				{ guardianName: paymentForm.guardianName.trim() || null, guardianPhone: paymentForm.guardianPhone.trim() || null }
+			);
 			setNewName("");
 			setNewPhone("");
 			setNewEmail("");
 			setNewPassword("");
+			setPaymentForm(blankPaymentForm);
 			closeModal("addMemberModal");
 			await refresh();
 		} catch (err) {
 			setEnrollError(err.message || "회원 등록에 실패했습니다.");
 		} finally {
 			setEnrolling(false);
+		}
+	}
+
+	function openPayModal(member) {
+		setPayMember(member);
+		setPayPassId(passes[0]?.id || "");
+		setPayForm(blankPaymentForm);
+		setPayError("");
+		openModal("payMemberModal");
+	}
+
+	async function submitPay() {
+		if (!payMember || !payPassId) return;
+		setPaying(true);
+		setPayError("");
+		try {
+			await registerMemberPayment(platformId, payMember.userId, itemFromForm(payPassId, payForm), paymentFromForm(payForm));
+			closeModal("payMemberModal");
+			await refresh();
+		} catch (err) {
+			setPayError(err.message || "결제 등록에 실패했습니다.");
+		} finally {
+			setPaying(false);
+		}
+	}
+
+	async function saveGuardian() {
+		if (!expandedMember) return;
+		setSavingGuardian(true);
+		try {
+			await updateMemberGuardian(platformId, expandedMember.userId, guardianDraft.guardianName.trim() || null, guardianDraft.guardianPhone.trim() || null);
+			await refresh();
+		} finally {
+			setSavingGuardian(false);
 		}
 	}
 
@@ -76,6 +210,7 @@ export default function ManagerMemberManageView({ platformId }) {
 		setExpandedKey(key);
 		setExpandedMember(member);
 		setMemoText("");
+		setGuardianDraft({ guardianName: member.guardianName || "", guardianPhone: member.guardianPhone || "" });
 		setMemos(await listMemberMemos(platformId, member.userId));
 	}
 
@@ -148,19 +283,21 @@ export default function ManagerMemberManageView({ platformId }) {
 								<th>이름</th>
 								<th>연락처</th>
 								<th>이메일</th>
+								<th>보호자</th>
 								<th>수강권</th>
 								<th>사용</th>
 								<th>만료일</th>
 								<th>D-day</th>
 								<th>상태</th>
 								<th></th>
+								<th></th>
 							</tr>
 						</thead>
 						<tbody>
 							{loading ? (
-								<tr><td colSpan={9} style={{ textAlign: "center", padding: "24px", color: "var(--text-dim)" }}>불러오는 중...</td></tr>
+								<tr><td colSpan={11} style={{ textAlign: "center", padding: "24px", color: "var(--text-dim)" }}>불러오는 중...</td></tr>
 							) : filtered.length === 0 ? (
-								<tr><td colSpan={9} style={{ textAlign: "center", padding: "24px", color: "var(--text-dim)" }}>회원이 없습니다</td></tr>
+								<tr><td colSpan={11} style={{ textAlign: "center", padding: "24px", color: "var(--text-dim)" }}>회원이 없습니다</td></tr>
 							) : (
 								filtered.map((m) => {
 									const st = deriveStatus(m.expiresAt);
@@ -172,6 +309,9 @@ export default function ManagerMemberManageView({ platformId }) {
 											<td style={{ fontWeight: 600 }}>{m.name}</td>
 											<td style={{ fontFamily: "'DM Mono',monospace", fontSize: "12px" }}>{m.phone || "-"}</td>
 											<td>{m.email}</td>
+											<td style={{ fontSize: "12px" }}>
+												{m.guardianName ? `${m.guardianName}${m.guardianPhone ? " / " + m.guardianPhone : ""}` : "-"}
+											</td>
 											<td>{m.passName}</td>
 											<td style={{ fontFamily: "'DM Mono',monospace", fontSize: "12px" }}>
 												{m.sessionsTotal != null ? `${m.sessionsUsed}/${m.sessionsTotal}` : `${m.sessionsUsed}회`}
@@ -187,12 +327,39 @@ export default function ManagerMemberManageView({ platformId }) {
 												)}
 											</td>
 											<td><span className={`badge ${st.cls}`} style={{ fontSize: "10px" }}>{st.label}</span></td>
+											<td>
+												<button
+													className="btn btn-ghost btn-sm"
+													style={{ fontSize: "11px" }}
+													onClick={(e) => { e.stopPropagation(); openPayModal(m); }}
+												>
+													결제 등록
+												</button>
+											</td>
 											<td>{isOpen ? "▾" : "▸"}</td>
 										</tr>
 										{isOpen && (
 											<tr>
-												<td colSpan={9} style={{ padding: 0 }}>
+												<td colSpan={11} style={{ padding: 0 }}>
 													<div className="member-detail" style={{ margin: "8px 12px" }}>
+														<div style={{ fontSize: "11px", color: "var(--text-sub)", marginBottom: "8px", fontWeight: 600, letterSpacing: ".5px" }}>
+															보호자 정보
+														</div>
+														<div style={{ display: "flex", gap: "8px", marginBottom: "16px" }} onClick={(e) => e.stopPropagation()}>
+															<input
+																type="text" placeholder="보호자 이름" value={guardianDraft.guardianName}
+																onChange={(e) => setGuardianDraft((g) => ({ ...g, guardianName: e.target.value }))}
+																style={{ flex: 1, padding: "8px 12px", background: "var(--surface2)", border: "1px solid var(--border)", borderRadius: "var(--rs)", color: "var(--text)", fontSize: "13px", outline: "none" }}
+															/>
+															<input
+																type="tel" placeholder="보호자 연락처" value={guardianDraft.guardianPhone}
+																onChange={(e) => setGuardianDraft((g) => ({ ...g, guardianPhone: e.target.value }))}
+																style={{ flex: 1, padding: "8px 12px", background: "var(--surface2)", border: "1px solid var(--border)", borderRadius: "var(--rs)", color: "var(--text)", fontSize: "13px", outline: "none" }}
+															/>
+															<button className="btn btn-primary btn-sm" disabled={savingGuardian} onClick={saveGuardian}>
+																{savingGuardian ? "저장 중..." : "저장"}
+															</button>
+														</div>
 														<div style={{ fontSize: "11px", color: "var(--text-sub)", marginBottom: "8px", fontWeight: 600, letterSpacing: ".5px" }}>
 															CONSULTATION NOTES
 														</div>
@@ -277,11 +444,50 @@ export default function ManagerMemberManageView({ platformId }) {
 							))}
 						</select>
 					</div>
+					<div style={{ display: "flex", gap: "8px" }}>
+						<div className="form-field" style={{ flex: 1 }}>
+							<label>보호자 이름</label>
+							<input type="text" value={paymentForm.guardianName} onChange={(e) => setPaymentForm((f) => ({ ...f, guardianName: e.target.value }))} />
+						</div>
+						<div className="form-field" style={{ flex: 1 }}>
+							<label>보호자 연락처</label>
+							<input type="tel" value={paymentForm.guardianPhone} onChange={(e) => setPaymentForm((f) => ({ ...f, guardianPhone: e.target.value }))} />
+						</div>
+					</div>
+					<PaymentFields form={paymentForm} setForm={setPaymentForm} programs={programs} />
 					{enrollError && <div style={{ color: "var(--red)", fontSize: "12px" }}>{enrollError}</div>}
 					<div style={{ display: "flex", justifyContent: "flex-end", gap: "8px", marginTop: "8px" }}>
 						<button className="btn btn-ghost" onClick={() => closeModal("addMemberModal")}>취소</button>
 						<button className="btn btn-primary" disabled={enrolling} onClick={submitEnroll}>
 							{enrolling ? "등록 중..." : "저장"}
+						</button>
+					</div>
+				</div>
+			</div>
+		</div>
+
+		<div className="modal-overlay" id="payMemberModal">
+			<div className="modal-box">
+				<div className="modal-header">
+					<div className="modal-title">결제 등록{payMember ? ` - ${payMember.name}` : ""}</div>
+					<button className="modal-close" onClick={() => closeModal("payMemberModal")}>✕</button>
+				</div>
+				<div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+					<div className="form-field">
+						<label>수강권</label>
+						<select value={payPassId} onChange={(e) => setPayPassId(e.target.value)}>
+							{passes.length === 0 && <option value="">등록된 수강권이 없습니다</option>}
+							{passes.map((p) => (
+								<option key={p.id} value={p.id}>{p.name}</option>
+							))}
+						</select>
+					</div>
+					<PaymentFields form={payForm} setForm={setPayForm} programs={programs} />
+					{payError && <div style={{ color: "var(--red)", fontSize: "12px" }}>{payError}</div>}
+					<div style={{ display: "flex", justifyContent: "flex-end", gap: "8px", marginTop: "8px" }}>
+						<button className="btn btn-ghost" onClick={() => closeModal("payMemberModal")}>취소</button>
+						<button className="btn btn-primary" disabled={paying} onClick={submitPay}>
+							{paying ? "등록 중..." : "저장"}
 						</button>
 					</div>
 				</div>

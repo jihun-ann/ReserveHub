@@ -102,13 +102,15 @@ public class UserController {
 
     public record UserResponse(
             UUID id, String username, String email, Role role, String name, String phone,
-            String bankName, String bankAccountNumber, String bankAccountHolder
+            String bankName, String bankAccountNumber, String bankAccountHolder,
+            String guardianName, String guardianPhone
     ) {
 
         public static UserResponse from(User user) {
             return new UserResponse(
                     user.getId(), user.getUsername(), user.getEmail(), user.getRole(), user.getName(), user.getPhone(),
-                    user.getBankName(), user.getBankAccountNumber(), user.getBankAccountHolder()
+                    user.getBankName(), user.getBankAccountNumber(), user.getBankAccountHolder(),
+                    user.getGuardianName(), user.getGuardianPhone()
             );
         }
     }

@@ -1,6 +1,7 @@
 package com.hub.reservehub.api.v1;
 
 import com.hub.reservehub.domain.platform.BusinessType;
+import com.hub.reservehub.domain.platform.IncomeType;
 import com.hub.reservehub.domain.platform.Platform;
 import com.hub.reservehub.domain.platform.PlatformService;
 import com.hub.reservehub.domain.platform.PlatformStaff;
@@ -98,6 +99,15 @@ public class PlatformController {
                 .toList();
     }
 
+    @PatchMapping("/{id}/staff/{userId}/income-type")
+    public List<PlatformStaffResponse> updateStaffIncomeType(
+            @PathVariable UUID id, @PathVariable UUID userId, @Valid @RequestBody UpdateIncomeTypeRequest request
+    ) {
+        return platformService.updateStaffIncomeType(id, currentAuthenticatedUser.get(), userId, request.incomeType()).stream()
+                .map(PlatformStaffResponse::from)
+                .toList();
+    }
+
     @PatchMapping("/{id}/status")
     @PreAuthorize("hasRole('OWNER')")
     // Suspends or reactivates a platform; only the owning OWNER may do this (guard checks ownership).
@@ -123,6 +133,9 @@ public class PlatformController {
     public record AssignStaffRequest(@NotNull UUID userId, @NotNull StaffRole staffRole) {
     }
 
+    public record UpdateIncomeTypeRequest(@NotNull IncomeType incomeType) {
+    }
+
     public record PlatformResponse(
             UUID id, String name, BusinessType businessType, String phone, String address,
             String description, String emoji, String colorHex, String status, List<String> roles
@@ -136,10 +149,13 @@ public class PlatformController {
         }
     }
 
-    public record PlatformStaffResponse(UUID id, UUID platformId, UUID userId, StaffRole staffRole, boolean isActive) {
+    public record PlatformStaffResponse(
+            UUID id, UUID platformId, UUID userId, StaffRole staffRole, boolean isActive, IncomeType incomeType
+    ) {
         public static PlatformStaffResponse from(PlatformStaff staff) {
             return new PlatformStaffResponse(
-                    staff.getId(), staff.getPlatformId(), staff.getUserId(), staff.getStaffRole(), staff.isActive()
+                    staff.getId(), staff.getPlatformId(), staff.getUserId(), staff.getStaffRole(),
+                    staff.isActive(), staff.getIncomeType()
             );
         }
     }

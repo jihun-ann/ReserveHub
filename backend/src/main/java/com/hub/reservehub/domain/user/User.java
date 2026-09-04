@@ -49,6 +49,13 @@ public class User extends BaseEntity {
     @Nullable
     private String bankAccountHolder;
 
+    // 보호자 정보 — 학생(수강생) 계정에 한해 매니저가 입력/수정한다.
+    @Nullable
+    private String guardianName;
+
+    @Nullable
+    private String guardianPhone;
+
     protected User() {
         // JPA only.
     }
@@ -120,5 +127,20 @@ public class User extends BaseEntity {
         this.bankName = bankName;
         this.bankAccountNumber = bankAccountNumber;
         this.bankAccountHolder = bankAccountHolder;
+    }
+
+    @Nullable
+    public String getGuardianName() {
+        return guardianName;
+    }
+
+    @Nullable
+    public String getGuardianPhone() {
+        return guardianPhone;
+    }
+
+    public void updateGuardian(@Nullable String guardianName, @Nullable String guardianPhone) {
+        this.guardianName = guardianName;
+        this.guardianPhone = guardianPhone;
     }
 }

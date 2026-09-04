@@ -48,6 +48,29 @@ public class Order extends BaseEntity {
     @Nullable
     private UUID createdBy;
 
+    // 실제 누적 수납액 — finalAmount보다 적으면 PARTIAL, 같거나 크면 PAID.
+    @Column(nullable = false)
+    private int paidAmount = 0;
+
+    @Nullable
+    @Enumerated(EnumType.STRING)
+    private PaymentMethod paymentMethod;
+
+    @Column(nullable = false)
+    @Enumerated(EnumType.STRING)
+    private CashReceiptStatus cashReceiptStatus = CashReceiptStatus.NOT_ISSUED;
+
+    // 카드 승인번호 / 현금영수증 승인번호 등 증빙번호.
+    @Nullable
+    private String receiptNumber;
+
+    // 누적 환불액 — 부분 환불을 지원하므로 finalAmount보다 적을 수 있다.
+    @Column(nullable = false)
+    private int refundAmount = 0;
+
+    @Nullable
+    private Instant refundedAt;
+
     protected Order() {
         // JPA only.
     }
@@ -108,11 +131,59 @@ public class Order extends BaseEntity {
         return createdBy;
     }
 
-    public void pay() {
-        if (status != OrderStatus.PENDING) {
-            throw new IllegalStateException("Only a PENDING order can be paid");
+    public int getPaidAmount() {
+        return paidAmount;
+    }
+
+    @Nullable
+    public PaymentMethod getPaymentMethod() {
+        return paymentMethod;
+    }
+
+    public CashReceiptStatus getCashReceiptStatus() {
+        return cashReceiptStatus;
+    }
+
+    @Nullable
+    public String getReceiptNumber() {
+        return receiptNumber;
+    }
+
+    public int getRefundAmount() {
+        return refundAmount;
+    }
+
+    @Nullable
+    public Instant getRefundedAt() {
+        return refundedAt;
+    }
+
+    // 전액 결제 확정 — 잔금 없이 한 번에 완납하는 기존 흐름.
+    public void pay(PaymentMethod paymentMethod, CashReceiptStatus cashReceiptStatus, @Nullable String receiptNumber) {
+        if (status != OrderStatus.PENDING && status != OrderStatus.PARTIAL) {
+            throw new IllegalStateException("Only a PENDING or PARTIAL order can be paid");
         }
+        this.paymentMethod = paymentMethod;
+        this.cashReceiptStatus = cashReceiptStatus;
+        this.receiptNumber = receiptNumber;
+        this.paidAmount = finalAmount;
         this.status = OrderStatus.PAID;
+        this.paidAt = Instant.now();
+    }
+
+    // 부분납 — amount만큼 누적 수납하고, 잔액이 남으면 PARTIAL, 다 채워지면 PAID.
+    public void partialPay(int amount, PaymentMethod paymentMethod, CashReceiptStatus cashReceiptStatus, @Nullable String receiptNumber) {
+        if (status != OrderStatus.PENDING && status != OrderStatus.PARTIAL) {
+            throw new IllegalStateException("Only a PENDING or PARTIAL order can accept a payment");
+        }
+        if (amount <= 0) {
+            throw new IllegalArgumentException("amount must be positive");
+        }
+        this.paymentMethod = paymentMethod;
+        this.cashReceiptStatus = cashReceiptStatus;
+        this.receiptNumber = receiptNumber;
+        this.paidAmount = Math.min(finalAmount, this.paidAmount + amount);
+        this.status = this.paidAmount >= finalAmount ? OrderStatus.PAID : OrderStatus.PARTIAL;
         this.paidAt = Instant.now();
     }
 
@@ -123,10 +194,18 @@ public class Order extends BaseEntity {
         this.status = OrderStatus.CANCELLED;
     }
 
-    public void refund() {
-        if (status != OrderStatus.PAID) {
-            throw new IllegalStateException("Only a PAID order can be refunded");
+    // 부분 환불을 지원한다 — 전액이 환불되면 상태를 REFUNDED로, 아니면 현재 상태(PAID/PARTIAL)를 유지한다.
+    public void refund(int amount) {
+        if (status != OrderStatus.PAID && status != OrderStatus.PARTIAL) {
+            throw new IllegalStateException("Only a PAID or PARTIAL order can be refunded");
         }
-        this.status = OrderStatus.REFUNDED;
+        if (amount <= 0) {
+            throw new IllegalArgumentException("amount must be positive");
+        }
+        this.refundAmount = Math.min(finalAmount, this.refundAmount + amount);
+        this.refundedAt = Instant.now();
+        if (this.refundAmount >= finalAmount) {
+            this.status = OrderStatus.REFUNDED;
+        }
     }
 }

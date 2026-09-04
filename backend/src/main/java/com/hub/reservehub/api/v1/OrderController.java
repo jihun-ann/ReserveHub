@@ -1,10 +1,13 @@
 package com.hub.reservehub.api.v1;
 
+import com.hub.reservehub.domain.pass.CashReceiptStatus;
 import com.hub.reservehub.domain.pass.Order;
 import com.hub.reservehub.domain.pass.OrderDiscount;
 import com.hub.reservehub.domain.pass.OrderItem;
 import com.hub.reservehub.domain.pass.OrderService;
 import com.hub.reservehub.domain.pass.OrderStatus;
+import com.hub.reservehub.domain.pass.PaymentMethod;
+import com.hub.reservehub.domain.pass.TaxType;
 import com.hub.reservehub.domain.pass.UserPass;
 import com.hub.reservehub.domain.pass.UserPassStatus;
 import com.hub.reservehub.security.AuthenticatedUser;
@@ -18,6 +21,7 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
+import org.springframework.lang.Nullable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
@@ -46,7 +50,9 @@ public class OrderController {
         AuthenticatedUser actor = currentAuthenticatedUser.get();
         UUID buyerUserId = request.buyerUserId() != null ? request.buyerUserId() : actor.getId();
         List<OrderService.PassSelection> selections = request.items().stream()
-                .map(item -> new OrderService.PassSelection(item.passId(), item.quantity()))
+                .map(item -> new OrderService.PassSelection(
+                        item.passId(), item.quantity(), item.programId(), item.enrollStart(), item.enrollEnd(), item.taxType()
+                ))
                 .toList();
         List<UUID> discountPolicyIds = request.discountPolicyIds() != null ? request.discountPolicyIds() : List.of();
 
@@ -68,8 +74,18 @@ public class OrderController {
     }
 
     @PostMapping("/api/v1/orders/{id}/pay")
-    public OrderResponse pay(@PathVariable UUID id) {
-        return toResponse(orderService.pay(id, currentAuthenticatedUser.get()));
+    public OrderResponse pay(@PathVariable UUID id, @Valid @RequestBody PayRequest request) {
+        return toResponse(orderService.pay(
+                id, currentAuthenticatedUser.get(), request.paymentMethod(), request.cashReceiptStatus(), request.receiptNumber()
+        ));
+    }
+
+    @PostMapping("/api/v1/orders/{id}/partial-pay")
+    public OrderResponse partialPay(@PathVariable UUID id, @Valid @RequestBody PartialPayRequest request) {
+        return toResponse(orderService.partialPay(
+                id, currentAuthenticatedUser.get(), request.amount(),
+                request.paymentMethod(), request.cashReceiptStatus(), request.receiptNumber()
+        ));
     }
 
     @PostMapping("/api/v1/orders/{id}/cancel")
@@ -80,7 +96,8 @@ public class OrderController {
     @PostMapping("/api/v1/orders/{id}/refund")
     public OrderResponse refund(@PathVariable UUID id, @RequestBody(required = false) RefundRequest request) {
         String memo = request != null ? request.memo() : null;
-        return toResponse(orderService.refund(id, currentAuthenticatedUser.get(), memo));
+        Integer amount = request != null ? request.amount() : null;
+        return toResponse(orderService.refund(id, currentAuthenticatedUser.get(), amount, memo));
     }
 
     @GetMapping("/api/v1/users/me/passes")
@@ -94,7 +111,10 @@ public class OrderController {
         return OrderResponse.from(order, items, discounts);
     }
 
-    public record OrderItemRequest(@NotNull UUID passId, @Positive short quantity) {
+    public record OrderItemRequest(
+            @NotNull UUID passId, @Positive short quantity,
+            UUID programId, LocalDate enrollStart, LocalDate enrollEnd, TaxType taxType
+    ) {
     }
 
     public record CreateOrderRequest(
@@ -105,12 +125,27 @@ public class OrderController {
     ) {
     }
 
-    public record RefundRequest(String memo) {
+    public record PayRequest(@NotNull PaymentMethod paymentMethod, @NotNull CashReceiptStatus cashReceiptStatus, String receiptNumber) {
     }
 
-    public record OrderItemResponse(UUID id, UUID passId, short quantity, int unitPrice, int lineTotal) {
+    public record PartialPayRequest(
+            @Positive int amount, @NotNull PaymentMethod paymentMethod,
+            @NotNull CashReceiptStatus cashReceiptStatus, String receiptNumber
+    ) {
+    }
+
+    public record RefundRequest(String memo, @Nullable @Positive Integer amount) {
+    }
+
+    public record OrderItemResponse(
+            UUID id, UUID passId, short quantity, int unitPrice, int lineTotal,
+            UUID programId, LocalDate enrollStart, LocalDate enrollEnd, TaxType taxType
+    ) {
         public static OrderItemResponse from(OrderItem item) {
-            return new OrderItemResponse(item.getId(), item.getPassId(), item.getQuantity(), item.getUnitPrice(), item.getLineTotal());
+            return new OrderItemResponse(
+                    item.getId(), item.getPassId(), item.getQuantity(), item.getUnitPrice(), item.getLineTotal(),
+                    item.getProgramId(), item.getEnrollStart(), item.getEnrollEnd(), item.getTaxType()
+            );
         }
     }
 
@@ -125,14 +160,19 @@ public class OrderController {
 
     public record OrderResponse(
             UUID id, UUID userId, UUID platformId, OrderStatus status,
-            int originalAmount, int discountAmount, int finalAmount, Instant paidAt, String memo,
+            int originalAmount, int discountAmount, int finalAmount, int paidAmount, Instant paidAt, String memo,
+            PaymentMethod paymentMethod, CashReceiptStatus cashReceiptStatus, String receiptNumber,
+            int refundAmount, Instant refundedAt,
             List<OrderItemResponse> items, List<OrderDiscountResponse> discounts
     ) {
         public static OrderResponse from(Order order, List<OrderItemResponse> items, List<OrderDiscountResponse> discounts) {
             return new OrderResponse(
                     order.getId(), order.getUserId(), order.getPlatformId(), order.getStatus(),
-                    order.getOriginalAmount(), order.getDiscountAmount(), order.getFinalAmount(),
-                    order.getPaidAt(), order.getMemo(), items, discounts
+                    order.getOriginalAmount(), order.getDiscountAmount(), order.getFinalAmount(), order.getPaidAmount(),
+                    order.getPaidAt(), order.getMemo(),
+                    order.getPaymentMethod(), order.getCashReceiptStatus(), order.getReceiptNumber(),
+                    order.getRefundAmount(), order.getRefundedAt(),
+                    items, discounts
             );
         }
     }
