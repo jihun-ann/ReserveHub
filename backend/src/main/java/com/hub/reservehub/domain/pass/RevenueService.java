@@ -72,10 +72,13 @@ public class RevenueService {
             Program program = item.getProgramId() != null ? programsById.get(item.getProgramId()) : null;
             double ratio = order.getOriginalAmount() > 0 ? (double) item.getLineTotal() / order.getOriginalAmount() : 0;
 
-            int billed = adjust(item.getLineTotal(), item.getTaxType(), includeTax);
-            int discount = adjust(allocate(order.getDiscountAmount(), ratio), item.getTaxType(), includeTax);
-            int paid = adjust(allocate(order.getPaidAmount(), ratio), item.getTaxType(), includeTax);
-            int refund = adjust(allocate(order.getRefundAmount(), ratio), item.getTaxType(), includeTax);
+            // 카드 결제는 여신전문금융업법상 매출전표에 부가세가 항상 포함되므로, 항목에 EXEMPT로
+            // 표시돼 있어도 결제수단이 CARD면 과세로 취급한다.
+            boolean taxable = item.getTaxType() == TaxType.TAXABLE || order.getPaymentMethod() == PaymentMethod.CARD;
+            int billed = adjust(item.getLineTotal(), taxable, includeTax);
+            int discount = adjust(allocate(order.getDiscountAmount(), ratio), taxable, includeTax);
+            int paid = adjust(allocate(order.getPaidAmount(), ratio), taxable, includeTax);
+            int refund = adjust(allocate(order.getRefundAmount(), ratio), taxable, includeTax);
 
             records.add(new RevenueRecord(
                     order.getId(), item.getId(),
@@ -138,8 +141,8 @@ public class RevenueService {
         return (int) Math.round(orderTotal * ratio);
     }
 
-    private int adjust(int amount, TaxType taxType, boolean includeTax) {
-        if (includeTax || taxType != TaxType.TAXABLE) {
+    private int adjust(int amount, boolean taxable, boolean includeTax) {
+        if (includeTax || !taxable) {
             return amount;
         }
         return BigDecimal.valueOf(amount).divide(BigDecimal.valueOf(1.1), 0, RoundingMode.HALF_UP).intValueExact();

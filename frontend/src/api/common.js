@@ -46,12 +46,16 @@ export const grantTaxAccountant = (platformId, payload) =>
 export const revokeTaxAccountant = (platformId, userId) =>
 	apiDelete(`/api/v1/platforms/${platformId}/tax-accountants/${userId}`);
 
-export const listStaffPayroll = (platformId) => apiGet(`/api/v1/platforms/${platformId}/staff-payroll`);
+export const listStaffPayroll = (platformId, year, month) =>
+	apiGet(`/api/v1/platforms/${platformId}/staff-payroll${year && month ? `?year=${year}&month=${month}` : ""}`);
 
 export const INCOME_TYPE_LABEL = { EMPLOYMENT: "근로소득자", BUSINESS: "사업소득자", OTHER: "기타소득자", DAILY: "일용근로자" };
 
 export const updateStaffIncomeType = (platformId, userId, incomeType) =>
 	apiPatch(`/api/v1/platforms/${platformId}/staff/${userId}/income-type`, { incomeType });
+
+export const updateStaffSessionRate = (platformId, userId, sessionRate) =>
+	apiPatch(`/api/v1/platforms/${platformId}/staff/${userId}/session-rate`, { sessionRate });
 
 export const updateTaxAccountantIncomeType = (platformId, userId, incomeType) =>
 	apiPatch(`/api/v1/platforms/${platformId}/tax-accountants/${userId}/income-type`, { incomeType });

@@ -15,6 +15,7 @@ import {
 	revokeTaxAccountant,
 	setPlatformSuspended,
 	updateStaffIncomeType,
+	updateStaffSessionRate,
 	updateTaxAccountantIncomeType
 } from "../../api/common.js";
 import { formatDateTime } from "../../utils/formatDateTime.js";
@@ -131,6 +132,15 @@ export default function OwnerPlatformView({ platforms, currentPlatformId, onSele
 			refreshStaff(plat.id);
 		} catch (err) {
 			alert(err.message || "소득유형 변경에 실패했습니다.");
+		}
+	}
+
+	async function changeSessionRate(userId, sessionRate) {
+		try {
+			await updateStaffSessionRate(plat.id, userId, sessionRate);
+			refreshStaff(plat.id);
+		} catch (err) {
+			alert(err.message || "강사료 변경에 실패했습니다.");
 		}
 	}
 
@@ -332,6 +342,18 @@ export default function OwnerPlatformView({ platforms, currentPlatformId, onSele
 											<div className="avatar" style={{ background: "linear-gradient(135deg,var(--accent2),#667eea)", width: "38px", height: "38px", fontSize: "15px" }}>{s.email?.[0]?.toUpperCase() || "?"}</div>
 											<div style={{ flex: 1 }}>
 												<div style={{ fontSize: "14px", fontWeight: 700 }}>{s.email}</div>
+											</div>
+											<div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
+												<span style={{ fontSize: "11px", color: "var(--text-dim)" }}>회당</span>
+												<input
+													type="number" min="0" defaultValue={s.sessionRate ?? ""} placeholder="강사료"
+													onBlur={(e) => {
+														const v = Number(e.target.value);
+														if (e.target.value !== "" && v !== s.sessionRate) changeSessionRate(s.userId, v);
+													}}
+													style={{ width: "90px", fontSize: "12px", padding: "4px 8px" }}
+												/>
+												<span style={{ fontSize: "11px", color: "var(--text-dim)" }}>원</span>
 											</div>
 											<select
 												value={s.incomeType || ""}

@@ -11,6 +11,7 @@ import com.hub.reservehub.security.CurrentAuthenticatedUser;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.PositiveOrZero;
 import java.util.List;
 import java.util.UUID;
 import org.springframework.http.HttpStatus;
@@ -108,6 +109,15 @@ public class PlatformController {
                 .toList();
     }
 
+    @PatchMapping("/{id}/staff/{userId}/session-rate")
+    public PlatformStaffResponse updateStaffSessionRate(
+            @PathVariable UUID id, @PathVariable UUID userId, @Valid @RequestBody UpdateSessionRateRequest request
+    ) {
+        return PlatformStaffResponse.from(
+                platformService.updateStaffSessionRate(id, currentAuthenticatedUser.get(), userId, request.sessionRate())
+        );
+    }
+
     @PatchMapping("/{id}/status")
     @PreAuthorize("hasRole('OWNER')")
     // Suspends or reactivates a platform; only the owning OWNER may do this (guard checks ownership).
@@ -136,6 +146,9 @@ public class PlatformController {
     public record UpdateIncomeTypeRequest(@NotNull IncomeType incomeType) {
     }
 
+    public record UpdateSessionRateRequest(@NotNull @PositiveOrZero Integer sessionRate) {
+    }
+
     public record PlatformResponse(
             UUID id, String name, BusinessType businessType, String phone, String address,
             String description, String emoji, String colorHex, String status, List<String> roles
@@ -150,12 +163,13 @@ public class PlatformController {
     }
 
     public record PlatformStaffResponse(
-            UUID id, UUID platformId, UUID userId, StaffRole staffRole, boolean isActive, IncomeType incomeType
+            UUID id, UUID platformId, UUID userId, StaffRole staffRole, boolean isActive,
+            IncomeType incomeType, Integer sessionRate
     ) {
         public static PlatformStaffResponse from(PlatformStaff staff) {
             return new PlatformStaffResponse(
                     staff.getId(), staff.getPlatformId(), staff.getUserId(), staff.getStaffRole(),
-                    staff.isActive(), staff.getIncomeType()
+                    staff.isActive(), staff.getIncomeType(), staff.getSessionRate()
             );
         }
     }

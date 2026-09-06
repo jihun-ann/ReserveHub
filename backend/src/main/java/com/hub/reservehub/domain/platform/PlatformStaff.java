@@ -41,6 +41,10 @@ public class PlatformStaff {
     @Enumerated(EnumType.STRING)
     private IncomeType incomeType;
 
+    // 강사 정산용 회당 강사료 — TUTOR 역할에서만 의미를 가진다. 미지정이면 정산액을 계산하지 않는다.
+    @Nullable
+    private Integer sessionRate;
+
     protected PlatformStaff() {
         // JPA only.
     }
@@ -88,6 +92,18 @@ public class PlatformStaff {
 
     public void changeIncomeType(IncomeType incomeType) {
         this.incomeType = incomeType;
+    }
+
+    @Nullable
+    public Integer getSessionRate() {
+        return sessionRate;
+    }
+
+    public void changeSessionRate(int sessionRate) {
+        if (sessionRate < 0) {
+            throw new IllegalArgumentException("sessionRate must not be negative");
+        }
+        this.sessionRate = sessionRate;
     }
 
     // Soft-deletes the assignment instead of removing history (AGENT.md 4-4).

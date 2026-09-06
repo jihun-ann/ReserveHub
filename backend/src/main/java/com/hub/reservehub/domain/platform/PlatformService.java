@@ -160,6 +160,19 @@ public class PlatformService {
     }
 
     @Transactional
+    // 회당 강사료 지정 — TUTOR 역할에만 의미가 있으므로 그 역할의 배정에만 적용한다(겸직이어도
+    // MANAGER 몫 급여는 건드리지 않음). MANAGER 이상만 변경 가능.
+    public PlatformStaff updateStaffSessionRate(UUID platformId, AuthenticatedUser actor, UUID targetUserId, int sessionRate) {
+        platformAccessGuard.verifyRole(platformId, actor, StaffRole.MANAGER);
+        PlatformStaff staff = platformStaffRepository.findByPlatformIdAndUserId(platformId, targetUserId).stream()
+                .filter(s -> s.isActive() && s.getStaffRole() == StaffRole.TUTOR)
+                .findFirst()
+                .orElseThrow(() -> new IllegalArgumentException("이 사용자는 이 플랫폼의 강사가 아닙니다."));
+        staff.changeSessionRate(sessionRate);
+        return staff;
+    }
+
+    @Transactional
     // OWNER only; ownership is already enforced by the guard (non-owning users never pass the OWNER branch).
     // OWNER만 호출 가능하며, 소유권 검증은 가드에서 이미 처리된다 (OWNER 분기는 소유자만 통과).
     public Platform setSuspended(UUID platformId, AuthenticatedUser owner, boolean suspended) {

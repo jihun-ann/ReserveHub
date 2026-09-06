@@ -10,6 +10,7 @@ import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
 import org.springframework.http.HttpStatus;
@@ -23,6 +24,7 @@ import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
@@ -78,8 +80,14 @@ public class TaxAccountantController {
 
     @GetMapping("/api/v1/platforms/{platformId}/staff-payroll")
     // 오너/MANAGER/세무사만 접근 가능 — 실제 검증은 서비스의 verifyFinancialAccess에서 처리한다.
-    public List<StaffPayrollResponse> staffPayroll(@PathVariable UUID platformId) {
-        return taxAccountantService.listStaffPayroll(platformId, currentAuthenticatedUser.get()).stream()
+    // year/month를 생략하면 오늘 기준 이번 달로 계산한다.
+    public List<StaffPayrollResponse> staffPayroll(
+            @PathVariable UUID platformId, @RequestParam(required = false) Integer year, @RequestParam(required = false) Integer month
+    ) {
+        LocalDate today = LocalDate.now();
+        int y = year != null ? year : today.getYear();
+        int m = month != null ? month : today.getMonthValue();
+        return taxAccountantService.listStaffPayroll(platformId, currentAuthenticatedUser.get(), y, m).stream()
                 .map(StaffPayrollResponse::from)
                 .toList();
     }
@@ -114,13 +122,17 @@ public class TaxAccountantController {
     public record StaffPayrollResponse(
             UUID userId, String name, String email, String phone, String role,
             String bankName, String bankAccountNumber, String bankAccountHolder,
-            @Nullable IncomeType incomeType, @Nullable String withholdingRateLabel
+            @Nullable IncomeType incomeType, @Nullable String withholdingRateLabel,
+            @Nullable Integer sessionRate, int lessonCount, int attendanceCount,
+            int grossSettlement, @Nullable Integer withholdingTaxAmount, @Nullable Integer netSettlement
     ) {
         public static StaffPayrollResponse from(TaxAccountantService.StaffPayrollEntry entry) {
             return new StaffPayrollResponse(
                     entry.userId(), entry.name(), entry.email(), entry.phone(), entry.role(),
                     entry.bankName(), entry.bankAccountNumber(), entry.bankAccountHolder(),
-                    entry.incomeType(), entry.withholdingRateLabel()
+                    entry.incomeType(), entry.withholdingRateLabel(),
+                    entry.sessionRate(), entry.lessonCount(), entry.attendanceCount(),
+                    entry.grossSettlement(), entry.withholdingTaxAmount(), entry.netSettlement()
             );
         }
     }
