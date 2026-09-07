@@ -114,7 +114,8 @@ CREATE TYPE program_type AS ENUM ('GROUP', 'PRIVATE', 'SEMIPRIVATE');
 CREATE TABLE programs (
                           id              UUID            PRIMARY KEY DEFAULT uuid_generate_v4(),
                           platform_id     UUID            NOT NULL REFERENCES platforms(id) ON DELETE CASCADE,
-                          name            VARCHAR(200)    NOT NULL,
+                          name            VARCHAR(200)    NOT NULL,  -- 생성 시점 스냅샷. 조회는 pass_id로 join해서 최신 수강권명을 우선한다
+                          pass_id         UUID,  -- 이 프로그램을 구매하는 수강권. FK는 passes 테이블 정의 이후 ALTER TABLE로 추가(전방 참조 회피)
                           type            program_type    NOT NULL DEFAULT 'GROUP',
                           capacity        SMALLINT        NOT NULL DEFAULT 8 CHECK (capacity >= 1),
                           duration_min    SMALLINT        NOT NULL DEFAULT 60 CHECK (duration_min > 0),
@@ -124,7 +125,7 @@ CREATE TABLE programs (
                           updated_at      TIMESTAMPTZ     NOT NULL DEFAULT NOW()
 );
 
-COMMENT ON TABLE programs IS '수업 프로그램 (그룹반 A, 1:1 개인레슨 등)';
+COMMENT ON TABLE programs IS '수업 유형 카탈로그(그룹/개인/반개인). 명칭은 연결된 수강권(pass_id) 이름을 따른다';
 
 
 -- 정기 슬롯 (요일·시간 기반 반복 일정)
@@ -133,6 +134,7 @@ CREATE TYPE day_of_week AS ENUM ('MON','TUE','WED','THU','FRI','SAT','SUN');
 CREATE TABLE slots (
                        id              UUID        PRIMARY KEY DEFAULT uuid_generate_v4(),
                        program_id      UUID        NOT NULL REFERENCES programs(id) ON DELETE CASCADE,
+                       name            VARCHAR(200),                                   -- 이 수업 인스턴스 이름 (예: "그룹반A"), 없으면 프로그램명 대체 표시
                        instructor_id   UUID        NOT NULL REFERENCES users(id),     -- TUTOR role
                        day_of_week     day_of_week NOT NULL,
                        start_time      TIME        NOT NULL,
@@ -146,6 +148,20 @@ CREATE TABLE slots (
 
 COMMENT ON TABLE  slots             IS '정기 슬롯. valid_from~valid_until 기간 동안 매주 반복';
 COMMENT ON COLUMN slots.valid_until IS 'NULL이면 종료일 없음';
+
+
+-- 고정 로스터 (PRIVATE/SEMIPRIVATE 슬롯 전용) — 등록해두면 매주 신청 없이 Lesson 생성 시
+-- reservations가 이 사람 몫으로 자동 생성된다. GROUP(신청형) 슬롯은 이 테이블을 쓰지 않는다.
+CREATE TABLE slot_members (
+                               id              UUID        PRIMARY KEY DEFAULT uuid_generate_v4(),
+                               slot_id         UUID        NOT NULL REFERENCES slots(id),
+                               user_id         UUID        NOT NULL REFERENCES users(id),
+                               user_pass_id    UUID        NOT NULL REFERENCES user_passes(id),
+                               is_active       BOOLEAN     NOT NULL DEFAULT TRUE,
+                               created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+COMMENT ON TABLE slot_members IS '개인/반개인 슬롯의 고정 배정 로스터. 멤버는 이후에도 추가/제외될 수 있음';
 
 
 -- ============================================================
@@ -169,6 +185,8 @@ CREATE TABLE passes (
 
 COMMENT ON TABLE  passes               IS '수강권 상품 정의';
 COMMENT ON COLUMN passes.session_count IS 'MONTHLY/DAILY는 NULL, SESSION 타입은 횟수 입력';
+
+ALTER TABLE programs ADD CONSTRAINT fk_programs_pass_id FOREIGN KEY (pass_id) REFERENCES passes(id);
 
 
 -- 할인 정책
@@ -215,6 +233,7 @@ CREATE TABLE orders (
                         paid_at         TIMESTAMPTZ,
                         memo            TEXT,
                         created_by      UUID            REFERENCES users(id), -- 상담 처리한 스태프 (NULL = 자기 결제)
+                        processed_by    UUID            REFERENCES users(id), -- 결제(pay/partial-pay)를 실제로 확정한 사람
                         created_at      TIMESTAMPTZ     NOT NULL DEFAULT NOW(),
                         updated_at      TIMESTAMPTZ     NOT NULL DEFAULT NOW(),
                         CONSTRAINT chk_amount CHECK (final_amount >= 0)
@@ -222,6 +241,11 @@ CREATE TABLE orders (
 
 COMMENT ON TABLE  orders              IS '결제 주문. 여러 수강권을 묶어 한 번에 결제';
 COMMENT ON COLUMN orders.created_by   IS '스태프가 상담 후 대신 등록 시 해당 스태프 ID';
+COMMENT ON COLUMN orders.processed_by IS '결제를 실제로 처리한 관리자/스태프 (createdBy와 다를 수 있음)';
+
+-- 참고: 이 아래 orders 관련 컬럼 정의는 최초 설계 당시 것으로, 이후 추가된 paid_amount/payment_method/
+-- cash_receipt_status/receipt_number/refund_amount/refunded_at 컬럼과 PARTIAL 상태값이 반영되지
+-- 않았다 (Order.java, OrderStatus.java 참고). db/schema.sql 전체 재동기화는 별도 작업으로 남겨둔다.
 
 
 -- 주문 항목 (수강권 × 수량)
@@ -383,6 +407,23 @@ CREATE TABLE financial_requests (
 COMMENT ON TABLE financial_requests IS '세무사가 등록한 재무 일정. 매니저 또는 오너가 승인';
 
 
+-- 재무 요청에 대한 댓글 스레드 — 세무사·매니저·오너가 계속 이어서 남기고, 텍스트 없이 파일만
+-- 첨부할 수도 있다 (content, attachment_stored_path 중 최소 하나는 앱 레이어에서 검증).
+CREATE TABLE financial_request_comments (
+                                             id                       UUID         PRIMARY KEY DEFAULT uuid_generate_v4(),
+                                             request_id               UUID         NOT NULL REFERENCES financial_requests(id),
+                                             author_id                UUID         NOT NULL REFERENCES users(id),
+                                             content                  TEXT,
+                                             attachment_original_name VARCHAR(255),
+                                             attachment_stored_path   VARCHAR(500),
+                                             attachment_content_type  VARCHAR(100),
+                                             attachment_size_bytes    BIGINT,
+                                             created_at               TIMESTAMPTZ  NOT NULL DEFAULT NOW()
+);
+
+COMMENT ON TABLE financial_request_comments IS '재무 요청에 대한 세무사/매니저/오너 간 댓글 스레드. 파일 첨부는 로컬 디스크에 저장(uploads/), 이 테이블엔 경로만 기록';
+
+
 -- 처리 이력 (모든 승인/반려 행위 기록 — 담당자 추적)
 CREATE TYPE action_target AS ENUM (
     'SCHEDULE_REQUEST',   -- 일정 변경 요청
@@ -402,7 +443,7 @@ CREATE TABLE action_logs (
                              actor_id        UUID            NOT NULL REFERENCES users(id),  -- 처리한 스태프
                              target_type     action_target   NOT NULL,
                              target_id       UUID            NOT NULL,                        -- 대상 레코드 ID
-                             action          VARCHAR(50)     NOT NULL,  -- 'APPROVE', 'REJECT', 'CREATE', 'UPDATE' 등
+                             action          VARCHAR(50)     NOT NULL,  -- 'APPROVE', 'REJECT', 'CREATE', 'UPDATE', 'COMMENT' 등
                              memo            TEXT,
                              created_at      TIMESTAMPTZ     NOT NULL DEFAULT NOW()
 );

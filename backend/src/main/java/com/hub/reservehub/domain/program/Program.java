@@ -23,6 +23,13 @@ public class Program extends BaseEntity {
     @Column(nullable = false)
     private String name;
 
+    // 이 프로그램을 구매하는 수강권 — 지정되어 있으면 표시용 이름은 항상 이 수강권의 이름을 조회해서
+    // 쓴다(ProgramService.list/get에서 join). name 컬럼은 생성 시점 스냅샷일 뿐이라 나중에 수강권
+    // 이름이 바뀌어도 이 값 자체는 갱신되지 않는다 — 항상 최신값이 필요하면 passId로 다시 조회해야 한다.
+    // 세무사 등 수강권 카탈로그와 무관하게 프로그램만 볼 때를 위해 남겨둔 참고용 필드.
+    @Nullable
+    private UUID passId;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private ProgramType type = ProgramType.GROUP;
@@ -43,7 +50,10 @@ public class Program extends BaseEntity {
         // JPA only.
     }
 
-    public Program(UUID platformId, String name, ProgramType type, short capacity, short durationMin, @Nullable String description) {
+    public Program(
+            UUID platformId, String name, ProgramType type, short capacity, short durationMin,
+            @Nullable String description, @Nullable UUID passId
+    ) {
         if (capacity < 1) {
             throw new IllegalArgumentException("capacity must be at least 1");
         }
@@ -56,6 +66,7 @@ public class Program extends BaseEntity {
         this.capacity = capacity;
         this.durationMin = durationMin;
         this.description = description;
+        this.passId = passId;
     }
 
     public UUID getId() {
@@ -68,6 +79,11 @@ public class Program extends BaseEntity {
 
     public String getName() {
         return name;
+    }
+
+    @Nullable
+    public UUID getPassId() {
+        return passId;
     }
 
     public ProgramType getType() {

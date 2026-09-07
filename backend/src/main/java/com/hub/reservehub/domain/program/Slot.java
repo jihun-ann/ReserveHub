@@ -22,6 +22,11 @@ public class Slot {
     @Column(nullable = false)
     private UUID programId;
 
+    // 이 슬롯(수업 인스턴스) 자체의 이름 — 같은 프로그램 안에서 요일/시간이 다른 여러 반을 구분할 때
+    // 쓴다 (예: "그룹반A", "그룹반B"). 없으면 화면에서 프로그램 이름으로 대체 표시한다.
+    @Nullable
+    private String name;
+
     @Column(nullable = false)
     private UUID instructorId;
 
@@ -52,13 +57,14 @@ public class Slot {
     }
 
     public Slot(
-            UUID programId, UUID instructorId, DayOfWeek dayOfWeek,
+            UUID programId, @Nullable String name, UUID instructorId, DayOfWeek dayOfWeek,
             LocalTime startTime, LocalTime endTime, LocalDate validFrom, @Nullable LocalDate validUntil
     ) {
         if (!endTime.isAfter(startTime)) {
             throw new IllegalArgumentException("endTime must be after startTime");
         }
         this.programId = programId;
+        this.name = name;
         this.instructorId = instructorId;
         this.dayOfWeek = dayOfWeek;
         this.startTime = startTime;
@@ -74,6 +80,11 @@ public class Slot {
 
     public UUID getProgramId() {
         return programId;
+    }
+
+    @Nullable
+    public String getName() {
+        return name;
     }
 
     public UUID getInstructorId() {

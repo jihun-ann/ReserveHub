@@ -48,6 +48,13 @@ public class Order extends BaseEntity {
     @Nullable
     private UUID createdBy;
 
+    // Who actually confirmed the payment (pay/partialPay) — may differ from createdBy if the order
+    // was registered ahead of time and paid later by a different staff member.
+    // 실제 결제(pay/partialPay)를 확정 처리한 사람 — 주문을 미리 등록해두고 나중에 다른 담당자가
+    // 결제를 받는 경우 createdBy와 다를 수 있다.
+    @Nullable
+    private UUID processedBy;
+
     // 실제 누적 수납액 — finalAmount보다 적으면 PARTIAL, 같거나 크면 PAID.
     @Column(nullable = false)
     private int paidAmount = 0;
@@ -131,6 +138,11 @@ public class Order extends BaseEntity {
         return createdBy;
     }
 
+    @Nullable
+    public UUID getProcessedBy() {
+        return processedBy;
+    }
+
     public int getPaidAmount() {
         return paidAmount;
     }
@@ -159,7 +171,7 @@ public class Order extends BaseEntity {
     }
 
     // 전액 결제 확정 — 잔금 없이 한 번에 완납하는 기존 흐름.
-    public void pay(PaymentMethod paymentMethod, CashReceiptStatus cashReceiptStatus, @Nullable String receiptNumber) {
+    public void pay(PaymentMethod paymentMethod, CashReceiptStatus cashReceiptStatus, @Nullable String receiptNumber, UUID processedBy) {
         if (status != OrderStatus.PENDING && status != OrderStatus.PARTIAL) {
             throw new IllegalStateException("Only a PENDING or PARTIAL order can be paid");
         }
@@ -169,10 +181,11 @@ public class Order extends BaseEntity {
         this.paidAmount = finalAmount;
         this.status = OrderStatus.PAID;
         this.paidAt = Instant.now();
+        this.processedBy = processedBy;
     }
 
     // 부분납 — amount만큼 누적 수납하고, 잔액이 남으면 PARTIAL, 다 채워지면 PAID.
-    public void partialPay(int amount, PaymentMethod paymentMethod, CashReceiptStatus cashReceiptStatus, @Nullable String receiptNumber) {
+    public void partialPay(int amount, PaymentMethod paymentMethod, CashReceiptStatus cashReceiptStatus, @Nullable String receiptNumber, UUID processedBy) {
         if (status != OrderStatus.PENDING && status != OrderStatus.PARTIAL) {
             throw new IllegalStateException("Only a PENDING or PARTIAL order can accept a payment");
         }
@@ -185,6 +198,7 @@ public class Order extends BaseEntity {
         this.paidAmount = Math.min(finalAmount, this.paidAmount + amount);
         this.status = this.paidAmount >= finalAmount ? OrderStatus.PAID : OrderStatus.PARTIAL;
         this.paidAt = Instant.now();
+        this.processedBy = processedBy;
     }
 
     public void cancel() {

@@ -16,6 +16,8 @@ import ManagerApprovalView from "./manager/ManagerApprovalView.jsx";
 import ManagerMemberManageView from "./manager/ManagerMemberManageView.jsx";
 import ManagerTutorManageView from "./manager/ManagerTutorManageView.jsx";
 import ManagerPaymentView from "./manager/ManagerPaymentView.jsx";
+import ManagerPaymentHistoryView from "./manager/ManagerPaymentHistoryView.jsx";
+import ManagerLessonManageView from "./manager/ManagerLessonManageView.jsx";
 import ManagerCalculationView from "./manager/ManagerCalculationView.jsx";
 import ManagerCalendarView from "./manager/ManagerCalendarView.jsx";
 import ManagerStudyHistoryView from "./manager/ManagerStudyHistoryView.jsx";
@@ -89,7 +91,9 @@ const ROLE_MENU = {
 		{ id: "approval", label: "승인 관리", icon: "✅" },
 		{ id: "members", label: "회원 관리", icon: "👥" },
 		{ id: "tutor", label: "강사 관리", icon: "🧑‍🏫" },
+		{ id: "lessonManage", label: "수업 관리", icon: "📌" },
 		{ id: "payment", label: "수강권 / 결제", icon: "💳" },
+		{ id: "paymentHistory", label: "결제 이력", icon: "🧾" },
 		{ id: "calc", label: "상담 계산툴", icon: "🧮" },
 		{ id: "history", label: "수업 이력", icon: "📋" },
 		{ id: "activityLog", label: "활동 이력", icon: "🕒" }
@@ -609,6 +613,10 @@ export default function AppShell() {
 					return <ManagerTutorManageView platformId={currentPlatformId} />;
 				case "payment":
 					return <ManagerPaymentView platformId={currentPlatformId} />;
+				case "paymentHistory":
+					return <ManagerPaymentHistoryView platformId={currentPlatformId} />;
+				case "lessonManage":
+					return <ManagerLessonManageView platformId={currentPlatformId} />;
 				case "calc":
 					return (
 						<ManagerCalculationView

@@ -1,4 +1,4 @@
-import { apiGet, apiPost, apiPatch, apiDelete } from "./http.js";
+import { apiGet, apiPost, apiPatch, apiDelete, apiPostForm, API_BASE_URL } from "./http.js";
 
 export const BUSINESS_TYPES = [
 	{ value: "PILATES", label: "필라테스" },
@@ -74,6 +74,19 @@ export const approveFinancialRequest = (id, memo) =>
 export const rejectFinancialRequest = (id, memo) =>
 	apiPost(`/api/v1/financial-requests/${id}/reject`, memo ? { memo } : undefined);
 
+export const listFinancialRequestComments = (requestId) =>
+	apiGet(`/api/v1/financial-requests/${requestId}/comments`);
+
+export const addFinancialRequestComment = (requestId, { content, file } = {}) => {
+	const formData = new FormData();
+	if (content?.trim()) formData.append("content", content);
+	if (file) formData.append("file", file);
+	return apiPostForm(`/api/v1/financial-requests/${requestId}/comments`, formData);
+};
+
+export const financialRequestAttachmentUrl = (requestId, commentId) =>
+	`${API_BASE_URL}/api/v1/financial-requests/${requestId}/comments/${commentId}/attachment`;
+
 export const listActionLogs = (platformId) => apiGet(`/api/v1/platforms/${platformId}/action-logs`);
 
 export const getUser = (id) => apiGet(`/api/v1/users/${id}`);
@@ -81,6 +94,22 @@ export const getUser = (id) => apiGet(`/api/v1/users/${id}`);
 export const listPrograms = (platformId) => apiGet(`/api/v1/platforms/${platformId}/programs`);
 
 export const createProgram = (platformId, payload) => apiPost(`/api/v1/platforms/${platformId}/programs`, payload);
+
+export const DAY_OF_WEEK_LABEL = { MON: "월", TUE: "화", WED: "수", THU: "목", FRI: "금", SAT: "토", SUN: "일" };
+
+export const addProgramSlot = (programId, payload) => apiPost(`/api/v1/programs/${programId}/slots`, payload);
+
+export const listProgramSlots = (programId) => apiGet(`/api/v1/programs/${programId}/slots`);
+
+export const deactivateProgramSlot = (programId, slotId) => apiDelete(`/api/v1/programs/${programId}/slots/${slotId}`);
+
+export const addSlotMember = (programId, slotId, payload) =>
+	apiPost(`/api/v1/programs/${programId}/slots/${slotId}/members`, payload);
+
+export const listSlotMembers = (programId, slotId) => apiGet(`/api/v1/programs/${programId}/slots/${slotId}/members`);
+
+export const removeSlotMember = (programId, slotId, memberId) =>
+	apiDelete(`/api/v1/programs/${programId}/slots/${slotId}/members/${memberId}`);
 
 const REQUEST_STATUSES = ["PENDING", "APPROVED", "REJECTED"];
 

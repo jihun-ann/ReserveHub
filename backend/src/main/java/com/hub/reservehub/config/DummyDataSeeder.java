@@ -121,9 +121,10 @@ public class DummyDataSeeder implements CommandLineRunner {
         platformService.assignStaff(platform.getId(), ownerPrincipal, manager.getId(), StaffRole.MANAGER);
         platformService.assignStaff(platform.getId(), ownerPrincipal, tutor.getId(), StaffRole.TUTOR);
         seedScheduleChangeRequests(platform.getId(), tutor.getId());
-        List<User> members = seedMembers(platform.getId(), ownerPrincipal);
+        MembersAndPass seeded = seedMembers(platform.getId(), ownerPrincipal);
+        List<User> members = seeded.members();
         seedCalendarEvents(platform.getId(), ownerPrincipal);
-        Slot slot = seedLessonsForSlot(platform.getId(), ownerPrincipal, "그룹반 A", DayOfWeek.MON, tutor.getId(), members);
+        Slot slot = seedLessonsForSlot(platform.getId(), ownerPrincipal, seeded.pass().getId(), "그룹반 A", DayOfWeek.MON, tutor.getId(), members);
         seedReservationAndRequest(platform.getId(), ownerPrincipal, tutor, slot, members.get(0), "수강생 요청으로 다음 그룹반 일정을 조정합니다.");
 
         // tutor@test.com이 자신이 강사로 소속된 플랫폼에서 동시에 수강권을 구매한 고객이기도 한
@@ -154,8 +155,9 @@ public class DummyDataSeeder implements CommandLineRunner {
                 "02-2345-6789", "서울시 마포구", "더미 데이터용 테스트 플랫폼 2"
         );
         platformService.assignStaff(platform2.getId(), ownerPrincipal, tutor.getId(), StaffRole.TUTOR);
-        List<User> members2 = seedSimpleMembers(platform2.getId(), ownerPrincipal);
-        Slot slot2 = seedLessonsForSlot(platform2.getId(), ownerPrincipal, "요가 기초반", DayOfWeek.WED, tutor.getId(), members2);
+        MembersAndPass seeded2 = seedSimpleMembers(platform2.getId(), ownerPrincipal);
+        List<User> members2 = seeded2.members();
+        Slot slot2 = seedLessonsForSlot(platform2.getId(), ownerPrincipal, seeded2.pass().getId(), "요가 기초반", DayOfWeek.WED, tutor.getId(), members2);
         seedReservationAndRequest(platform2.getId(), ownerPrincipal, tutor, slot2, members2.get(0), "수강생 사정으로 요가 기초반 일정을 조정합니다.");
 
         // manager@test.com은 여기서 매니저가 아니라 강사(TUTOR)로, tutor@test.com은 반대로
@@ -255,7 +257,10 @@ public class DummyDataSeeder implements CommandLineRunner {
         scheduleChangeRequestRepository.save(rejected);
     }
 
-    private List<User> seedMembers(UUID platformId, AuthenticatedUser ownerPrincipal) {
+    private record MembersAndPass(List<User> members, Pass pass) {
+    }
+
+    private MembersAndPass seedMembers(UUID platformId, AuthenticatedUser ownerPrincipal) {
         Pass groupPass = passService.create(
                 platformId, ownerPrincipal, "그룹 월정액", PassType.MONTHLY, 150000, null, (short) 30
         );
@@ -299,7 +304,7 @@ public class DummyDataSeeder implements CommandLineRunner {
                 member3.getId(), UUID.randomUUID(), personalPass.getId(), platformId, 5, today.minusDays(90), today.minusDays(10)
         ));
 
-        return List.of(member1, member2, member3);
+        return new MembersAndPass(List.of(member1, member2, member3), groupPass);
     }
 
     private void seedCalendarEvents(UUID platformId, AuthenticatedUser ownerPrincipal) {
@@ -323,14 +328,14 @@ public class DummyDataSeeder implements CommandLineRunner {
     // 예약 체인 없이도 출결 이력만 안전하게 재현할 수 있다.
     // 슬롯 요일마다 이번 달 전체에 걸쳐 수업을 생성해 캘린더/고정 시간표가 매주 반복되는 패턴을 보여주도록 한다.
     private Slot seedLessonsForSlot(
-            UUID platformId, AuthenticatedUser ownerPrincipal, String programName,
+            UUID platformId, AuthenticatedUser ownerPrincipal, UUID passId, String slotName,
             DayOfWeek dayOfWeek, UUID tutorId, List<User> members
     ) {
         Program program = programService.create(
-                platformId, ownerPrincipal, programName, ProgramType.GROUP, (short) 8, (short) 60, null
+                platformId, ownerPrincipal, passId, ProgramType.GROUP, (short) 8, (short) 60, null
         );
         Slot slot = programService.addSlot(
-                program.getId(), ownerPrincipal, tutorId, dayOfWeek,
+                program.getId(), ownerPrincipal, slotName, tutorId, dayOfWeek,
                 LocalTime.of(9, 0), LocalTime.of(10, 0), LocalDate.now().withDayOfMonth(1).minusMonths(1), null
         );
         java.time.DayOfWeek jdkDayOfWeek = toJavaDayOfWeek(dayOfWeek);
@@ -383,7 +388,7 @@ public class DummyDataSeeder implements CommandLineRunner {
     }
 
     // 결제/할인 시나리오 없이, 강사가 두 번째 플랫폼에서도 고정 시간표·출석 화면을 테스트할 수 있도록 회원만 간단히 채운다.
-    private List<User> seedSimpleMembers(UUID platformId, AuthenticatedUser ownerPrincipal) {
+    private MembersAndPass seedSimpleMembers(UUID platformId, AuthenticatedUser ownerPrincipal) {
         Pass yogaPass = passService.create(
                 platformId, ownerPrincipal, "요가 월정액", PassType.MONTHLY, 120000, null, (short) 30
         );
@@ -399,6 +404,6 @@ public class DummyDataSeeder implements CommandLineRunner {
             orderService.pay(order.getId(), ownerPrincipal, PaymentMethod.CARD, CashReceiptStatus.NOT_ISSUED, null);
         }
 
-        return List.of(member4, member5);
+        return new MembersAndPass(List.of(member4, member5), yogaPass);
     }
 }

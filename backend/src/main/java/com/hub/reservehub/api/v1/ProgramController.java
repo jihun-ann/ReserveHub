@@ -7,7 +7,6 @@ import com.hub.reservehub.domain.program.ProgramType;
 import com.hub.reservehub.domain.program.Slot;
 import com.hub.reservehub.security.CurrentAuthenticatedUser;
 import jakarta.validation.Valid;
-import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
 import java.time.LocalDate;
@@ -41,10 +40,10 @@ public class ProgramController {
             @PathVariable UUID platformId, @Valid @RequestBody CreateProgramRequest request
     ) {
         Program program = programService.create(
-                platformId, currentAuthenticatedUser.get(), request.name(), request.type(),
+                platformId, currentAuthenticatedUser.get(), request.passId(), request.type(),
                 request.capacity(), request.durationMin(), request.description()
         );
-        return ResponseEntity.status(HttpStatus.CREATED).body(ProgramResponse.from(program));
+        return ResponseEntity.status(HttpStatus.CREATED).body(ProgramResponse.from(programService.get(program.getId())));
     }
 
     @GetMapping("/api/v1/platforms/{platformId}/programs")
@@ -68,7 +67,7 @@ public class ProgramController {
     @PostMapping("/api/v1/programs/{id}/slots")
     public ResponseEntity<SlotResponse> addSlot(@PathVariable UUID id, @Valid @RequestBody CreateSlotRequest request) {
         Slot slot = programService.addSlot(
-                id, currentAuthenticatedUser.get(), request.instructorId(), request.dayOfWeek(),
+                id, currentAuthenticatedUser.get(), request.name(), request.instructorId(), request.dayOfWeek(),
                 request.startTime(), request.endTime(), request.validFrom(), request.validUntil()
         );
         return ResponseEntity.status(HttpStatus.CREATED).body(SlotResponse.from(slot));
@@ -95,7 +94,7 @@ public class ProgramController {
     }
 
     public record CreateProgramRequest(
-            @NotBlank String name,
+            @NotNull UUID passId,
             @NotNull ProgramType type,
             @Positive short capacity,
             @Positive short durationMin,
@@ -104,6 +103,7 @@ public class ProgramController {
     }
 
     public record CreateSlotRequest(
+            String name,
             @NotNull UUID instructorId,
             @NotNull DayOfWeek dayOfWeek,
             @NotNull LocalTime startTime,
@@ -114,37 +114,38 @@ public class ProgramController {
     }
 
     public record ProgramResponse(
-            UUID id, UUID platformId, String name, ProgramType type,
+            UUID id, UUID platformId, UUID passId, String name, ProgramType type,
             short capacity, short durationMin, String description, boolean isActive
     ) {
-        public static ProgramResponse from(Program program) {
+        public static ProgramResponse from(ProgramService.ProgramView view) {
+            Program program = view.program();
             return new ProgramResponse(
-                    program.getId(), program.getPlatformId(), program.getName(), program.getType(),
+                    program.getId(), program.getPlatformId(), program.getPassId(), view.displayName(), program.getType(),
                     program.getCapacity(), program.getDurationMin(), program.getDescription(), program.isActive()
             );
         }
     }
 
     public record SlotResponse(
-            UUID id, UUID programId, UUID instructorId, DayOfWeek dayOfWeek,
+            UUID id, UUID programId, String name, UUID instructorId, DayOfWeek dayOfWeek,
             LocalTime startTime, LocalTime endTime, LocalDate validFrom, LocalDate validUntil, boolean isActive
     ) {
         public static SlotResponse from(Slot slot) {
             return new SlotResponse(
-                    slot.getId(), slot.getProgramId(), slot.getInstructorId(), slot.getDayOfWeek(),
+                    slot.getId(), slot.getProgramId(), slot.getName(), slot.getInstructorId(), slot.getDayOfWeek(),
                     slot.getStartTime(), slot.getEndTime(), slot.getValidFrom(), slot.getValidUntil(), slot.isActive()
             );
         }
     }
 
     public record MySlotResponse(
-            UUID id, UUID platformId, UUID programId, String programName, ProgramType programType,
+            UUID id, UUID platformId, UUID programId, String slotName, String programName, ProgramType programType,
             short capacity, DayOfWeek dayOfWeek, LocalTime startTime, LocalTime endTime
     ) {
         static MySlotResponse from(ProgramService.SlotWithProgram sp) {
             return new MySlotResponse(
                     sp.slot().getId(), sp.program() != null ? sp.program().getPlatformId() : null,
-                    sp.slot().getProgramId(), sp.program() != null ? sp.program().getName() : "-",
+                    sp.slot().getProgramId(), sp.slot().getName(), sp.program() != null ? sp.program().getName() : "-",
                     sp.program() != null ? sp.program().getType() : null, sp.program() != null ? sp.program().getCapacity() : 0,
                     sp.slot().getDayOfWeek(), sp.slot().getStartTime(), sp.slot().getEndTime()
             );

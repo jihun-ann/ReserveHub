@@ -162,7 +162,7 @@ public class OrderController {
             UUID id, UUID userId, UUID platformId, OrderStatus status,
             int originalAmount, int discountAmount, int finalAmount, int paidAmount, Instant paidAt, String memo,
             PaymentMethod paymentMethod, CashReceiptStatus cashReceiptStatus, String receiptNumber,
-            int refundAmount, Instant refundedAt,
+            int refundAmount, Instant refundedAt, UUID processedBy,
             List<OrderItemResponse> items, List<OrderDiscountResponse> discounts
     ) {
         public static OrderResponse from(Order order, List<OrderItemResponse> items, List<OrderDiscountResponse> discounts) {
@@ -171,7 +171,7 @@ public class OrderController {
                     order.getOriginalAmount(), order.getDiscountAmount(), order.getFinalAmount(), order.getPaidAmount(),
                     order.getPaidAt(), order.getMemo(),
                     order.getPaymentMethod(), order.getCashReceiptStatus(), order.getReceiptNumber(),
-                    order.getRefundAmount(), order.getRefundedAt(),
+                    order.getRefundAmount(), order.getRefundedAt(), order.getProcessedBy(),
                     items, discounts
             );
         }

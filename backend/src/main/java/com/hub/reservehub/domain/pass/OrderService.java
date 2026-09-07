@@ -167,7 +167,7 @@ public class OrderService {
     public Order pay(UUID orderId, AuthenticatedUser actor, PaymentMethod paymentMethod, CashReceiptStatus cashReceiptStatus, @Nullable String receiptNumber) {
         Order order = findOrder(orderId);
         verifyBuyerOrStaff(order, actor);
-        order.pay(paymentMethod, cashReceiptStatus, receiptNumber);
+        order.pay(paymentMethod, cashReceiptStatus, receiptNumber, actor.getId());
         issuePassesAndEmitPaidEvent(order);
         return order;
     }
@@ -181,7 +181,7 @@ public class OrderService {
     ) {
         Order order = findOrder(orderId);
         verifyBuyerOrStaff(order, actor);
-        order.partialPay(amount, paymentMethod, cashReceiptStatus, receiptNumber);
+        order.partialPay(amount, paymentMethod, cashReceiptStatus, receiptNumber, actor.getId());
         if (order.getStatus() == OrderStatus.PAID) {
             issuePassesAndEmitPaidEvent(order);
         }

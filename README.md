@@ -7,7 +7,7 @@
 
 | 영역 | 스택 |
 |------|------|
-| Backend | Spring Boot 4, Java 17, Spring Security + JWT, Spring Data JPA |
+| Backend | Spring Boot 4, Java 17, Spring Security (서버 세션 기반 인증), Spring Data JPA |
 | Database | PostgreSQL 16 |
 | Frontend | React 19, Vite, React Router |
 | Build | Gradle (백엔드), npm (프론트엔드) |
@@ -28,8 +28,10 @@ ReserveHub/
 ```
 OWNER   오너 (대표) — 플랫폼 생성 권한
   └─ MANAGER  매니저 (점주/사장) — 1개 플랫폼만 담당
-       └─ ADMIN   일반관리자 (강사)
+       └─ TUTOR   강사
             └─ USER    수강생
+
+TAX_ACCOUNTANT   세무사 — 위 계층과 별도로 플랫폼 단위로 부여, 여러 오너와 동시 계약 가능
 ```
 
 ## 시작하기
@@ -60,7 +62,6 @@ psql -U reservehub -d reservehub -f db/schema.sql
 | `DB_URL` | `jdbc:postgresql://localhost:5432/reservehub?stringtype=unspecified` |
 | `DB_USERNAME` | `reservehub` |
 | `DB_PASSWORD` | `reservehub` |
-| `JWT_SECRET` | 로컬 개발용 기본값 (운영 배포 전 반드시 교체) |
 
 ### 프론트엔드
 
@@ -75,6 +76,6 @@ npm run dev
 ## 참고
 
 - API 버전 prefix: `/api/v1/`
-- 인증: `Authorization: Bearer <JWT>`
+- 인증: 서버 세션 기반 (`HttpOnly` 세션 쿠키)
 - 플랫폼 컨텍스트: `X-Platform-Id` 헤더
 - 코딩 컨벤션과 도메인 규칙(권한, 금액 처리, Outbox 패턴 등)은 [`AGENT.md`](./AGENT.md)에 정리되어 있습니다.

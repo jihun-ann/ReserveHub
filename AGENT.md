@@ -23,7 +23,7 @@
 
 ```
 Backend   Spring Boot 3.x (Java 17)
-          Spring Security + JWT
+          Spring Security (서버 세션 기반 인증, HttpOnly 쿠키)
           Spring Data JPA / QueryDSL
           Spring Events + Outbox Relay Worker
 
@@ -47,6 +47,9 @@ OWNER        오너 (대표)
   └─ MANAGER     매니저 (점주/사장/관리자)
        └─ TUTOR      일반관리자 (강사)       ← 옵션
             └─ USER      수강생
+
+TAX_ACCOUNTANT   세무사 — 위 계층에 속하지 않는 플랫폼별 별도 부여(PlatformTaxAccountant)
+                 스태프가 아니므로 여러 오너의 플랫폼과 동시에 계약 가능
 ```
 
 ### 권한 규칙 — 반드시 준수
@@ -57,6 +60,7 @@ OWNER        오너 (대표)
 | 플랫폼 생성 | OWNER만 가능 |
 | 승인 처리 | MANAGER 이상만 가능. 처리 시 `action_logs` 필수 기록 |
 | 타 플랫폼 데이터 조회 | 절대 불가. 모든 쿼리에 `platform_id` 필터 필수 |
+| 세무사 권한 판단 | 전역 role이 아니라 `PlatformTaxAccountant` 부여 기록으로 확인 (`PlatformAccessGuard`) |
 
 ---
 
@@ -162,7 +166,7 @@ reservehub/
 │       │   └── outbox/         # Outbox 테이블 + Relay Worker
 │       ├── api/
 │       │   └── v1/             # REST Controllers
-│       ├── security/           # JWT · 권한 필터
+│       ├── security/           # 서버 세션 인증 · 권한 필터
 │       └── common/
 │           ├── exception/
 │           └── audit/          # BaseEntity (created_at, updated_at)
@@ -185,7 +189,7 @@ reservehub/
 ## 7. API 설계 원칙
 
 - 버전 prefix: `/api/v1/`
-- 인증: `Authorization: Bearer <JWT>`
+- 인증: 서버 세션 기반 (`HttpOnly` 세션 쿠키, `Authorization` 헤더 아님)
 - 플랫폼 컨텍스트: `X-Platform-Id: <UUID>` 헤더 또는 path variable
 - 에러 응답 형식:
 

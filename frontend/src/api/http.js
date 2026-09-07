@@ -1,4 +1,4 @@
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:8080";
+export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:8080";
 
 // 인증은 서버 세션 기반이다 — 세션 id는 HttpOnly 쿠키에만 담겨 브라우저-서버 사이를 오가고,
 // 프론트는 그 쿠키를 읽거나 들고 다닐 필요가 없다(credentials:"include"만 붙이면 브라우저가
@@ -59,6 +59,21 @@ export const apiGet = (path) => request("GET", path);
 export const apiPost = (path, body) => request("POST", path, body);
 export const apiPatch = (path, body) => request("PATCH", path, body);
 export const apiDelete = (path) => request("DELETE", path);
+
+// 파일 첨부(FormData)는 JSON이 아니므로 Content-Type을 직접 지정하지 않는다 — 브라우저가
+// multipart 경계(boundary)를 포함해 자동으로 설정한다.
+export async function apiPostForm(path, formData) {
+  const response = await fetch(`${API_BASE_URL}${path}`, {
+    method: "POST",
+    credentials: "include",
+    body: formData,
+  });
+  if (!response.ok) {
+    const errorBody = await response.json().catch(() => null);
+    throw new Error(errorBody?.message || `Request failed: ${response.status}`);
+  }
+  return response.status === 204 ? null : response.json();
+}
 
 export const changePassword = (currentPassword, newPassword) =>
   apiPatch("/api/v1/users/me/password", { currentPassword, newPassword });

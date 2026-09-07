@@ -8,6 +8,7 @@ import {
 	rejectFinancialRequest,
 	FINANCIAL_REQUEST_TYPE_LABEL
 } from "../../api/common.js";
+import FinancialRequestThread from "../../components/FinancialRequestThread.jsx";
 
 const STATUS_LABEL = {
 	PENDING: { lbl: "대기 중", color: "var(--accent3)" },
@@ -22,6 +23,7 @@ export default function ManagerApprovalView({ platformId }) {
 	const [filter, setFilter] = useState("ALL");
 	const [kindFilter, setKindFilter] = useState("ALL");
 	const [memoById, setMemoById] = useState({});
+	const [expandedId, setExpandedId] = useState(null);
 
 	const refresh = useCallback(async () => {
 		if (!platformId) {
@@ -159,6 +161,19 @@ export default function ManagerApprovalView({ platformId }) {
 										</span>
 										<div style={{ marginTop: "4px" }}>{r.decisionMemo}</div>
 									</div>
+								)}
+								{isFinancial && (
+									<>
+										<button
+											type="button"
+											className="btn btn-ghost btn-sm"
+											style={{ marginTop: "10px" }}
+											onClick={() => setExpandedId(expandedId === r.id ? null : r.id)}
+										>
+											{expandedId === r.id ? "댓글 닫기" : "댓글 / 파일 첨부"}
+										</button>
+										{expandedId === r.id && <FinancialRequestThread requestId={r.id} />}
+									</>
 								)}
 								{r.status === "PENDING" && (
 									<div style={{ marginTop: "10px" }}>

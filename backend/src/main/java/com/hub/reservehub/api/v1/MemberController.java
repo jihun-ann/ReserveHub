@@ -56,14 +56,14 @@ public class MemberController {
 
     public record MemberResponse(
             UUID userId, String email, String name, String phone, String guardianName, String guardianPhone,
-            String passName, Integer sessionsTotal,
+            UUID userPassId, String passName, Integer sessionsTotal,
             int sessionsUsed, UserPassStatus status, LocalDate startedAt, LocalDate expiresAt
     ) {
         static MemberResponse from(MemberService.MemberPass mp) {
             return new MemberResponse(
                     mp.user().getId(), mp.user().getEmail(), mp.user().getName(), mp.user().getPhone(),
                     mp.user().getGuardianName(), mp.user().getGuardianPhone(),
-                    mp.pass().getName(), mp.userPass().getSessionsTotal(),
+                    mp.userPass().getId(), mp.pass().getName(), mp.userPass().getSessionsTotal(),
                     mp.userPass().getSessionsUsed(), mp.userPass().getStatus(),
                     mp.userPass().getStartedAt(), mp.userPass().getExpiresAt()
             );

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { Fragment, useState, useEffect, useCallback } from "react";
 import { listStaffPayroll, INCOME_TYPE_LABEL } from "../../api/common.js";
 import { exportCsv } from "../../utils/exportCsv.js";
 
@@ -17,6 +17,7 @@ export default function TaxAccountantStaffView({ platformId }) {
 	const [month, setMonth] = useState(today0.getMonth() + 1);
 	const [staff, setStaff] = useState([]);
 	const [loading, setLoading] = useState(true);
+	const [expandedKey, setExpandedKey] = useState(null);
 
 	const refresh = useCallback(async () => {
 		if (!platformId) {
@@ -90,8 +91,15 @@ export default function TaxAccountantStaffView({ platformId }) {
 							) : staff.length === 0 ? (
 								<tr><td colSpan={12} style={{ textAlign: "center", padding: "24px", color: "var(--text-dim)" }}>등록된 직원이 없습니다</td></tr>
 							) : (
-								staff.map((s) => (
-									<tr key={s.userId + s.role}>
+								staff.map((s) => {
+									const key = s.userId + s.role;
+									const expanded = expandedKey === key;
+									return (
+									<Fragment key={key}>
+									<tr
+										onClick={() => setExpandedKey(expanded ? null : key)}
+										style={{ cursor: "pointer", background: expanded ? "var(--surface-alt, rgba(124,106,247,0.06))" : undefined }}
+									>
 										<td style={{ fontWeight: 600 }}>{s.name}</td>
 										<td>
 											<span className="plat-chip">{ROLE_LABEL[s.role] || s.role}</span>
@@ -135,7 +143,35 @@ export default function TaxAccountantStaffView({ platformId }) {
 											<td colSpan={5} style={{ color: "var(--text-dim)", fontSize: "12px" }}>-</td>
 										)}
 									</tr>
-								))
+									{expanded && (
+										<tr>
+											<td colSpan={12} style={{ padding: "16px 20px", background: "var(--bg)" }}>
+												<div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))", gap: "10px 24px" }}>
+													<div><span style={{ color: "var(--text-dim)", fontSize: "12px" }}>이름</span><div>{s.name}</div></div>
+													<div><span style={{ color: "var(--text-dim)", fontSize: "12px" }}>역할</span><div>{ROLE_LABEL[s.role] || s.role}</div></div>
+													<div><span style={{ color: "var(--text-dim)", fontSize: "12px" }}>연락처</span><div>{s.phone || "-"}</div></div>
+													<div><span style={{ color: "var(--text-dim)", fontSize: "12px" }}>이메일</span><div>{s.email}</div></div>
+													<div><span style={{ color: "var(--text-dim)", fontSize: "12px" }}>은행</span><div>{s.bankName || "미등록"}</div></div>
+													<div><span style={{ color: "var(--text-dim)", fontSize: "12px" }}>계좌번호</span><div style={{ fontFamily: "'DM Mono',monospace" }}>{s.bankAccountNumber || "-"}</div></div>
+													<div><span style={{ color: "var(--text-dim)", fontSize: "12px" }}>예금주</span><div>{s.bankAccountHolder || "-"}</div></div>
+													<div><span style={{ color: "var(--text-dim)", fontSize: "12px" }}>소득유형</span><div>{s.incomeType ? INCOME_TYPE_LABEL[s.incomeType] : "미지정"}</div></div>
+													<div><span style={{ color: "var(--text-dim)", fontSize: "12px" }}>원천징수세율</span><div>{s.withholdingRateLabel || "-"}</div></div>
+													{s.role === "TUTOR" && (
+														<>
+															<div><span style={{ color: "var(--text-dim)", fontSize: "12px" }}>이번달 수업</span><div>{s.lessonCount}회{s.sessionRate != null ? ` (회당 ${won(s.sessionRate)}원)` : ""}</div></div>
+															<div><span style={{ color: "var(--text-dim)", fontSize: "12px" }}>출석 학생</span><div>{s.attendanceCount}명</div></div>
+															<div><span style={{ color: "var(--text-dim)", fontSize: "12px" }}>정산총액</span><div style={{ color: "var(--taxacct)" }}>{s.sessionRate != null ? `${won(s.grossSettlement)}원` : "강사료 미지정"}</div></div>
+															<div><span style={{ color: "var(--text-dim)", fontSize: "12px" }}>원천징수세액</span><div>{s.withholdingTaxAmount != null ? `${won(s.withholdingTaxAmount)}원` : "-"}</div></div>
+															<div><span style={{ color: "var(--text-dim)", fontSize: "12px" }}>실지급액</span><div style={{ fontWeight: 600 }}>{s.netSettlement != null ? `${won(s.netSettlement)}원` : "-"}</div></div>
+														</>
+													)}
+												</div>
+											</td>
+										</tr>
+									)}
+									</Fragment>
+									);
+								})
 							)}
 						</tbody>
 					</table>
