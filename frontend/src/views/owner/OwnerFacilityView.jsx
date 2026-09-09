@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { openModal, closeModal } from "../default.js";
-import { listFacilities, createFacility, updateFacility, deactivateFacility } from "../../api/common.js";
+import { listFacilities, createFacility, updateFacility, updateFacilityPosition, deactivateFacility } from "../../api/common.js";
 
 const EMPTY_FORM = { name: "", description: "" };
 
@@ -62,6 +62,24 @@ export default function OwnerFacilityView({ platformId }) {
 		await refresh();
 	}
 
+	function onDragStart(e, facilityId) {
+		e.dataTransfer.setData("text/plain", facilityId);
+	}
+
+	async function onCanvasDrop(e) {
+		e.preventDefault();
+		const id = e.dataTransfer.getData("text/plain");
+		if (!id) return;
+		const rect = e.currentTarget.getBoundingClientRect();
+		const posX = Math.max(0, Math.min(100, Math.round(((e.clientX - rect.left) / rect.width) * 100)));
+		const posY = Math.max(0, Math.min(100, Math.round(((e.clientY - rect.top) / rect.height) * 100)));
+		await updateFacilityPosition(id, posX, posY);
+		await refresh();
+	}
+
+	const placed = facilities.filter((f) => f.posX != null && f.posY != null);
+	const unplaced = facilities.filter((f) => f.posX == null || f.posY == null);
+
 	return (
 		<>
 		<div className="page" id="owner-facility">
@@ -74,6 +92,68 @@ export default function OwnerFacilityView({ platformId }) {
 			<div style={{ display: "flex", justifyContent: "flex-end", marginBottom: "14px" }}>
 				<button className="btn btn-primary btn-sm" onClick={openCreate}>+ 시설물 추가</button>
 			</div>
+
+			{!loading && facilities.length > 0 && (
+				<div style={{ marginBottom: "20px" }}>
+					<div className="card-title" style={{ marginBottom: "10px" }}>배치도</div>
+					{unplaced.length > 0 && (
+						<div style={{ display: "flex", flexWrap: "wrap", gap: "8px", marginBottom: "10px" }}>
+							{unplaced.map((f) => (
+								<div
+									key={f.id}
+									draggable
+									onDragStart={(e) => onDragStart(e, f.id)}
+									className="plat-chip"
+									style={{ cursor: "grab", background: "var(--surface2)", color: "var(--text-sub)", borderColor: "var(--border)" }}
+								>
+									{f.name}
+								</div>
+							))}
+						</div>
+					)}
+					<div
+						onDragOver={(e) => e.preventDefault()}
+						onDrop={onCanvasDrop}
+						style={{
+							position: "relative",
+							width: "100%",
+							height: "360px",
+							background: "var(--surface2)",
+							border: "1px dashed var(--border)",
+							borderRadius: "var(--radius)"
+						}}
+					>
+						{placed.length === 0 && (
+							<div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", color: "var(--text-dim)", fontSize: "12px" }}>
+								위 목록에서 시설물을 이 영역으로 드래그해 배치하세요
+							</div>
+						)}
+						{placed.map((f) => (
+							<div
+								key={f.id}
+								draggable
+								onDragStart={(e) => onDragStart(e, f.id)}
+								style={{
+									position: "absolute",
+									left: `${f.posX}%`,
+									top: `${f.posY}%`,
+									transform: "translate(-50%, -50%)",
+									cursor: "grab",
+									padding: "8px 12px",
+									background: "var(--surface)",
+									border: "1px solid var(--border)",
+									borderRadius: "var(--radius-sm)",
+									fontSize: "12px",
+									fontWeight: 600,
+									whiteSpace: "nowrap"
+								}}
+							>
+								{f.name}
+							</div>
+						))}
+					</div>
+				</div>
+			)}
 
 			<div className="card" style={{ padding: "0", overflow: "hidden" }}>
 				<div style={{ overflowX: "auto" }}>

@@ -31,6 +31,13 @@ public class Facility extends BaseEntity {
     @Column(nullable = false)
     private boolean isActive = true;
 
+    // 배치도 상의 위치 (0~100 백분율). 둘 다 null이면 아직 배치되지 않은 시설물.
+    @Nullable
+    private Integer posX;
+
+    @Nullable
+    private Integer posY;
+
     protected Facility() {
         // JPA only.
     }
@@ -62,9 +69,24 @@ public class Facility extends BaseEntity {
         return isActive;
     }
 
+    @Nullable
+    public Integer getPosX() {
+        return posX;
+    }
+
+    @Nullable
+    public Integer getPosY() {
+        return posY;
+    }
+
     public void update(String name, @Nullable String description) {
         this.name = name;
         this.description = description;
+    }
+
+    public void updatePosition(int posX, int posY) {
+        this.posX = posX;
+        this.posY = posY;
     }
 
     // Soft delete — keeps history for existing bookings/issues (AGENT.md 4-4).

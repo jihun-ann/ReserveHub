@@ -522,11 +522,15 @@ CREATE TABLE facilities (
                             name            VARCHAR(200) NOT NULL,
                             description     TEXT,
                             is_active       BOOLEAN     NOT NULL DEFAULT TRUE,
+                            pos_x           SMALLINT,  -- 배치도 상 위치 (0~100 백분율). NULL이면 아직 배치되지 않음
+                            pos_y           SMALLINT,
                             created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
                             updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-COMMENT ON TABLE facilities IS '오너가 관리하는 예약 가능 시설물 카탈로그';
+COMMENT ON TABLE  facilities         IS '오너가 관리하는 예약 가능 시설물 카탈로그';
+COMMENT ON COLUMN facilities.pos_x   IS '배치도 캔버스 상의 x좌표(0~100 백분율), NULL이면 미배치';
+COMMENT ON COLUMN facilities.pos_y   IS '배치도 캔버스 상의 y좌표(0~100 백분율), NULL이면 미배치';
 
 CREATE TYPE facility_booking_status AS ENUM ('CONFIRMED', 'CANCELLED');
 

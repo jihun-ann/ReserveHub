@@ -59,6 +59,12 @@ public class FacilityController {
         return FacilityResponse.from(facilityService.update(id, currentAuthenticatedUser.get(), request.name(), request.description()));
     }
 
+    @PatchMapping("/api/v1/facilities/{id}/position")
+    @PreAuthorize("hasRole('OWNER')")
+    public FacilityResponse updatePosition(@PathVariable UUID id, @Valid @RequestBody UpdatePositionRequest request) {
+        return FacilityResponse.from(facilityService.updatePosition(id, currentAuthenticatedUser.get(), request.posX(), request.posY()));
+    }
+
     @DeleteMapping("/api/v1/facilities/{id}")
     @PreAuthorize("hasRole('OWNER')")
     public ResponseEntity<Void> deactivate(@PathVariable UUID id) {
@@ -121,6 +127,9 @@ public class FacilityController {
     public record CreateFacilityRequest(@NotBlank String name, String description) {
     }
 
+    public record UpdatePositionRequest(@NotNull Integer posX, @NotNull Integer posY) {
+    }
+
     public record CreateBookingRequest(
             @NotNull LocalDate bookingDate, @NotNull LocalTime startTime, @NotNull LocalTime endTime, String purpose
     ) {
@@ -132,9 +141,14 @@ public class FacilityController {
     public record ResolveIssueRequest(String resolutionMemo) {
     }
 
-    public record FacilityResponse(UUID id, UUID platformId, String name, String description, boolean isActive) {
+    public record FacilityResponse(
+            UUID id, UUID platformId, String name, String description, boolean isActive, Integer posX, Integer posY
+    ) {
         public static FacilityResponse from(Facility facility) {
-            return new FacilityResponse(facility.getId(), facility.getPlatformId(), facility.getName(), facility.getDescription(), facility.isActive());
+            return new FacilityResponse(
+                    facility.getId(), facility.getPlatformId(), facility.getName(), facility.getDescription(),
+                    facility.isActive(), facility.getPosX(), facility.getPosY()
+            );
         }
     }
 

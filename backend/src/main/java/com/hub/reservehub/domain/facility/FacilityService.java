@@ -59,6 +59,15 @@ public class FacilityService {
     }
 
     @Transactional
+    // 배치도 드래그앤드롭으로 위치만 갱신 — 잦은 호출이라 CREATE/UPDATE 액션 로그는 남기지 않는다.
+    public Facility updatePosition(UUID facilityId, AuthenticatedUser actor, int posX, int posY) {
+        Facility facility = findFacility(facilityId);
+        platformAccessGuard.verify(facility.getPlatformId(), actor);
+        facility.updatePosition(posX, posY);
+        return facility;
+    }
+
+    @Transactional
     public void deactivate(UUID facilityId, AuthenticatedUser actor) {
         Facility facility = findFacility(facilityId);
         platformAccessGuard.verify(facility.getPlatformId(), actor);

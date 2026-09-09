@@ -229,6 +229,8 @@ export const listFacilities = (platformId) => apiGet(`/api/v1/platforms/${platfo
 
 export const updateFacility = (id, payload) => apiPatch(`/api/v1/facilities/${id}`, payload);
 
+export const updateFacilityPosition = (id, posX, posY) => apiPatch(`/api/v1/facilities/${id}/position`, { posX, posY });
+
 export const deactivateFacility = (id) => apiDelete(`/api/v1/facilities/${id}`);
 
 export const bookFacility = (facilityId, payload) => apiPost(`/api/v1/facilities/${facilityId}/bookings`, payload);
