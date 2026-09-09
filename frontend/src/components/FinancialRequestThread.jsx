@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import { listFinancialRequestComments, addFinancialRequestComment, financialRequestAttachmentUrl } from "../api/common.js";
+import { listFinancialRequestComments, addFinancialRequestComment, openFinancialRequestAttachment } from "../api/common.js";
 import { formatDateTime } from "../utils/formatDateTime.js";
 
 const ROLE_LABEL = { OWNER: "오너", MANAGER: "매니저", TUTOR: "강사", TAX_ACCOUNTANT: "세무사" };
@@ -68,14 +68,13 @@ export default function FinancialRequestThread({ requestId }) {
 							</div>
 							{c.content && <div style={{ marginTop: "4px", color: "var(--text)", whiteSpace: "pre-wrap" }}>{c.content}</div>}
 							{c.attachmentName && (
-								<a
-									href={financialRequestAttachmentUrl(requestId, c.id)}
-									target="_blank"
-									rel="noreferrer"
-									style={{ display: "inline-flex", alignItems: "center", gap: "4px", marginTop: "4px", color: "var(--accent)" }}
+								<button
+									type="button"
+									onClick={() => openFinancialRequestAttachment(requestId, c.id)}
+									style={{ display: "inline-flex", alignItems: "center", gap: "4px", marginTop: "4px", color: "var(--accent)", background: "none", border: "none", padding: 0, cursor: "pointer", font: "inherit" }}
 								>
 									📎 {c.attachmentName} {c.attachmentSizeBytes ? `(${formatFileSize(c.attachmentSizeBytes)})` : ""}
-								</a>
+								</button>
 							)}
 						</div>
 					))}

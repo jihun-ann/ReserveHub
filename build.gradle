@@ -28,19 +28,18 @@ dependencies {
     // OutboxEvent maps payload/headers as native JSON columns (@JdbcTypeCode(SqlTypes.JSON)) so
     // Postgres stores them as JSONB per db/schema.sql. Hibernate's automatic JsonFormatMapper only
     // auto-detects classic Jackson 2 (com.fasterxml.jackson.databind.ObjectMapper) — the app's own
-    // JSON serialization elsewhere uses Jackson 3 (tools.jackson), which doesn't satisfy that probe,
-    // so this stays even though nothing here calls it directly. It used to ride along transitively
-    // via jjwt-jackson; keep it explicit now that JWT is gone.
-    // OutboxEvent가 payload/headers를 네이티브 JSON 컬럼으로 매핑해서(@JdbcTypeCode(SqlTypes.JSON))
-    // Postgres에 JSONB로 저장된다(db/schema.sql). Hibernate의 자동 JsonFormatMapper 감지는 클래식
-    // Jackson 2(com.fasterxml.jackson.databind.ObjectMapper)만 인식하는데, 앱 자체 JSON 직렬화는
-    // 다른 곳에서 Jackson 3(tools.jackson)를 쓰므로 이 감지를 만족시키지 못한다 — 예전엔
-    // jjwt-jackson을 통해 딸려 들어왔던 것을, JWT 제거 이후로는 명시적으로 남겨둔다.
+    // JSON serialization elsewhere uses Jackson 3 (tools.jackson), which doesn't satisfy that probe.
+    // jjwt-jackson (below) also depends on this, but it's kept explicit rather than relied on transitively.
     implementation 'com.fasterxml.jackson.core:jackson-databind'
     implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
     implementation 'org.springframework.boot:spring-boot-starter-security'
     implementation 'org.springframework.boot:spring-boot-starter-validation'
     implementation 'org.springframework.boot:spring-boot-starter-webmvc'
+
+    // Stateless bearer-token (JWT) authentication.
+    implementation 'io.jsonwebtoken:jjwt-api:0.12.7'
+    runtimeOnly 'io.jsonwebtoken:jjwt-impl:0.12.7'
+    runtimeOnly 'io.jsonwebtoken:jjwt-jackson:0.12.7'
 
     compileOnly 'org.projectlombok:lombok'
     developmentOnly 'org.springframework.boot:spring-boot-devtools'

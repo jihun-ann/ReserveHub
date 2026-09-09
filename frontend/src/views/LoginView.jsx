@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { apiPost, setSession } from "../api/http.js";
+import { apiPost, setSession, loadCurrentUser } from "../api/http.js";
 
 export default function LoginView() {
 	const navigate = useNavigate();
@@ -15,7 +15,8 @@ export default function LoginView() {
 		setLoading(true);
 		try {
 			const result = await apiPost("/api/v1/auth/login", { username, password });
-			setSession(result);
+			setSession(result.accessToken);
+			await loadCurrentUser();
 			navigate("/app");
 		} catch (err) {
 			setError(err.message || "로그인에 실패했습니다.");

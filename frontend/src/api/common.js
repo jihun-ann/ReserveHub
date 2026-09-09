@@ -1,4 +1,4 @@
-import { apiGet, apiPost, apiPatch, apiDelete, apiPostForm, API_BASE_URL } from "./http.js";
+import { apiGet, apiPost, apiPatch, apiDelete, apiPostForm, API_BASE_URL, getAccessToken } from "./http.js";
 
 export const BUSINESS_TYPES = [
 	{ value: "PILATES", label: "필라테스" },
@@ -84,8 +84,18 @@ export const addFinancialRequestComment = (requestId, { content, file } = {}) =>
 	return apiPostForm(`/api/v1/financial-requests/${requestId}/comments`, formData);
 };
 
-export const financialRequestAttachmentUrl = (requestId, commentId) =>
-	`${API_BASE_URL}/api/v1/financial-requests/${requestId}/comments/${commentId}/attachment`;
+// 인증이 Bearer 토큰이라 <a href>로 그냥 열 수 없다 — Authorization 헤더를 실어 fetch한 뒤
+// blob URL로 새 탭에 연다.
+export async function openFinancialRequestAttachment(requestId, commentId) {
+	const response = await fetch(
+		`${API_BASE_URL}/api/v1/financial-requests/${requestId}/comments/${commentId}/attachment`,
+		{ headers: { Authorization: `Bearer ${getAccessToken()}` } }
+	);
+	if (!response.ok) throw new Error(`Request failed: ${response.status}`);
+	const blobUrl = URL.createObjectURL(await response.blob());
+	window.open(blobUrl, "_blank");
+	setTimeout(() => URL.revokeObjectURL(blobUrl), 60000);
+}
 
 export const listActionLogs = (platformId) => apiGet(`/api/v1/platforms/${platformId}/action-logs`);
 

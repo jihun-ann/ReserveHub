@@ -23,7 +23,7 @@
 
 ```
 Backend   Spring Boot 3.x (Java 17)
-          Spring Security (서버 세션 기반 인증, HttpOnly 쿠키)
+          Spring Security (무상태 JWT bearer 토큰 인증)
           Spring Data JPA / QueryDSL
           Spring Events + Outbox Relay Worker
 
@@ -166,7 +166,7 @@ reservehub/
 │       │   └── outbox/         # Outbox 테이블 + Relay Worker
 │       ├── api/
 │       │   └── v1/             # REST Controllers
-│       ├── security/           # 서버 세션 인증 · 권한 필터
+│       ├── security/           # JWT 인증 · 권한 필터
 │       └── common/
 │           ├── exception/
 │           └── audit/          # BaseEntity (created_at, updated_at)
@@ -189,7 +189,7 @@ reservehub/
 ## 7. API 설계 원칙
 
 - 버전 prefix: `/api/v1/`
-- 인증: 서버 세션 기반 (`HttpOnly` 세션 쿠키, `Authorization` 헤더 아님)
+- 인증: 무상태 JWT bearer 토큰 (`Authorization: Bearer <token>`, 서버 세션 없음)
 - 플랫폼 컨텍스트: `X-Platform-Id: <UUID>` 헤더 또는 path variable
 - 에러 응답 형식:
 

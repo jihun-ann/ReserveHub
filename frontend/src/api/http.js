@@ -1,36 +1,60 @@
 export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:8080";
 
-// 인증은 서버 세션 기반이다 — 세션 id는 HttpOnly 쿠키에만 담겨 브라우저-서버 사이를 오가고,
-// 프론트는 그 쿠키를 읽거나 들고 다닐 필요가 없다(credentials:"include"만 붙이면 브라우저가
-// 알아서 실어 보낸다). 프로필(이름/이메일/전화번호)도 어떤 Web Storage에도 남기지 않고 메모리에만
-// 캐시하며, 새로고침으로 메모리가 비면 GET /api/v1/auth/me로 다시 조회한다(loadCurrentUser).
+// 인증은 무상태 JWT bearer 토큰 기반이다 — 로그인/회원가입이 발급한 토큰을 localStorage에 저장해두고
+// 모든 요청에 Authorization: Bearer 헤더로 실어 보낸다. 토큰 자체를 복호화하면 서버 호출 없이도
+// id/username/role을 바로 알 수 있고, 이름/연락처 같은 상세 프로필은 그 토큰으로 GET /auth/me를
+// 호출해 조회한다(loadCurrentUser).
 let cachedUser = null;
 
-export function setSession(user) {
-  cachedUser = user;
+export function getAccessToken() {
+  return localStorage.getItem("accessToken");
 }
 
-// 서버 세션을 실제로 끊어야(로그아웃) 쿠키만 지우고 서버엔 세션이 남는 상황을 피할 수 있다.
-export async function clearSession() {
+// JWT의 payload(가운데 조각)만 복호화한다 — 서명 검증은 서버가 하므로 여기서는 클레임을 읽기만 한다.
+function decodeAccessToken(token) {
   try {
-    await apiPost("/api/v1/auth/logout");
+    const payload = token.split(".")[1];
+    const base64 = payload.replace(/-/g, "+").replace(/_/g, "/");
+    const json = decodeURIComponent(
+      atob(base64)
+        .split("")
+        .map((c) => "%" + c.charCodeAt(0).toString(16).padStart(2, "0"))
+        .join("")
+    );
+    const claims = JSON.parse(json);
+    return { id: claims.uid, username: claims.sub, role: claims.role };
   } catch {
-    // 세션이 이미 만료됐어도 로컬 캐시 정리는 계속 진행한다.
-  } finally {
-    cachedUser = null;
+    return null;
   }
+}
+
+// 로그인/회원가입 응답의 accessToken을 저장하고, 토큰을 복호화한 최소 정보(id/username/role)를
+// 즉시 캐시한다 — 상세 프로필(이름/연락처 등)이 필요하면 이후 loadCurrentUser가 채운다.
+export function setSession(accessToken) {
+  localStorage.setItem("accessToken", accessToken);
+  cachedUser = decodeAccessToken(accessToken);
+  return cachedUser;
+}
+
+// 무상태 토큰이라 서버에 무효화할 세션이 없다 — 로컬에서 토큰만 지우면 로그아웃된다.
+export function clearSession() {
+  localStorage.removeItem("accessToken");
+  cachedUser = null;
 }
 
 export function getCurrentUser() {
   return cachedUser;
 }
 
-// 새로고침 직후처럼 메모리 캐시가 비어있을 때 호출한다 — 세션이 없거나 만료됐으면 null을 반환한다.
+// 새로고침 직후처럼 메모리 캐시가 비어있을 때 호출한다 — 저장된 토큰으로 상세 프로필을 조회하고,
+// 토큰이 없거나 만료됐으면 null을 반환한다.
 export async function loadCurrentUser() {
+  if (!getAccessToken()) return null;
   try {
     cachedUser = await apiGet("/api/v1/auth/me");
     return cachedUser;
   } catch {
+    clearSession();
     return null;
   }
 }
@@ -41,11 +65,17 @@ export function displayName(user) {
   return username ? username[0].toUpperCase() + username.slice(1) : "알 수 없음";
 }
 
+function buildHeaders() {
+  const headers = { "Content-Type": "application/json" };
+  const token = getAccessToken();
+  if (token) headers.Authorization = `Bearer ${token}`;
+  return headers;
+}
+
 async function request(method, path, body) {
   const response = await fetch(`${API_BASE_URL}${path}`, {
     method,
-    credentials: "include",
-    headers: { "Content-Type": "application/json" },
+    headers: buildHeaders(),
     body: body === undefined ? undefined : JSON.stringify(body),
   });
   if (!response.ok) {
@@ -61,11 +91,12 @@ export const apiPatch = (path, body) => request("PATCH", path, body);
 export const apiDelete = (path) => request("DELETE", path);
 
 // 파일 첨부(FormData)는 JSON이 아니므로 Content-Type을 직접 지정하지 않는다 — 브라우저가
-// multipart 경계(boundary)를 포함해 자동으로 설정한다.
+// multipart 경계(boundary)를 포함해 자동으로 설정한다. Authorization만 그대로 실어 보낸다.
 export async function apiPostForm(path, formData) {
+  const token = getAccessToken();
   const response = await fetch(`${API_BASE_URL}${path}`, {
     method: "POST",
-    credentials: "include",
+    headers: token ? { Authorization: `Bearer ${token}` } : undefined,
     body: formData,
   });
   if (!response.ok) {

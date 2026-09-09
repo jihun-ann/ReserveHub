@@ -2,6 +2,7 @@ package com.hub.reservehub.security;
 
 import java.util.List;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -13,27 +14,32 @@ import org.springframework.security.config.annotation.authentication.configurati
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
+import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 /**
- * Configures server-session-based security (session id in an HttpOnly cookie — never in a
- * response body the frontend would have to cache in localStorage/sessionStorage), public auth
- * routes, and password encoding.
- * 서버 세션 기반 보안(세션 id는 HttpOnly 쿠키로만 전달 — 프론트가 localStorage/sessionStorage에
- * 캐시해야 하는 응답 바디에는 담지 않는다), 공개 인증 라우트, 비밀번호 인코더를 설정한다.
+ * Configures stateless JWT bearer-token security — login/register mint a signed access token,
+ * every other request carries it in the Authorization header, and JwtAuthenticationFilter restores
+ * the principal from it before controllers run. No server-side session exists to invalidate.
+ * 무상태 JWT bearer 토큰 인증을 구성한다 — 로그인/회원가입이 서명된 액세스 토큰을 발급하고, 이후
+ * 모든 요청은 Authorization 헤더로 이를 실어 보내며, JwtAuthenticationFilter가 컨트롤러 실행 전에
+ * 토큰으로부터 인증 정보를 복원한다. 서버 측에 무효화할 세션이 존재하지 않는다.
  */
 @Configuration
 @EnableMethodSecurity
+@EnableConfigurationProperties(JwtProperties.class)
 public class SecurityConfig {
 
     private final RestAuthenticationEntryPoint authenticationEntryPoint;
     private final RestAccessDeniedHandler accessDeniedHandler;
     private final AuthenticatedUserService authenticatedUserService;
+    private final JwtAuthenticationFilter jwtAuthenticationFilter;
 
     @Value("${app.cors.allowed-origins:http://localhost:5173,http://localhost:3000}")
     private List<String> allowedOrigins;
@@ -41,31 +47,28 @@ public class SecurityConfig {
     public SecurityConfig(
             RestAuthenticationEntryPoint authenticationEntryPoint,
             RestAccessDeniedHandler accessDeniedHandler,
-            AuthenticatedUserService authenticatedUserService
+            AuthenticatedUserService authenticatedUserService,
+            JwtAuthenticationFilter jwtAuthenticationFilter
     ) {
         this.authenticationEntryPoint = authenticationEntryPoint;
         this.accessDeniedHandler = accessDeniedHandler;
         this.authenticatedUserService = authenticatedUserService;
+        this.jwtAuthenticationFilter = jwtAuthenticationFilter;
     }
 
     @Bean
-    // Session management defaults to IF_REQUIRED, so Spring Security's HttpSessionSecurityContextRepository
-    // restores the principal from the session cookie on every request — no bearer token anywhere.
-    // CSRF stays off deliberately: the session cookie is SameSite=Lax (set in application.properties),
-    // which browsers already withhold on cross-site POST/PATCH/DELETE (only a top-level GET navigation
-    // gets it), and CORS below only trusts explicit origins with credentials — the two together are the
-    // CSRF defense here instead of a token dance, which would need its own careful wiring to get right.
-    // 세션 관리는 기본값(IF_REQUIRED)으로 둬서, Spring Security의 HttpSessionSecurityContextRepository가
-    // 매 요청마다 세션 쿠키로 사용자를 복원한다 — 어디에도 bearer 토큰이 없다. CSRF는 의도적으로 끈다:
-    // 세션 쿠키가 SameSite=Lax(application.properties)라 크로스사이트 POST/PATCH/DELETE에는 브라우저가
-    // 아예 실어 보내지 않고(최상위 GET 이동에만 실림), 아래 CORS도 명시된 오리진 + credentials만
-    // 허용하므로 이 둘이 CSRF 방어를 대신한다 — 별도 토큰 방식은 잘못 붙이기 쉬워 여기서는 피한다.
+    // CSRF stays off: a bearer token in the Authorization header is never sent automatically by the
+    // browser (unlike a cookie), so cross-site requests simply have no way to attach it — no CSRF
+    // defense to build here.
+    // CSRF는 끈다: Authorization 헤더의 bearer 토큰은 쿠키와 달리 브라우저가 자동으로 실어 보내지
+    // 않으므로, 크로스사이트 요청은애초에 이걸 붙일 방법이 없다 — 별도 CSRF 방어가 필요 없다.
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
                 .csrf(AbstractHttpConfigurer::disable)
                 .httpBasic(AbstractHttpConfigurer::disable)
                 .formLogin(AbstractHttpConfigurer::disable)
                 .cors(Customizer.withDefaults())
+                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .exceptionHandling(ex -> ex
                         .authenticationEntryPoint(authenticationEntryPoint)
                         .accessDeniedHandler(accessDeniedHandler))
@@ -75,11 +78,7 @@ public class SecurityConfig {
                         .anyRequest().authenticated()
                 )
                 .authenticationProvider(authenticationProvider())
-                .logout(logout -> logout
-                        .logoutUrl("/api/v1/auth/logout")
-                        .logoutSuccessHandler((request, response, authentication) -> response.setStatus(204))
-                        .invalidateHttpSession(true)
-                        .deleteCookies("JSESSIONID"));
+                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }
