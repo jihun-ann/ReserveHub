@@ -4,6 +4,7 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.Id;
+import jakarta.persistence.Lob;
 import java.time.Instant;
 import java.util.UUID;
 import org.springframework.lang.Nullable;
@@ -26,7 +27,7 @@ public class FinancialRequestComment {
     private UUID authorId;
 
     @Nullable
-    @Column(columnDefinition = "TEXT")
+    @Lob
     private String content;
 
     @Nullable

@@ -5,6 +5,7 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.Id;
+import java.time.LocalTime;
 import java.util.UUID;
 import org.springframework.lang.Nullable;
 
@@ -28,8 +29,16 @@ public class Facility extends BaseEntity {
     @Nullable
     private String description;
 
+    // 자유 입력 층 표기 (예: "1층", "지하1층"). 배치도를 층별로 나눠 보여주는 데도 쓰인다.
+    @Nullable
+    private String floor;
+
     @Column(nullable = false)
     private boolean isActive = true;
+
+    // 동시 이용 가능 인원(정원). 같은 시간대에 이 인원수만큼 겹치는 예약이 허용된다 — 1이면 독점 예약(기존 방식)과 동일.
+    @Column(nullable = false)
+    private int capacity = 1;
 
     // 배치도 상의 위치 (0~100 백분율). 둘 다 null이면 아직 배치되지 않은 시설물.
     @Nullable
@@ -38,14 +47,28 @@ public class Facility extends BaseEntity {
     @Nullable
     private Integer posY;
 
+    // 하루 중 예약 가능한 시간대. 둘 다 null이면 시간 제한 없음(종일 예약 가능).
+    @Nullable
+    private LocalTime openTime;
+
+    @Nullable
+    private LocalTime closeTime;
+
     protected Facility() {
         // JPA only.
     }
 
-    public Facility(UUID platformId, String name, @Nullable String description) {
+    public Facility(
+            UUID platformId, String name, @Nullable String description, @Nullable String floor,
+            int capacity, @Nullable LocalTime openTime, @Nullable LocalTime closeTime
+    ) {
         this.platformId = platformId;
         this.name = name;
         this.description = description;
+        this.floor = floor;
+        this.capacity = capacity;
+        this.openTime = openTime;
+        this.closeTime = closeTime;
     }
 
     public UUID getId() {
@@ -65,8 +88,17 @@ public class Facility extends BaseEntity {
         return description;
     }
 
+    @Nullable
+    public String getFloor() {
+        return floor;
+    }
+
     public boolean isActive() {
         return isActive;
+    }
+
+    public int getCapacity() {
+        return capacity;
     }
 
     @Nullable
@@ -79,9 +111,26 @@ public class Facility extends BaseEntity {
         return posY;
     }
 
-    public void update(String name, @Nullable String description) {
+    @Nullable
+    public LocalTime getOpenTime() {
+        return openTime;
+    }
+
+    @Nullable
+    public LocalTime getCloseTime() {
+        return closeTime;
+    }
+
+    public void update(
+            String name, @Nullable String description, @Nullable String floor,
+            int capacity, @Nullable LocalTime openTime, @Nullable LocalTime closeTime
+    ) {
         this.name = name;
         this.description = description;
+        this.floor = floor;
+        this.capacity = capacity;
+        this.openTime = openTime;
+        this.closeTime = closeTime;
     }
 
     public void updatePosition(int posX, int posY) {

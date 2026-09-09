@@ -125,7 +125,7 @@ export async function listAllScheduleRequests(platforms) {
 					apiGet(`/api/v1/platforms/${platform.id}/schedule-requests?status=${status}`)
 				)
 			);
-			return perStatus.flat().map((r) => ({ ...r, platform }));
+			return perStatus.flat().map((r) => ({ ...r, platform, requestType: "SCHEDULE_CHANGE" }));
 		})
 	);
 	return perPlatform.flat();
@@ -136,6 +136,32 @@ export const approveScheduleRequest = (id, memo) =>
 
 export const rejectScheduleRequest = (id, memo) =>
 	apiPost(`/api/v1/schedule-requests/${id}/reject`, memo ? { memo } : undefined);
+
+export const createLeaveRequest = (platformId, payload) =>
+	apiPost(`/api/v1/platforms/${platformId}/leave-requests`, payload);
+
+export const listMyLeaveRequests = () => apiGet("/api/v1/leave-requests/me");
+
+// 승인 관리 화면에 일정 변경 요청과 함께 합쳐서 보여주기 위해 동일한 방식으로 전체 플랫폼/상태를 모은다.
+export async function listAllLeaveRequests(platforms) {
+	const perPlatform = await Promise.all(
+		platforms.map(async (platform) => {
+			const perStatus = await Promise.all(
+				REQUEST_STATUSES.map((status) =>
+					apiGet(`/api/v1/platforms/${platform.id}/leave-requests?status=${status}`)
+				)
+			);
+			return perStatus.flat().map((r) => ({ ...r, platform, requestType: "LEAVE" }));
+		})
+	);
+	return perPlatform.flat();
+}
+
+export const approveLeaveRequest = (id, memo) =>
+	apiPost(`/api/v1/leave-requests/${id}/approve`, memo ? { memo } : undefined);
+
+export const rejectLeaveRequest = (id, memo) =>
+	apiPost(`/api/v1/leave-requests/${id}/reject`, memo ? { memo } : undefined);
 
 export const listMembers = (platformId) => apiGet(`/api/v1/platforms/${platformId}/members`);
 
@@ -232,6 +258,10 @@ export const updateFacility = (id, payload) => apiPatch(`/api/v1/facilities/${id
 export const updateFacilityPosition = (id, posX, posY) => apiPatch(`/api/v1/facilities/${id}/position`, { posX, posY });
 
 export const deactivateFacility = (id) => apiDelete(`/api/v1/facilities/${id}`);
+
+// 예약 전 현황 확인 — 예약자 신원 없이 시간대만 반환한다.
+export const listFacilityBookingSlots = (facilityId, date) =>
+	apiGet(`/api/v1/facilities/${facilityId}/bookings?date=${date}`);
 
 export const bookFacility = (facilityId, payload) => apiPost(`/api/v1/facilities/${facilityId}/bookings`, payload);
 

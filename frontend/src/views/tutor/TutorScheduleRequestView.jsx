@@ -1,7 +1,8 @@
 import { useState, useEffect, useCallback } from "react";
 import {
 	listMyScheduleRequests, listPlatforms, listMySlots, listMyLessons,
-	listReservationsForSlot, createScheduleChangeRequest, getUser
+	listReservationsForSlot, createScheduleChangeRequest, getUser,
+	listMyLeaveRequests, createLeaveRequest
 } from "../../api/common.js";
 
 const STATUS_STYLE = {
@@ -37,16 +38,25 @@ export default function TutorScheduleRequestView({ platformId }) {
 	const [submitting, setSubmitting] = useState(false);
 	const [submitError, setSubmitError] = useState("");
 
+	const [leaveRequests, setLeaveRequests] = useState([]);
+	const [leaveStart, setLeaveStart] = useState("");
+	const [leaveEnd, setLeaveEnd] = useState("");
+	const [leaveReason, setLeaveReason] = useState("");
+	const [leaveSubmitting, setLeaveSubmitting] = useState(false);
+	const [leaveError, setLeaveError] = useState("");
+
 	const refresh = useCallback(async () => {
 		setLoading(true);
-		const [requestList, platforms, slots] = await Promise.all([
+		const [requestList, platforms, slots, leaveList] = await Promise.all([
 			listMyScheduleRequests(),
 			listPlatforms(),
-			listMySlots()
+			listMySlots(),
+			listMyLeaveRequests()
 		]);
 		setRequests(requestList.filter((r) => r.platformId === platformId));
 		setPlatformsById(Object.fromEntries(platforms.map((p) => [p.id, p.name])));
 		setMySlots(slots.filter((s) => s.platformId === platformId));
+		setLeaveRequests(leaveList.filter((r) => r.platformId === platformId));
 		setLoading(false);
 	}, [platformId]);
 
@@ -127,6 +137,23 @@ export default function TutorScheduleRequestView({ platformId }) {
 			setSubmitError(err.message || "요청 제출에 실패했습니다.");
 		} finally {
 			setSubmitting(false);
+		}
+	}
+
+	async function submitLeave() {
+		setLeaveError("");
+		if (!leaveStart || !leaveEnd) return;
+		setLeaveSubmitting(true);
+		try {
+			await createLeaveRequest(platformId, { startDate: leaveStart, endDate: leaveEnd, reason: leaveReason.trim() || null });
+			setLeaveStart("");
+			setLeaveEnd("");
+			setLeaveReason("");
+			await refresh();
+		} catch (err) {
+			setLeaveError(err.message || "요청 제출에 실패했습니다.");
+		} finally {
+			setLeaveSubmitting(false);
 		}
 	}
 
@@ -259,7 +286,68 @@ export default function TutorScheduleRequestView({ platformId }) {
 									</div>
 								)}
 								<div style={{ fontSize: "11px", color: "var(--text-dim)", fontFamily: "'DM Mono',monospace" }}>
-									{platformsById[r.platformId] || "-"}
+									{platformsById[r.platformId] || "-"} · 신청일시 {r.createdAt ? new Date(r.createdAt).toLocaleString("ko-KR") : "-"}
+								</div>
+							</div>
+						);
+					})}
+				</div>
+			)}
+
+			<div className="card" style={{ margin: "24px 0" }}>
+				<div className="card-title">🏖️ 휴가 요청</div>
+				<div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(160px,1fr))", gap: "14px", marginBottom: "14px" }}>
+					<div className="form-field">
+						<label>시작일</label>
+						<input type="date" value={leaveStart} onChange={(e) => setLeaveStart(e.target.value)} />
+					</div>
+					<div className="form-field">
+						<label>종료일</label>
+						<input type="date" value={leaveEnd} onChange={(e) => setLeaveEnd(e.target.value)} />
+					</div>
+				</div>
+				<div className="form-field" style={{ marginBottom: "14px" }}>
+					<label>사유 (선택)</label>
+					<textarea value={leaveReason} onChange={(e) => setLeaveReason(e.target.value)} placeholder="휴가 사유를 작성해주세요..."></textarea>
+				</div>
+				{leaveError && <div style={{ color: "var(--red)", fontSize: "12px", marginBottom: "8px" }}>{leaveError}</div>}
+				<div style={{ display: "flex", justifyContent: "flex-end" }}>
+					<button
+						className="btn btn-primary"
+						style={{ background: "var(--accent2)", color: "#0f0f13" }}
+						disabled={leaveSubmitting || !leaveStart || !leaveEnd}
+						onClick={submitLeave}
+					>
+						{leaveSubmitting ? "제출 중..." : "휴가 요청 제출"}
+					</button>
+				</div>
+			</div>
+
+			{leaveRequests.length > 0 && (
+				<div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+					{leaveRequests.map((r) => {
+						const st = STATUS_STYLE[r.status];
+						return (
+							<div className="card" key={r.id}>
+								<div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "10px" }}>
+									<div style={{ fontSize: "14px", fontWeight: 700 }}>{r.startDate} ~ {r.endDate} 휴가</div>
+									{st.className ? (
+										<span className={st.className}>{st.label}</span>
+									) : (
+										<span className="res-status" style={{ background: st.background, color: st.color }}>{st.label}</span>
+									)}
+								</div>
+								{r.reason && <div style={{ fontSize: "13px", color: "var(--text-sub)", marginBottom: "8px" }}>{r.reason}</div>}
+								{r.status !== "PENDING" && r.decisionMemo && (
+									<div style={{ marginBottom: "8px", fontSize: "12px", color: "var(--text-sub)" }}>
+										<span style={{ fontSize: "10px", color: "var(--text-dim)", letterSpacing: "1px" }}>
+											{r.status === "REJECTED" ? "반려 사유" : "승인 메모"}
+										</span>
+										<div style={{ marginTop: "4px" }}>{r.decisionMemo}</div>
+									</div>
+								)}
+								<div style={{ fontSize: "11px", color: "var(--text-dim)", fontFamily: "'DM Mono',monospace" }}>
+									{platformsById[r.platformId] || "-"} · 신청일시 {r.createdAt ? new Date(r.createdAt).toLocaleString("ko-KR") : "-"}
 								</div>
 							</div>
 						);

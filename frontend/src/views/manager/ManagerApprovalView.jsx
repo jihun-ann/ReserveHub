@@ -3,10 +3,14 @@ import {
 	listAllScheduleRequests,
 	approveScheduleRequest,
 	rejectScheduleRequest,
+	listAllLeaveRequests,
+	approveLeaveRequest,
+	rejectLeaveRequest,
 	listFinancialRequests,
 	approveFinancialRequest,
 	rejectFinancialRequest,
-	FINANCIAL_REQUEST_TYPE_LABEL
+	FINANCIAL_REQUEST_TYPE_LABEL,
+	getUser
 } from "../../api/common.js";
 import FinancialRequestThread from "../../components/FinancialRequestThread.jsx";
 
@@ -16,28 +20,38 @@ const STATUS_LABEL = {
 	REJECTED: { lbl: "반려됨", color: "var(--red)" }
 };
 
+function formatDateTime(iso) {
+	if (!iso) return "-";
+	return new Date(iso).toLocaleString("ko-KR", { year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" });
+}
+
 export default function ManagerApprovalView({ platformId }) {
 	const [requests, setRequests] = useState([]);
+	const [leaveRequests, setLeaveRequests] = useState([]);
 	const [financialRequests, setFinancialRequests] = useState([]);
 	const [loading, setLoading] = useState(true);
 	const [filter, setFilter] = useState("ALL");
 	const [kindFilter, setKindFilter] = useState("ALL");
 	const [memoById, setMemoById] = useState({});
 	const [expandedId, setExpandedId] = useState(null);
+	const [userNames, setUserNames] = useState({});
 
 	const refresh = useCallback(async () => {
 		if (!platformId) {
 			setRequests([]);
+			setLeaveRequests([]);
 			setFinancialRequests([]);
 			setLoading(false);
 			return;
 		}
 		setLoading(true);
-		const [scheduleData, financialData] = await Promise.all([
+		const [scheduleData, leaveData, financialData] = await Promise.all([
 			listAllScheduleRequests([{ id: platformId }]),
+			listAllLeaveRequests([{ id: platformId }]),
 			listFinancialRequests(platformId)
 		]);
 		setRequests(scheduleData);
+		setLeaveRequests(leaveData);
 		setFinancialRequests(financialData);
 		setLoading(false);
 	}, [platformId]);
@@ -53,6 +67,13 @@ export default function ManagerApprovalView({ platformId }) {
 		await refresh();
 	}
 
+	async function decideLeave(id, approve) {
+		const memo = memoById[id];
+		if (approve) await approveLeaveRequest(id, memo);
+		else await rejectLeaveRequest(id, memo);
+		await refresh();
+	}
+
 	async function decideFinancial(id, approve) {
 		const memo = memoById[id];
 		if (approve) await approveFinancialRequest(id, memo);
@@ -62,8 +83,23 @@ export default function ManagerApprovalView({ platformId }) {
 
 	const merged = [
 		...requests.map((r) => ({ ...r, kind: "SCHEDULE" })),
+		...leaveRequests.map((r) => ({ ...r, kind: "LEAVE" })),
 		...financialRequests.map((r) => ({ ...r, kind: "FINANCIAL" }))
 	];
+
+	useEffect(() => {
+		const ids = new Set();
+		merged.forEach((r) => {
+			if (r.requestedBy) ids.add(r.requestedBy);
+			if (r.decidedBy) ids.add(r.decidedBy);
+		});
+		const unresolved = [...ids].filter((id) => !(id in userNames));
+		if (unresolved.length === 0) return;
+		Promise.all(unresolved.map((id) => getUser(id).then((u) => [id, u.name]).catch(() => [id, null]))).then((pairs) => {
+			setUserNames((prev) => ({ ...prev, ...Object.fromEntries(pairs) }));
+		});
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [requests, leaveRequests, financialRequests]);
 	const data = merged
 		.filter((r) => filter === "ALL" || r.status === filter)
 		.filter((r) => kindFilter === "ALL" || r.kind === kindFilter);
@@ -80,6 +116,7 @@ export default function ManagerApprovalView({ platformId }) {
 				{[
 					{ v: "ALL", lbl: "전체 유형" },
 					{ v: "SCHEDULE", lbl: "일정 변경" },
+					{ v: "LEAVE", lbl: "휴가" },
 					{ v: "FINANCIAL", lbl: "재무 일정" }
 				].map((k) => (
 					<button
@@ -115,16 +152,19 @@ export default function ManagerApprovalView({ platformId }) {
 					{data.map((r) => {
 						const st = STATUS_LABEL[r.status];
 						const isFinancial = r.kind === "FINANCIAL";
-						const onDecide = isFinancial ? decideFinancial : decide;
+						const isLeave = r.kind === "LEAVE";
+						const onDecide = isFinancial ? decideFinancial : isLeave ? decideLeave : decide;
+						const requesterName = userNames[r.requestedBy] || r.requestedBy;
+						const deciderName = r.decidedBy ? (userNames[r.decidedBy] || r.decidedBy) : null;
 						return (
 							<div key={`${r.kind}-${r.id}`} className="req-card" style={{ borderLeftColor: st.color }}>
 								<div className="req-header">
 									<div>
 										<div className="req-title">
-											{isFinancial ? `재무 일정 · ${FINANCIAL_REQUEST_TYPE_LABEL[r.type] || r.type}` : "일정 변경 요청"}
+											{isFinancial ? `재무 일정 · ${FINANCIAL_REQUEST_TYPE_LABEL[r.type] || r.type}` : isLeave ? "휴가 요청" : "일정 변경 요청"}
 										</div>
 										<div className="req-meta">
-											{isFinancial ? r.title : `요청 사유: ${r.reason || "-"}`}
+											{isFinancial ? r.title : isLeave ? `사유: ${r.reason || "-"}` : `요청 사유: ${r.reason || "-"}`}
 										</div>
 									</div>
 									<span className="badge" style={{ color: st.color }}>{st.lbl}</span>
@@ -142,6 +182,17 @@ export default function ManagerApprovalView({ platformId }) {
 											</div>
 										)}
 									</div>
+								) : isLeave ? (
+									<div className="req-date-row">
+										<div className="req-date-box">
+											<div className="req-date-lbl">시작일</div>
+											<div className="req-date-val">{r.startDate}</div>
+										</div>
+										<div className="req-date-box">
+											<div className="req-date-lbl">종료일</div>
+											<div className="req-date-val" style={{ color: "var(--manager)" }}>{r.endDate}</div>
+										</div>
+									</div>
 								) : (
 									<div className="req-date-row">
 										<div className="req-date-box">
@@ -152,6 +203,14 @@ export default function ManagerApprovalView({ platformId }) {
 											<div className="req-date-lbl">변경 희망</div>
 											<div className="req-date-val" style={{ color: "var(--manager)" }}>{r.requestedDate}</div>
 										</div>
+									</div>
+								)}
+								{!isFinancial && (
+									<div style={{ marginTop: "10px", fontSize: "11px", color: "var(--text-dim)" }}>
+										신청: {requesterName} · {formatDateTime(r.createdAt)}
+										{r.status !== "PENDING" && deciderName && (
+											<> &nbsp;|&nbsp; 처리: {deciderName} · {formatDateTime(r.updatedAt)}</>
+										)}
 									</div>
 								)}
 								{r.status !== "PENDING" && r.decisionMemo && (

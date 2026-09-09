@@ -42,18 +42,26 @@ public class FacilityService {
     }
 
     @Transactional
-    public Facility create(UUID platformId, AuthenticatedUser actor, String name, @Nullable String description) {
+    public Facility create(
+            UUID platformId, AuthenticatedUser actor, String name, @Nullable String description, @Nullable String floor,
+            @Nullable Integer capacity, @Nullable LocalTime openTime, @Nullable LocalTime closeTime
+    ) {
         platformAccessGuard.verify(platformId, actor);
-        Facility facility = facilityRepository.save(new Facility(platformId, name, description));
+        Facility facility = facilityRepository.save(
+                new Facility(platformId, name, description, floor, capacity != null ? capacity : 1, openTime, closeTime)
+        );
         actionLogRepository.save(ActionLog.of(platformId, actor.getId(), ActionTarget.FACILITY_CHANGE, facility.getId(), "CREATE", null));
         return facility;
     }
 
     @Transactional
-    public Facility update(UUID facilityId, AuthenticatedUser actor, String name, @Nullable String description) {
+    public Facility update(
+            UUID facilityId, AuthenticatedUser actor, String name, @Nullable String description, @Nullable String floor,
+            @Nullable Integer capacity, @Nullable LocalTime openTime, @Nullable LocalTime closeTime
+    ) {
         Facility facility = findFacility(facilityId);
         platformAccessGuard.verify(facility.getPlatformId(), actor);
-        facility.update(name, description);
+        facility.update(name, description, floor, capacity != null ? capacity : 1, openTime, closeTime);
         actionLogRepository.save(ActionLog.of(facility.getPlatformId(), actor.getId(), ActionTarget.FACILITY_CHANGE, facility.getId(), "UPDATE", null));
         return facility;
     }
@@ -91,16 +99,30 @@ public class FacilityService {
         if (!facility.isActive()) {
             throw new IllegalStateException("Facility is not active");
         }
-        boolean hasOverlap = facilityBookingRepository.findByFacilityIdAndBookingDate(facilityId, bookingDate).stream()
-                .anyMatch(b -> b.overlaps(bookingDate, startTime, endTime));
-        if (hasOverlap) {
-            throw new IllegalStateException("This time slot is already booked");
+        if (facility.getOpenTime() != null && startTime.isBefore(facility.getOpenTime())
+                || facility.getCloseTime() != null && endTime.isAfter(facility.getCloseTime())) {
+            throw new IllegalStateException("Outside the facility's available hours");
+        }
+        // 정원(capacity)만큼 같은 시간대 겹치는 예약을 허용한다 — capacity가 1이면 기존의 독점 예약과 동일하게 동작한다.
+        long overlapCount = facilityBookingRepository.findByFacilityIdAndBookingDate(facilityId, bookingDate).stream()
+                .filter(b -> b.overlaps(bookingDate, startTime, endTime))
+                .count();
+        if (overlapCount >= facility.getCapacity()) {
+            throw new IllegalStateException("This time slot is fully booked");
         }
         FacilityBooking booking = facilityBookingRepository.save(
                 new FacilityBooking(facilityId, facility.getPlatformId(), actor.getId(), bookingDate, startTime, endTime, purpose)
         );
         actionLogRepository.save(ActionLog.of(facility.getPlatformId(), actor.getId(), ActionTarget.FACILITY_CHANGE, booking.getId(), "BOOK", null));
         return booking;
+    }
+
+    @Transactional(readOnly = true)
+    // 예약 전 누구나 이 시설물의 해당 날짜 예약 현황(시간대만, 예약자 신원은 비공개)을 확인할 수 있다.
+    public List<FacilityBooking> listBookingsForFacility(UUID facilityId, LocalDate date) {
+        return facilityBookingRepository.findByFacilityIdAndBookingDate(facilityId, date).stream()
+                .filter(b -> b.getStatus() == FacilityBookingStatus.CONFIRMED)
+                .toList();
     }
 
     @Transactional(readOnly = true)

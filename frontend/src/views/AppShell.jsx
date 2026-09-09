@@ -9,7 +9,7 @@ import "./owner/OwnerView.css";
 import "./user/UserView.css";
 import "./taxaccountant/TaxAccountantView.css";
 import { getCurrentUser, loadCurrentUser, clearSession, displayName } from "../api/http.js";
-import { listPlatforms, listAllScheduleRequests } from "../api/common.js";
+import { listPlatforms, listAllScheduleRequests, listAllLeaveRequests } from "../api/common.js";
 
 import ManagerDashBoardView from "./manager/ManagerDashBoardView.jsx";
 import ManagerApprovalView from "./manager/ManagerApprovalView.jsx";
@@ -112,7 +112,7 @@ const ROLE_MENU = {
 		{ id: "facilityReport", label: "시설물 고장 신고", icon: "🏗" }
 	],
 	USER: [
-		{ id: "reservation", label: "예약하기", icon: "🎯" },
+		{ id: "reservation", label: "수업 예약", icon: "🎯" },
 		{ id: "facility", label: "시설물 예약", icon: "🏗" }
 	],
 	TAX_ACCOUNTANT: [
@@ -252,7 +252,15 @@ export default function AppShell() {
 
 	const refreshOwnerRequests = useCallback(async () => {
 		const platformList = platforms.filter((p) => p.roles.includes("OWNER"));
-		setOwnerRequests(platformList.length ? await listAllScheduleRequests(platformList) : []);
+		if (!platformList.length) {
+			setOwnerRequests([]);
+			return;
+		}
+		const [scheduleRequests, leaveRequests] = await Promise.all([
+			listAllScheduleRequests(platformList),
+			listAllLeaveRequests(platformList)
+		]);
+		setOwnerRequests([...scheduleRequests, ...leaveRequests]);
 	}, [platforms]);
 
 	// 플랫폼을 바꿨을 때만 강조 역할(activeRole)을 재계산한다 — 메뉴 항목 클릭(selectMenuItem)으로

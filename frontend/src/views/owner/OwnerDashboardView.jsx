@@ -1,14 +1,20 @@
 import { useState } from "react";
-import { approveScheduleRequest, rejectScheduleRequest, hexAlpha, businessTypeLabel } from "../../api/common.js";
+import {
+	approveScheduleRequest, rejectScheduleRequest, approveLeaveRequest, rejectLeaveRequest, hexAlpha, businessTypeLabel
+} from "../../api/common.js";
 
 export default function OwnerDashboardView({ platforms, requests, onDecided, onNavigate }) {
 	const [busyId, setBusyId] = useState(null);
 	const pending = requests.filter((r) => r.status === "PENDING");
 
-	async function decide(id, action) {
-		setBusyId(id);
+	async function decide(request, action) {
+		setBusyId(request.id);
 		try {
-			await (action === "approve" ? approveScheduleRequest(id) : rejectScheduleRequest(id));
+			if (request.requestType === "LEAVE") {
+				await (action === "approve" ? approveLeaveRequest(request.id) : rejectLeaveRequest(request.id));
+			} else {
+				await (action === "approve" ? approveScheduleRequest(request.id) : rejectScheduleRequest(request.id));
+			}
 			onDecided();
 		} catch (err) {
 			alert(err.message || "처리 중 오류가 발생했습니다.");
@@ -87,8 +93,17 @@ export default function OwnerDashboardView({ platforms, requests, onDecided, onN
 							<div key={r.id} style={{ background: "var(--surface2)", borderRadius: "var(--radius-sm)", border: "1px solid var(--border)", padding: "14px" }}>
 								<div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "8px", marginBottom: "8px" }}>
 									<div>
-										<div style={{ fontSize: "13px", fontWeight: 700 }}>{r.requestedDate} 일정 변경 요청</div>
-										<div style={{ fontSize: "11px", color: "var(--text-sub)", marginTop: "2px" }}>{r.originalDate} → {r.requestedDate}</div>
+										{r.requestType === "LEAVE" ? (
+											<>
+												<div style={{ fontSize: "13px", fontWeight: 700 }}>{r.startDate} ~ {r.endDate} 휴가 요청</div>
+												{r.reason && <div style={{ fontSize: "11px", color: "var(--text-sub)", marginTop: "2px" }}>{r.reason}</div>}
+											</>
+										) : (
+											<>
+												<div style={{ fontSize: "13px", fontWeight: 700 }}>{r.requestedDate} 일정 변경 요청</div>
+												<div style={{ fontSize: "11px", color: "var(--text-sub)", marginTop: "2px" }}>{r.originalDate} → {r.requestedDate}</div>
+											</>
+										)}
 										<div style={{ marginTop: "4px" }}>
 											<span className="plat-chip" style={{ background: hexAlpha(r.platform.colorHex, 0.12), color: r.platform.colorHex, borderColor: hexAlpha(r.platform.colorHex, 0.3) }}>
 												{r.platform.emoji} {r.platform.name}
@@ -101,11 +116,11 @@ export default function OwnerDashboardView({ platforms, requests, onDecided, onN
 										className="btn btn-sm"
 										disabled={busyId === r.id}
 										style={{ flex: 1, background: "rgba(74,222,128,0.12)", color: "var(--green)", border: "1px solid rgba(74,222,128,0.3)" }}
-										onClick={() => decide(r.id, "approve")}
+										onClick={() => decide(r, "approve")}
 									>
 										승인
 									</button>
-									<button className="btn btn-sm btn-danger" style={{ flex: 1 }} disabled={busyId === r.id} onClick={() => decide(r.id, "reject")}>반려</button>
+									<button className="btn btn-sm btn-danger" style={{ flex: 1 }} disabled={busyId === r.id} onClick={() => decide(r, "reject")}>반려</button>
 								</div>
 							</div>
 						))}

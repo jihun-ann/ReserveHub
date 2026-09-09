@@ -10,6 +10,7 @@ import com.hub.reservehub.security.CurrentAuthenticatedUser;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Positive;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalTime;
@@ -44,7 +45,10 @@ public class FacilityController {
     @PostMapping("/api/v1/platforms/{platformId}/facilities")
     @PreAuthorize("hasRole('OWNER')")
     public ResponseEntity<FacilityResponse> create(@PathVariable UUID platformId, @Valid @RequestBody CreateFacilityRequest request) {
-        Facility facility = facilityService.create(platformId, currentAuthenticatedUser.get(), request.name(), request.description());
+        Facility facility = facilityService.create(
+                platformId, currentAuthenticatedUser.get(), request.name(), request.description(), request.floor(),
+                request.capacity(), request.openTime(), request.closeTime()
+        );
         return ResponseEntity.status(HttpStatus.CREATED).body(FacilityResponse.from(facility));
     }
 
@@ -56,7 +60,19 @@ public class FacilityController {
     @PatchMapping("/api/v1/facilities/{id}")
     @PreAuthorize("hasRole('OWNER')")
     public FacilityResponse update(@PathVariable UUID id, @Valid @RequestBody CreateFacilityRequest request) {
-        return FacilityResponse.from(facilityService.update(id, currentAuthenticatedUser.get(), request.name(), request.description()));
+        return FacilityResponse.from(facilityService.update(
+                id, currentAuthenticatedUser.get(), request.name(), request.description(), request.floor(),
+                request.capacity(), request.openTime(), request.closeTime()
+        ));
+    }
+
+    @GetMapping("/api/v1/facilities/{id}/bookings")
+    // 예약 전 현황 확인 — 예약자 신원 없이 시간대만 노출한다.
+    public List<FacilityBookingSlotResponse> listBookingSlots(
+            @PathVariable UUID id,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date
+    ) {
+        return facilityService.listBookingsForFacility(id, date).stream().map(FacilityBookingSlotResponse::from).toList();
     }
 
     @PatchMapping("/api/v1/facilities/{id}/position")
@@ -124,7 +140,10 @@ public class FacilityController {
         return FacilityIssueResponse.from(facilityService.resolveIssue(id, currentAuthenticatedUser.get(), memo));
     }
 
-    public record CreateFacilityRequest(@NotBlank String name, String description) {
+    public record CreateFacilityRequest(
+            @NotBlank String name, String description, String floor,
+            @Positive Integer capacity, LocalTime openTime, LocalTime closeTime
+    ) {
     }
 
     public record UpdatePositionRequest(@NotNull Integer posX, @NotNull Integer posY) {
@@ -142,13 +161,21 @@ public class FacilityController {
     }
 
     public record FacilityResponse(
-            UUID id, UUID platformId, String name, String description, boolean isActive, Integer posX, Integer posY
+            UUID id, UUID platformId, String name, String description, String floor, int capacity, boolean isActive,
+            Integer posX, Integer posY, LocalTime openTime, LocalTime closeTime
     ) {
         public static FacilityResponse from(Facility facility) {
             return new FacilityResponse(
-                    facility.getId(), facility.getPlatformId(), facility.getName(), facility.getDescription(),
-                    facility.isActive(), facility.getPosX(), facility.getPosY()
+                    facility.getId(), facility.getPlatformId(), facility.getName(), facility.getDescription(), facility.getFloor(),
+                    facility.getCapacity(), facility.isActive(), facility.getPosX(), facility.getPosY(),
+                    facility.getOpenTime(), facility.getCloseTime()
             );
+        }
+    }
+
+    public record FacilityBookingSlotResponse(LocalTime startTime, LocalTime endTime) {
+        public static FacilityBookingSlotResponse from(FacilityBooking booking) {
+            return new FacilityBookingSlotResponse(booking.getStartTime(), booking.getEndTime());
         }
     }
 

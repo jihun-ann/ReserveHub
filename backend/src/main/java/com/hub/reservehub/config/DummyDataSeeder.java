@@ -121,7 +121,7 @@ public class DummyDataSeeder implements CommandLineRunner {
         );
         platformService.assignStaff(platform.getId(), ownerPrincipal, manager.getId(), StaffRole.MANAGER);
         platformService.assignStaff(platform.getId(), ownerPrincipal, tutor.getId(), StaffRole.TUTOR);
-        seedScheduleChangeRequests(platform.getId(), tutor.getId());
+        seedScheduleChangeRequests(platform.getId(), tutor.getId(), manager.getId());
         MembersAndPass seeded = seedMembers(platform.getId(), ownerPrincipal);
         List<User> members = seeded.members();
         seedCalendarEvents(platform.getId(), ownerPrincipal);
@@ -230,7 +230,7 @@ public class DummyDataSeeder implements CommandLineRunner {
     }
 
     // reservationId/originalSlot은 실제 예약 없이 승인 관리 화면을 테스트하기 위한 더미 UUID (FK 강제 없음).
-    private void seedScheduleChangeRequests(UUID platformId, UUID tutorId) {
+    private void seedScheduleChangeRequests(UUID platformId, UUID tutorId, UUID managerId) {
         LocalDate today = LocalDate.now();
 
         ScheduleChangeRequest pending1 = new ScheduleChangeRequest(
@@ -245,12 +245,12 @@ public class DummyDataSeeder implements CommandLineRunner {
                 platformId, tutorId, UUID.randomUUID(), today.minusDays(3),
                 UUID.randomUUID(), today.minusDays(1), UUID.randomUUID(), "수강생 요청으로 인한 일정 변경입니다."
         );
-        approved.approve("정상 승인 처리되었습니다.");
+        approved.approve(managerId, "정상 승인 처리되었습니다.");
         ScheduleChangeRequest rejected = new ScheduleChangeRequest(
                 platformId, tutorId, UUID.randomUUID(), today.minusDays(5),
                 UUID.randomUUID(), today.minusDays(4), null, "수강생 해외 출장으로 인한 레슨 취소 요청입니다."
         );
-        rejected.reject("해당 일정으로는 대체 강사 배정이 어려워 반려합니다.");
+        rejected.reject(managerId, "해당 일정으로는 대체 강사 배정이 어려워 반려합니다.");
 
         scheduleChangeRequestRepository.save(pending1);
         scheduleChangeRequestRepository.save(pending2);

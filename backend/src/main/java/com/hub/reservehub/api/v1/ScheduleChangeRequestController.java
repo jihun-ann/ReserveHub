@@ -6,6 +6,7 @@ import com.hub.reservehub.domain.approval.ScheduleChangeRequestService;
 import com.hub.reservehub.security.CurrentAuthenticatedUser;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
@@ -77,13 +78,14 @@ public class ScheduleChangeRequestController {
     public record ScheduleChangeRequestResponse(
             UUID id, UUID platformId, UUID requestedBy, UUID reservationId, LocalDate originalDate,
             UUID originalSlot, LocalDate requestedDate, UUID requestedSlot, String reason, RequestStatus status,
-            String decisionMemo
+            String decisionMemo, UUID decidedBy, Instant createdAt, Instant updatedAt
     ) {
         public static ScheduleChangeRequestResponse from(ScheduleChangeRequest request) {
             return new ScheduleChangeRequestResponse(
                     request.getId(), request.getPlatformId(), request.getRequestedBy(), request.getReservationId(),
                     request.getOriginalDate(), request.getOriginalSlot(), request.getRequestedDate(),
-                    request.getRequestedSlot(), request.getReason(), request.getStatus(), request.getDecisionMemo()
+                    request.getRequestedSlot(), request.getReason(), request.getStatus(), request.getDecisionMemo(),
+                    request.getDecidedBy(), request.getCreatedAt(), request.getUpdatedAt()
             );
         }
     }

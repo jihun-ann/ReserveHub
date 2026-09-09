@@ -90,7 +90,7 @@ export default function UserReservationView() {
 		<div className="page" id="page-reservation">
 			<div className="page-header">
 				<div className="page-label">RESERVATION</div>
-				<div className="page-title">예약하기</div>
+				<div className="page-title">수업 예약</div>
 				<div className="page-subtitle">원하는 프로그램과 시간을 선택하세요</div>
 			</div>
 

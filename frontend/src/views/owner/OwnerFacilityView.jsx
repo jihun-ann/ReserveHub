@@ -2,7 +2,8 @@ import { useState, useEffect, useCallback } from "react";
 import { openModal, closeModal } from "../default.js";
 import { listFacilities, createFacility, updateFacility, updateFacilityPosition, deactivateFacility } from "../../api/common.js";
 
-const EMPTY_FORM = { name: "", description: "" };
+const EMPTY_FORM = { name: "", description: "", floor: "", capacity: 1, openTime: "", closeTime: "" };
+const UNSPECIFIED_FLOOR = "미지정";
 
 export default function OwnerFacilityView({ platformId }) {
 	const [facilities, setFacilities] = useState([]);
@@ -11,6 +12,7 @@ export default function OwnerFacilityView({ platformId }) {
 	const [editingId, setEditingId] = useState(null);
 	const [error, setError] = useState("");
 	const [saving, setSaving] = useState(false);
+	const [selectedFloor, setSelectedFloor] = useState(null);
 
 	const refresh = useCallback(async () => {
 		if (!platformId) {
@@ -36,7 +38,14 @@ export default function OwnerFacilityView({ platformId }) {
 
 	function openEdit(facility) {
 		setEditingId(facility.id);
-		setForm({ name: facility.name, description: facility.description || "" });
+		setForm({
+			name: facility.name,
+			description: facility.description || "",
+			floor: facility.floor || "",
+			capacity: facility.capacity || 1,
+			openTime: facility.openTime ? facility.openTime.slice(0, 5) : "",
+			closeTime: facility.closeTime ? facility.closeTime.slice(0, 5) : ""
+		});
 		setError("");
 		openModal("facilityModal");
 	}
@@ -46,8 +55,9 @@ export default function OwnerFacilityView({ platformId }) {
 		setSaving(true);
 		setError("");
 		try {
-			if (editingId) await updateFacility(editingId, form);
-			else await createFacility(platformId, form);
+			const payload = { ...form, capacity: Number(form.capacity) || 1, openTime: form.openTime || null, closeTime: form.closeTime || null };
+			if (editingId) await updateFacility(editingId, payload);
+			else await createFacility(platformId, payload);
 			closeModal("facilityModal");
 			await refresh();
 		} catch (err) {
@@ -77,8 +87,11 @@ export default function OwnerFacilityView({ platformId }) {
 		await refresh();
 	}
 
-	const placed = facilities.filter((f) => f.posX != null && f.posY != null);
-	const unplaced = facilities.filter((f) => f.posX == null || f.posY == null);
+	const floors = [...new Set(facilities.map((f) => f.floor || UNSPECIFIED_FLOOR))];
+	const activeFloor = selectedFloor && floors.includes(selectedFloor) ? selectedFloor : floors[0];
+	const onFloor = facilities.filter((f) => (f.floor || UNSPECIFIED_FLOOR) === activeFloor);
+	const placed = onFloor.filter((f) => f.posX != null && f.posY != null);
+	const unplaced = onFloor.filter((f) => f.posX == null || f.posY == null);
 
 	return (
 		<>
@@ -96,6 +109,19 @@ export default function OwnerFacilityView({ platformId }) {
 			{!loading && facilities.length > 0 && (
 				<div style={{ marginBottom: "20px" }}>
 					<div className="card-title" style={{ marginBottom: "10px" }}>배치도</div>
+					{floors.length > 0 && (
+						<div style={{ display: "flex", gap: "8px", marginBottom: "10px", flexWrap: "wrap" }}>
+							{floors.map((fl) => (
+								<button
+									key={fl}
+									className={`filter-chip ${fl === activeFloor ? "active" : ""}`}
+									onClick={() => setSelectedFloor(fl)}
+								>
+									{fl}
+								</button>
+							))}
+						</div>
+					)}
 					{unplaced.length > 0 && (
 						<div style={{ display: "flex", flexWrap: "wrap", gap: "8px", marginBottom: "10px" }}>
 							{unplaced.map((f) => (
@@ -159,17 +185,22 @@ export default function OwnerFacilityView({ platformId }) {
 				<div style={{ overflowX: "auto" }}>
 					<table className="data-table">
 						<thead>
-							<tr><th>시설물명</th><th>설명</th><th>상태</th><th></th></tr>
+							<tr><th>시설물명</th><th>층</th><th>정원</th><th>이용시간</th><th>설명</th><th>상태</th><th></th></tr>
 						</thead>
 						<tbody>
 							{loading ? (
-								<tr><td colSpan={4} style={{ textAlign: "center", padding: "24px", color: "var(--text-dim)" }}>불러오는 중...</td></tr>
+								<tr><td colSpan={7} style={{ textAlign: "center", padding: "24px", color: "var(--text-dim)" }}>불러오는 중...</td></tr>
 							) : facilities.length === 0 ? (
-								<tr><td colSpan={4} style={{ textAlign: "center", padding: "24px", color: "var(--text-dim)" }}>등록된 시설물이 없습니다</td></tr>
+								<tr><td colSpan={7} style={{ textAlign: "center", padding: "24px", color: "var(--text-dim)" }}>등록된 시설물이 없습니다</td></tr>
 							) : (
 								facilities.map((f) => (
 									<tr key={f.id}>
 										<td style={{ fontWeight: 600 }}>{f.name}</td>
+										<td style={{ color: "var(--text-sub)" }}>{f.floor || "-"}</td>
+										<td style={{ color: "var(--text-sub)" }}>{f.capacity}명</td>
+										<td style={{ color: "var(--text-sub)", fontFamily: "'DM Mono',monospace", fontSize: "12px" }}>
+											{f.openTime && f.closeTime ? `${f.openTime.slice(0, 5)}~${f.closeTime.slice(0, 5)}` : "제한 없음"}
+										</td>
 										<td style={{ color: "var(--text-sub)" }}>{f.description || "-"}</td>
 										<td>
 											<span className={`badge ${f.isActive ? "bs-active" : "bs-expired"}`} style={{ fontSize: "10px" }}>
@@ -201,6 +232,26 @@ export default function OwnerFacilityView({ platformId }) {
 					<div className="form-field">
 						<label>시설물명</label>
 						<input type="text" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="예: 2층 연습실" />
+					</div>
+					<div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
+						<div className="form-field">
+							<label>층 (선택)</label>
+							<input type="text" value={form.floor} onChange={(e) => setForm({ ...form, floor: e.target.value })} placeholder="예: 1층, 지하1층" />
+						</div>
+						<div className="form-field">
+							<label>정원 (동시 이용 가능 인원)</label>
+							<input type="number" min="1" value={form.capacity} onChange={(e) => setForm({ ...form, capacity: e.target.value })} />
+						</div>
+					</div>
+					<div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
+						<div className="form-field">
+							<label>이용 시작 시간 (선택)</label>
+							<input type="time" value={form.openTime} onChange={(e) => setForm({ ...form, openTime: e.target.value })} />
+						</div>
+						<div className="form-field">
+							<label>이용 종료 시간 (선택)</label>
+							<input type="time" value={form.closeTime} onChange={(e) => setForm({ ...form, closeTime: e.target.value })} />
+						</div>
 					</div>
 					<div className="form-field">
 						<label>설명 (선택)</label>

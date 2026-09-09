@@ -90,7 +90,7 @@ public class ScheduleChangeRequestService {
     public ScheduleChangeRequest approve(UUID requestId, AuthenticatedUser actor, @Nullable String memo) {
         ScheduleChangeRequest request = findRequest(requestId);
         platformAccessGuard.verifyRole(request.getPlatformId(), actor, StaffRole.MANAGER);
-        request.approve(memo);
+        request.approve(actor.getId(), memo);
 
         actionLogRepository.save(ActionLog.of(request.getPlatformId(), actor.getId(), ActionTarget.SCHEDULE_REQUEST, request.getId(), "APPROVE", memo));
         outboxEventRepository.save(OutboxEvent.of(
@@ -105,7 +105,7 @@ public class ScheduleChangeRequestService {
     public ScheduleChangeRequest reject(UUID requestId, AuthenticatedUser actor, @Nullable String memo) {
         ScheduleChangeRequest request = findRequest(requestId);
         platformAccessGuard.verifyRole(request.getPlatformId(), actor, StaffRole.MANAGER);
-        request.reject(memo);
+        request.reject(actor.getId(), memo);
 
         actionLogRepository.save(ActionLog.of(request.getPlatformId(), actor.getId(), ActionTarget.SCHEDULE_REQUEST, request.getId(), "REJECT", memo));
         outboxEventRepository.save(OutboxEvent.of(

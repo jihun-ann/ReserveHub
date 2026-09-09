@@ -54,6 +54,10 @@ public class ScheduleChangeRequest extends BaseEntity {
     @Nullable
     private String decisionMemo;
 
+    // 승인/반려를 처리한 매니저/오너. PENDING인 동안은 null.
+    @Nullable
+    private UUID decidedBy;
+
     protected ScheduleChangeRequest() {
         // JPA only.
     }
@@ -119,19 +123,26 @@ public class ScheduleChangeRequest extends BaseEntity {
         return decisionMemo;
     }
 
-    public void approve(@Nullable String memo) {
+    @Nullable
+    public UUID getDecidedBy() {
+        return decidedBy;
+    }
+
+    public void approve(UUID decidedBy, @Nullable String memo) {
         if (status != RequestStatus.PENDING) {
             throw new IllegalStateException("Only a PENDING request can be approved");
         }
         this.status = RequestStatus.APPROVED;
         this.decisionMemo = memo;
+        this.decidedBy = decidedBy;
     }
 
-    public void reject(@Nullable String memo) {
+    public void reject(UUID decidedBy, @Nullable String memo) {
         if (status != RequestStatus.PENDING) {
             throw new IllegalStateException("Only a PENDING request can be rejected");
         }
         this.status = RequestStatus.REJECTED;
         this.decisionMemo = memo;
+        this.decidedBy = decidedBy;
     }
 }

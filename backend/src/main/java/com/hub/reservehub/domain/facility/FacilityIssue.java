@@ -6,6 +6,7 @@ import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.Id;
+import jakarta.persistence.Lob;
 import java.time.Instant;
 import java.util.UUID;
 import org.springframework.lang.Nullable;
@@ -30,7 +31,8 @@ public class FacilityIssue {
     @Column(nullable = false)
     private UUID reportedBy;
 
-    @Column(nullable = false, columnDefinition = "TEXT")
+    @Lob
+    @Column(nullable = false)
     private String description;
 
     @Enumerated(EnumType.STRING)

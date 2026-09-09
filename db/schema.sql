@@ -382,11 +382,32 @@ CREATE TABLE schedule_change_requests (
                                           requested_slot  UUID            REFERENCES slots(id),           -- NULL = 슬롯 외 시간
                                           reason          TEXT,
                                           status          request_status  NOT NULL DEFAULT 'PENDING',
+                                          decision_memo   TEXT,
+                                          decided_by      UUID            REFERENCES users(id),  -- 승인/반려 처리자. PENDING인 동안 NULL
                                           created_at      TIMESTAMPTZ     NOT NULL DEFAULT NOW(),
                                           updated_at      TIMESTAMPTZ     NOT NULL DEFAULT NOW()
 );
 
 COMMENT ON TABLE schedule_change_requests IS '강사가 제출한 일정 변경 요청. 매니저 또는 오너가 승인';
+
+
+-- 스태프의 휴가 요청 — schedule_change_requests와 같은 구조지만 예약에 매이지 않고 날짜 범위만 갖는다.
+CREATE TABLE leave_requests (
+                                id              UUID            PRIMARY KEY DEFAULT uuid_generate_v4(),
+                                platform_id     UUID            NOT NULL REFERENCES platforms(id),
+                                requested_by    UUID            NOT NULL REFERENCES users(id),
+                                start_date      DATE            NOT NULL,
+                                end_date        DATE            NOT NULL,
+                                reason          TEXT,
+                                status          request_status  NOT NULL DEFAULT 'PENDING',
+                                decision_memo   TEXT,
+                                decided_by      UUID            REFERENCES users(id),
+                                created_at      TIMESTAMPTZ     NOT NULL DEFAULT NOW(),
+                                updated_at      TIMESTAMPTZ     NOT NULL DEFAULT NOW(),
+                                CONSTRAINT chk_leave_request_dates CHECK (end_date >= start_date)
+);
+
+COMMENT ON TABLE leave_requests IS '스태프가 제출한 휴가 요청. 매니저 또는 오너가 승인';
 
 
 -- 세무사가 등록한 재무 일정(월급날/지출일/명세서 제출일) — 매니저 또는 오너가 승인
@@ -441,7 +462,8 @@ CREATE TYPE action_target AS ENUM (
     'PASS_CHANGE',        -- 수강권 등록·중단
     'DISCOUNT_CHANGE',    -- 할인 정책 등록·중단
     'FINANCIAL_REQUEST',  -- 세무사가 등록한 재무 일정 승인/반려
-    'FACILITY_CHANGE'     -- 시설물 등록/예약/고장신고/보수처리
+    'FACILITY_CHANGE',    -- 시설물 등록/예약/고장신고/보수처리
+    'LEAVE_REQUEST'       -- 휴가 요청 승인/반려
 );
 
 CREATE TABLE action_logs (
@@ -521,9 +543,13 @@ CREATE TABLE facilities (
                             platform_id     UUID        NOT NULL REFERENCES platforms(id) ON DELETE CASCADE,
                             name            VARCHAR(200) NOT NULL,
                             description     TEXT,
+                            floor           VARCHAR(50),  -- 자유 입력 층 표기 (예: "1층", "지하1층")
+                            capacity        SMALLINT    NOT NULL DEFAULT 1 CHECK (capacity >= 1),  -- 동시 이용 가능 인원
                             is_active       BOOLEAN     NOT NULL DEFAULT TRUE,
                             pos_x           SMALLINT,  -- 배치도 상 위치 (0~100 백분율). NULL이면 아직 배치되지 않음
                             pos_y           SMALLINT,
+                            open_time       TIME,  -- 예약 가능 시작 시각. 둘 다 NULL이면 시간 제한 없음
+                            close_time      TIME,
                             created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
                             updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
@@ -626,6 +652,11 @@ CREATE INDEX idx_attend_user       ON attendances(user_id);
 CREATE INDEX idx_scr_platform      ON schedule_change_requests(platform_id);
 CREATE INDEX idx_scr_status        ON schedule_change_requests(status);
 CREATE INDEX idx_scr_requested_by  ON schedule_change_requests(requested_by);
+
+-- leave_requests
+CREATE INDEX idx_leavereq_platform     ON leave_requests(platform_id);
+CREATE INDEX idx_leavereq_status       ON leave_requests(status);
+CREATE INDEX idx_leavereq_requested_by ON leave_requests(requested_by);
 
 -- financial_requests
 CREATE INDEX idx_finreq_platform   ON financial_requests(platform_id);
@@ -766,6 +797,7 @@ CREATE TRIGGER trg_passes_updated_at          BEFORE UPDATE ON passes           
 CREATE TRIGGER trg_discount_updated_at        BEFORE UPDATE ON discount_policies  FOR EACH ROW EXECUTE FUNCTION set_updated_at();
 CREATE TRIGGER trg_orders_updated_at          BEFORE UPDATE ON orders             FOR EACH ROW EXECUTE FUNCTION set_updated_at();
 CREATE TRIGGER trg_scr_updated_at             BEFORE UPDATE ON schedule_change_requests FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+CREATE TRIGGER trg_leavereq_updated_at        BEFORE UPDATE ON leave_requests     FOR EACH ROW EXECUTE FUNCTION set_updated_at();
 CREATE TRIGGER trg_cal_updated_at             BEFORE UPDATE ON calendar_events    FOR EACH ROW EXECUTE FUNCTION set_updated_at();
 
 

@@ -1,21 +1,79 @@
 import { useState, useEffect, useCallback } from "react";
 import { openModal, closeModal } from "../default.js";
 import {
-	listFacilities, bookFacility, listMyFacilityBookings, cancelFacilityBooking, reportFacilityIssue
+	listFacilities, bookFacility, listMyFacilityBookings, cancelFacilityBooking, reportFacilityIssue,
+	listFacilityBookingSlots
 } from "../../api/common.js";
 
-function todayStr() {
-	return new Date().toISOString().slice(0, 10);
+const UNSPECIFIED_FLOOR = "미지정";
+const DEFAULT_OPEN = "09:00";
+const DEFAULT_CLOSE = "22:00";
+const SLOT_MINUTES = 60;
+const WEEKDAYS_KO = ["일", "월", "화", "수", "목", "금", "토"];
+
+function pad(n) {
+	return String(n).padStart(2, "0");
 }
 
-const EMPTY_BOOKING_FORM = { facilityId: "", bookingDate: todayStr(), startTime: "10:00", endTime: "11:00", purpose: "" };
+function isoDate(d) {
+	return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+
+function todayStr() {
+	return isoDate(new Date());
+}
+
+// 오늘부터 7일 — 수업 예약 화면의 날짜 네비게이션과 동일한 방식.
+function next7Days() {
+	const today = new Date();
+	return Array.from({ length: 7 }, (_, i) => {
+		const d = new Date(today);
+		d.setDate(today.getDate() + i);
+		return { iso: isoDate(d), mon: d.getMonth() + 1, day: d.getDate(), dow: WEEKDAYS_KO[d.getDay()] };
+	});
+}
+
+function toMinutes(hhmm) {
+	const [h, m] = hhmm.split(":").map(Number);
+	return h * 60 + m;
+}
+
+function toHHMM(mins) {
+	return `${pad(Math.floor(mins / 60))}:${pad(mins % 60)}`;
+}
+
+// 시설물의 이용 시작~종료 시간을 1시간 단위로 쪼갠 예약 가능 시간대 목록 (마지막 칸은 종료 시간에 맞춰 짧아질 수 있음).
+function generateSlots(openTime, closeTime) {
+	const open = toMinutes(openTime ? openTime.slice(0, 5) : DEFAULT_OPEN);
+	const close = toMinutes(closeTime ? closeTime.slice(0, 5) : DEFAULT_CLOSE);
+	const slots = [];
+	for (let t = open; t < close; t += SLOT_MINUTES) {
+		slots.push({ start: toHHMM(t), end: toHHMM(Math.min(t + SLOT_MINUTES, close)) });
+	}
+	return slots;
+}
+
+// 이 시간대와 겹치는 확정 예약 건수 — 정원(capacity)만큼 겹쳐도 되므로 불리언이 아니라 카운트.
+function slotUsedCount(slot, bookingSlots) {
+	return bookingSlots.filter((b) => {
+		const bStart = b.startTime?.slice(0, 5);
+		const bEnd = b.endTime?.slice(0, 5);
+		return slot.start < bEnd && slot.end > bStart;
+	}).length;
+}
 
 export default function UserFacilityBookingView({ platformId }) {
 	const [facilities, setFacilities] = useState([]);
 	const [myBookings, setMyBookings] = useState([]);
 	const [loading, setLoading] = useState(true);
 
-	const [bookingForm, setBookingForm] = useState(EMPTY_BOOKING_FORM);
+	const [selectedFloor, setSelectedFloor] = useState(null);
+	const [selectedFacilityId, setSelectedFacilityId] = useState(null);
+	const [statusDate, setStatusDate] = useState(todayStr());
+	const [bookingSlots, setBookingSlots] = useState([]);
+	const [slotsLoading, setSlotsLoading] = useState(false);
+	const [selectedSlot, setSelectedSlot] = useState(null);
+	const [purpose, setPurpose] = useState("");
 	const [bookingError, setBookingError] = useState("");
 	const [saving, setSaving] = useState(false);
 
@@ -46,24 +104,40 @@ export default function UserFacilityBookingView({ platformId }) {
 		refresh();
 	}, [refresh]);
 
-	function openBookingModal() {
-		setBookingForm({ ...EMPTY_BOOKING_FORM, facilityId: facilities[0]?.id || "" });
+	useEffect(() => {
+		setSelectedSlot(null);
 		setBookingError("");
-		openModal("facilityBookingModal");
+		if (!selectedFacilityId) {
+			setBookingSlots([]);
+			return;
+		}
+		setSlotsLoading(true);
+		listFacilityBookingSlots(selectedFacilityId, statusDate)
+			.then(setBookingSlots)
+			.catch(() => setBookingSlots([]))
+			.finally(() => setSlotsLoading(false));
+	}, [selectedFacilityId, statusDate]);
+
+	function selectFacility(facilityId) {
+		setSelectedFacilityId(facilityId);
+		setStatusDate(todayStr());
+		setPurpose("");
 	}
 
-	async function submitBooking() {
-		if (!bookingForm.facilityId) return;
+	async function confirmBooking() {
+		if (!selectedFacilityId || !selectedSlot) return;
 		setSaving(true);
 		setBookingError("");
 		try {
-			await bookFacility(bookingForm.facilityId, {
-				bookingDate: bookingForm.bookingDate,
-				startTime: bookingForm.startTime,
-				endTime: bookingForm.endTime,
-				purpose: bookingForm.purpose.trim() || null
+			await bookFacility(selectedFacilityId, {
+				bookingDate: statusDate,
+				startTime: selectedSlot.start,
+				endTime: selectedSlot.end,
+				purpose: purpose.trim() || null
 			});
-			closeModal("facilityBookingModal");
+			setSelectedSlot(null);
+			setPurpose("");
+			listFacilityBookingSlots(selectedFacilityId, statusDate).then(setBookingSlots).catch(() => {});
 			await refresh();
 		} catch (err) {
 			setBookingError(err.message || "예약에 실패했습니다.");
@@ -74,6 +148,7 @@ export default function UserFacilityBookingView({ platformId }) {
 
 	async function cancel(id) {
 		await cancelFacilityBooking(id);
+		if (selectedFacilityId) listFacilityBookingSlots(selectedFacilityId, statusDate).then(setBookingSlots).catch(() => {});
 		await refresh();
 	}
 
@@ -102,35 +177,182 @@ export default function UserFacilityBookingView({ platformId }) {
 	const facilitiesById = Object.fromEntries(facilities.map((f) => [f.id, f]));
 	const sortedMyBookings = [...myBookings].sort((a, b) => (a.bookingDate + a.startTime).localeCompare(b.bookingDate + b.startTime));
 
+	const floors = [...new Set(facilities.map((f) => f.floor || UNSPECIFIED_FLOOR))];
+	const activeFloor = selectedFloor && floors.includes(selectedFloor) ? selectedFloor : floors[0];
+	const onFloor = facilities.filter((f) => (f.floor || UNSPECIFIED_FLOOR) === activeFloor);
+	const placed = onFloor.filter((f) => f.posX != null && f.posY != null);
+	const unplaced = onFloor.filter((f) => f.posX == null || f.posY == null);
+	const selectedFacility = facilitiesById[selectedFacilityId];
+
+	const dateOptions = next7Days();
+	const selectedDay = dateOptions.find((d) => d.iso === statusDate);
+	const capacity = selectedFacility?.capacity || 1;
+	const slotsWithStatus = (selectedFacility ? generateSlots(selectedFacility.openTime, selectedFacility.closeTime) : []).map((slot) => {
+		const used = slotUsedCount(slot, bookingSlots);
+		const remain = capacity - used;
+		const isFull = remain <= 0;
+		let statusCls = "status-open", statusLabel = "예약 가능";
+		if (isFull) {
+			statusCls = "status-full";
+			statusLabel = "마감";
+		} else if (remain <= 2 && capacity > 1) {
+			statusCls = "status-few";
+			statusLabel = "마감 임박";
+		}
+		return { ...slot, used, remain, isFull, statusCls, statusLabel };
+	});
+	const selectedSlotStatus = selectedSlot ? slotsWithStatus.find((s) => s.start === selectedSlot.start) : null;
+
 	return (
 		<>
 		<div className="page" id="user-facility">
 			<div className="page-header">
 				<div className="page-label">Facilities</div>
 				<div className="page-title">시설물 예약</div>
-				<div className="page-subtitle">연습실 등 시설물을 시간대별로 예약하세요. 고장/이상이 있으면 신고할 수 있습니다.</div>
+				<div className="page-subtitle">배치도에서 연습실/레슨실/PT실 등 시설물을 눌러 예약 가능한 시간대를 확인하고 예약하세요.</div>
 			</div>
 
-			<div style={{ display: "flex", justifyContent: "flex-end", marginBottom: "14px" }}>
-				<button className="btn btn-primary btn-sm" onClick={openBookingModal} disabled={facilities.length === 0}>+ 예약하기</button>
-			</div>
-
-			<div className="card-title" style={{ marginBottom: "10px" }}>시설물 목록</div>
 			{loading ? (
-				<div className="card" style={{ padding: "24px", textAlign: "center", color: "var(--text-dim)" }}>불러오는 중...</div>
+				<div className="card" style={{ padding: "24px", textAlign: "center", color: "var(--text-dim)", marginBottom: "20px" }}>불러오는 중...</div>
 			) : facilities.length === 0 ? (
 				<div className="card" style={{ padding: "24px", textAlign: "center", color: "var(--text-dim)", marginBottom: "20px" }}>등록된 시설물이 없습니다</div>
 			) : (
-				<div style={{ display: "flex", flexDirection: "column", gap: "10px", marginBottom: "24px" }}>
-					{facilities.map((f) => (
-						<div className="card" key={f.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-							<div>
-								<div style={{ fontWeight: 600 }}>{f.name}</div>
-								{f.description && <div style={{ fontSize: "12px", color: "var(--text-dim)", marginTop: "2px" }}>{f.description}</div>}
-							</div>
-							<button className="btn btn-ghost btn-sm" onClick={() => openIssueModal(f.id)}>고장/이상 신고</button>
+				<div style={{ marginBottom: "24px" }}>
+					<div className="card-title" style={{ marginBottom: "10px" }}>배치도</div>
+					{floors.length > 0 && (
+						<div style={{ display: "flex", gap: "8px", marginBottom: "10px", flexWrap: "wrap" }}>
+							{floors.map((fl) => (
+								<button
+									key={fl}
+									className={`filter-chip ${fl === activeFloor ? "active" : ""}`}
+									onClick={() => setSelectedFloor(fl)}
+								>
+									{fl}
+								</button>
+							))}
 						</div>
-					))}
+					)}
+					{unplaced.length > 0 && (
+						<div style={{ display: "flex", flexWrap: "wrap", gap: "8px", marginBottom: "10px" }}>
+							{unplaced.map((f) => (
+								<div
+									key={f.id}
+									onClick={() => selectFacility(f.id)}
+									className="plat-chip"
+									style={{
+										cursor: "pointer",
+										background: f.id === selectedFacilityId ? "var(--accent2)" : "var(--surface2)",
+										color: f.id === selectedFacilityId ? "#0f0f13" : "var(--text-sub)",
+										borderColor: "var(--border)"
+									}}
+								>
+									{f.name}
+								</div>
+							))}
+						</div>
+					)}
+					<div
+						style={{
+							position: "relative",
+							width: "100%",
+							height: "360px",
+							background: "var(--surface2)",
+							border: "1px dashed var(--border)",
+							borderRadius: "var(--radius)"
+						}}
+					>
+						{placed.length === 0 && unplaced.length === 0 && (
+							<div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", color: "var(--text-dim)", fontSize: "12px" }}>
+								이 층에 배치된 시설물이 없습니다
+							</div>
+						)}
+						{placed.map((f) => (
+							<div
+								key={f.id}
+								onClick={() => selectFacility(f.id)}
+								style={{
+									position: "absolute",
+									left: `${f.posX}%`,
+									top: `${f.posY}%`,
+									transform: "translate(-50%, -50%)",
+									cursor: "pointer",
+									padding: "8px 12px",
+									background: f.id === selectedFacilityId ? "var(--accent2)" : "var(--surface)",
+									color: f.id === selectedFacilityId ? "#0f0f13" : "var(--text)",
+									border: `1px solid ${f.id === selectedFacilityId ? "var(--accent2)" : "var(--border)"}`,
+									borderRadius: "var(--radius-sm)",
+									fontSize: "12px",
+									fontWeight: 600,
+									whiteSpace: "nowrap"
+								}}
+							>
+								{f.name}
+							</div>
+						))}
+					</div>
+
+					{selectedFacility && (
+						<div className="card" style={{ marginTop: "14px" }}>
+							<div className="slot-panel-header">
+								<div>
+									<div className="slot-panel-date">{selectedFacility.name}</div>
+									<div className="slot-panel-sub">
+										{selectedDay ? `${selectedDay.mon}월 ${selectedDay.day}일 ${selectedDay.dow}요일` : ""} · 정원 {capacity}명
+										{selectedFacility.description ? ` · ${selectedFacility.description}` : ""}
+									</div>
+								</div>
+								<button className="btn btn-ghost btn-sm" onClick={() => openIssueModal(selectedFacility.id)}>고장/이상 신고</button>
+							</div>
+
+							<div className="slot-nav-row">
+								{dateOptions.map((d) => (
+									<button
+										key={d.iso}
+										className={`slot-nav-btn${d.iso === statusDate ? " active" : ""}`}
+										onClick={() => setStatusDate(d.iso)}
+									>
+										{d.mon}/{d.day}<br /><small>{d.dow}</small>
+									</button>
+								))}
+							</div>
+
+							{slotsLoading ? (
+								<div style={{ fontSize: "12px", color: "var(--text-dim)", padding: "16px 0" }}>불러오는 중...</div>
+							) : (
+								<div className="slot-list">
+									{slotsWithStatus.map((slot) => (
+										<div
+											key={slot.start}
+											className={`slot-item${slot.isFull ? " full" : ""}${selectedSlot?.start === slot.start ? " selected-slot" : ""}`}
+											onClick={() => !slot.isFull && setSelectedSlot(slot)}
+										>
+											<div className="slot-time">{slot.start}-{slot.end}</div>
+											<div className="slot-bar-wrap">
+												<div className="slot-bar-bg"><div className="slot-bar" style={{ width: `${Math.round((slot.used / capacity) * 100)}%` }}></div></div>
+												<div className="slot-count">{slot.used} / {capacity}명</div>
+											</div>
+											<span className={`slot-status ${slot.statusCls}`}>{slot.statusLabel}</span>
+										</div>
+									))}
+								</div>
+							)}
+
+							{selectedSlotStatus && (
+								<div className="confirm-box">
+									<div className="confirm-row"><span>시설물</span><strong>{selectedFacility.name}</strong></div>
+									<div className="confirm-row"><span>날짜</span><strong>{selectedDay ? `${selectedDay.mon}월 ${selectedDay.day}일` : statusDate}</strong></div>
+									<div className="confirm-row"><span>시간</span><strong>{selectedSlotStatus.start}-{selectedSlotStatus.end}</strong></div>
+									<div className="confirm-row"><span>잔여 정원</span><strong style={{ color: "var(--accent2)" }}>{selectedSlotStatus.remain}명</strong></div>
+									<div className="form-field" style={{ marginBottom: "12px" }}>
+										<label>목적 (선택)</label>
+										<input type="text" value={purpose} onChange={(e) => setPurpose(e.target.value)} placeholder="예: 개인 연습" />
+									</div>
+									{bookingError && <div style={{ color: "var(--red)", fontSize: "12px", marginBottom: "8px" }}>{bookingError}</div>}
+									<button className="btn-confirm" onClick={confirmBooking} disabled={saving}>{saving ? "예약 중..." : "예약 하기"}</button>
+								</div>
+							)}
+						</div>
+					)}
 				</div>
 			)}
 
@@ -159,46 +381,6 @@ export default function UserFacilityBookingView({ platformId }) {
 							)}
 						</tbody>
 					</table>
-				</div>
-			</div>
-		</div>
-
-		<div className="modal-overlay" id="facilityBookingModal">
-			<div className="modal-box">
-				<div className="modal-header">
-					<div className="modal-title">시설물 예약</div>
-					<button className="modal-close" onClick={() => closeModal("facilityBookingModal")}>✕</button>
-				</div>
-				<div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-					<div className="form-field">
-						<label>시설물</label>
-						<select value={bookingForm.facilityId} onChange={(e) => setBookingForm({ ...bookingForm, facilityId: e.target.value })}>
-							{facilities.map((f) => <option key={f.id} value={f.id}>{f.name}</option>)}
-						</select>
-					</div>
-					<div className="form-field">
-						<label>날짜</label>
-						<input type="date" value={bookingForm.bookingDate} onChange={(e) => setBookingForm({ ...bookingForm, bookingDate: e.target.value })} />
-					</div>
-					<div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
-						<div className="form-field">
-							<label>시작 시간</label>
-							<input type="time" value={bookingForm.startTime} onChange={(e) => setBookingForm({ ...bookingForm, startTime: e.target.value })} />
-						</div>
-						<div className="form-field">
-							<label>종료 시간</label>
-							<input type="time" value={bookingForm.endTime} onChange={(e) => setBookingForm({ ...bookingForm, endTime: e.target.value })} />
-						</div>
-					</div>
-					<div className="form-field">
-						<label>목적 (선택)</label>
-						<input type="text" value={bookingForm.purpose} onChange={(e) => setBookingForm({ ...bookingForm, purpose: e.target.value })} placeholder="예: 개인 연습" />
-					</div>
-					{bookingError && <div style={{ color: "var(--red)", fontSize: "12px" }}>{bookingError}</div>}
-					<div style={{ display: "flex", justifyContent: "flex-end", gap: "8px", marginTop: "8px" }}>
-						<button className="btn btn-ghost" onClick={() => closeModal("facilityBookingModal")}>취소</button>
-						<button className="btn btn-primary" onClick={submitBooking} disabled={saving}>{saving ? "예약 중..." : "예약"}</button>
-					</div>
 				</div>
 			</div>
 		</div>
