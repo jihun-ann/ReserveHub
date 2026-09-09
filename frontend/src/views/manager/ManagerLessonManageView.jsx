@@ -4,7 +4,7 @@ import {
 	listPrograms, listStaff, getUser, listMembers,
 	addProgramSlot, listProgramSlots, deactivateProgramSlot,
 	addSlotMember, listSlotMembers, removeSlotMember,
-	PROGRAM_TYPE_LABEL, DAY_OF_WEEK_LABEL
+	PROGRAM_TYPE_LABEL, ENROLLMENT_MODE_LABEL, DAY_OF_WEEK_LABEL
 } from "../../api/common.js";
 
 const DAY_KEYS = ["MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"];
@@ -107,7 +107,7 @@ export default function ManagerLessonManageView({ platformId }) {
 			return;
 		}
 		const program = programsById[expandedSlot.programId];
-		if (!program || program.type === "GROUP") {
+		if (!program || !(program.type === "PRIVATE" || program.enrollmentMode === "FIXED")) {
 			setRoster(null);
 			return;
 		}
@@ -170,7 +170,7 @@ export default function ManagerLessonManageView({ platformId }) {
 	}
 
 	const expandedProgram = expandedSlot ? programsById[expandedSlot.programId] : null;
-	const isFixedRoster = expandedProgram && expandedProgram.type !== "GROUP";
+	const isFixedRoster = expandedProgram && (expandedProgram.type === "PRIVATE" || expandedProgram.enrollmentMode === "FIXED");
 
 	return (
 		<div className="page" id="manager-lesson-manage">
@@ -179,7 +179,8 @@ export default function ManagerLessonManageView({ platformId }) {
 				<div className="page-title">수업 관리</div>
 				<div className="page-subtitle">
 					주 단위로 수업 일정을 관리하세요. 매주 반복되는 수업인지 1회성(인스턴트) 수업인지 정하고 강사를 배정합니다.
-					개인/반개인은 고정 로스터를 등록해두면 매주 신청 없이 자동으로 수업이 잡히고, 단체는 매주 신청(예약)으로 채워집니다.
+					개인수업, 또는 고정형 그룹반은 대상자를 등록해두면 매주 신청 없이 자동으로 수업이 잡히고,
+					신청형 그룹반은 매주 학생이 직접 신청(예약)해서 채워집니다.
 				</div>
 			</div>
 
@@ -194,6 +195,11 @@ export default function ManagerLessonManageView({ platformId }) {
 				</div>
 				<button className="btn btn-primary btn-sm" onClick={() => openAddModal()} disabled={programs.length === 0}>+ 수업 추가</button>
 			</div>
+			{!loading && programs.length === 0 && (
+				<div className="card" style={{ marginBottom: "14px", fontSize: "12px", color: "var(--text-dim)" }}>
+					아직 등록된 수업 종류가 없습니다. "수강권/결제" 메뉴에서 수강권을 등록하면 수업도 함께 만들어집니다.
+				</div>
+			)}
 
 			<div className="card" style={{ padding: 0, overflow: "hidden", marginBottom: expandedSlot ? "16px" : "0" }}>
 				<div style={{ overflowX: "auto" }}>
@@ -274,7 +280,8 @@ export default function ManagerLessonManageView({ platformId }) {
 							<div style={{ fontWeight: 700 }}>
 								{expandedSlot.name || expandedProgram.name}
 								{" "}<span style={{ fontWeight: 400, color: "var(--text-dim)", fontSize: "12px" }}>
-									({expandedProgram.name} · {PROGRAM_TYPE_LABEL[expandedProgram.type] || expandedProgram.type})
+									({expandedProgram.name} · {PROGRAM_TYPE_LABEL[expandedProgram.type] || expandedProgram.type}
+									{expandedProgram.type === "GROUP" && ` · ${ENROLLMENT_MODE_LABEL[expandedProgram.enrollmentMode] || expandedProgram.enrollmentMode}`})
 								</span>
 							</div>
 							<div style={{ fontSize: "12px", color: "var(--text-sub)", marginTop: "4px" }}>

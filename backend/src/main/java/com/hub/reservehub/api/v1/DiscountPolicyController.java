@@ -16,6 +16,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -49,6 +50,14 @@ public class DiscountPolicyController {
                 .toList();
     }
 
+    @PatchMapping("/api/v1/discount-policies/{id}")
+    public DiscountPolicyResponse update(@PathVariable UUID id, @Valid @RequestBody UpdateDiscountPolicyRequest request) {
+        DiscountPolicy policy = discountPolicyService.update(
+                id, currentAuthenticatedUser.get(), request.name(), request.type(), request.rate(), request.conditionValue()
+        );
+        return DiscountPolicyResponse.from(policy);
+    }
+
     @DeleteMapping("/api/v1/discount-policies/{id}")
     public ResponseEntity<Void> deactivate(@PathVariable UUID id) {
         discountPolicyService.deactivate(id, currentAuthenticatedUser.get());
@@ -63,6 +72,14 @@ public class DiscountPolicyController {
             String couponCode,
             Instant expiresAt,
             String memo
+    ) {
+    }
+
+    public record UpdateDiscountPolicyRequest(
+            @NotBlank String name,
+            @NotNull DiscountType type,
+            @NotNull BigDecimal rate,
+            Integer conditionValue
     ) {
     }
 

@@ -54,17 +54,37 @@ public class ProgramService {
     // 생성 시점 스냅샷을 저장해두지만(레거시 호환), 조회 시에는 항상 passId로 다시 join해서 최신
     // 수강권 이름을 보여준다 (list/get 참고).
     public Program create(
-            UUID platformId, AuthenticatedUser actor, UUID passId, ProgramType type,
+            UUID platformId, AuthenticatedUser actor, UUID passId, ProgramType type, @Nullable EnrollmentMode enrollmentMode,
             short capacity, short durationMin, @Nullable String description
     ) {
         platformAccessGuard.verifyRole(platformId, actor, StaffRole.MANAGER);
+        if (type == ProgramType.GROUP && enrollmentMode == null) {
+            throw new IllegalArgumentException("enrollmentMode is required for GROUP programs (FIXED or APPLICATION)");
+        }
         Pass pass = passRepository.findById(passId)
                 .orElseThrow(() -> new IllegalArgumentException("Pass not found: " + passId));
         if (!pass.getPlatformId().equals(platformId)) {
             throw new IllegalArgumentException("Pass does not belong to this platform");
         }
-        Program program = programRepository.save(new Program(platformId, pass.getName(), type, capacity, durationMin, description, passId));
+        Program program = programRepository.save(new Program(
+                platformId, pass.getName(), type, enrollmentMode, capacity, durationMin, description, passId
+        ));
         actionLogRepository.save(ActionLog.of(platformId, actor.getId(), ActionTarget.PROGRAM_CHANGE, program.getId(), "CREATE", null));
+        return program;
+    }
+
+    @Transactional
+    public Program update(
+            UUID programId, AuthenticatedUser actor, ProgramType type, @Nullable EnrollmentMode enrollmentMode,
+            short capacity, short durationMin, @Nullable String description
+    ) {
+        Program program = findProgram(programId);
+        platformAccessGuard.verifyRole(program.getPlatformId(), actor, StaffRole.MANAGER);
+        if (type == ProgramType.GROUP && enrollmentMode == null) {
+            throw new IllegalArgumentException("enrollmentMode is required for GROUP programs (FIXED or APPLICATION)");
+        }
+        program.update(type, enrollmentMode, capacity, durationMin, description);
+        actionLogRepository.save(ActionLog.of(program.getPlatformId(), actor.getId(), ActionTarget.PROGRAM_CHANGE, program.getId(), "UPDATE", null));
         return program;
     }
 
@@ -137,13 +157,14 @@ public class ProgramService {
     }
 
     @Transactional
-    // 개인/반개인(PRIVATE/SEMIPRIVATE) 슬롯 전용 — GROUP은 매주 신청(Reservation)으로 처리하므로 고정
-    // 로스터를 쓰지 않는다. 정원(capacity)을 넘길 수 없고, 이미 등록된 사람은 중복 등록할 수 없다.
+    // 고정형(PRIVATE, 또는 GROUP+FIXED) 슬롯 전용 — 신청형(GROUP+APPLICATION)은 매주 신청(Reservation)
+    // 으로 처리하므로 고정 로스터를 쓰지 않는다. 정원(capacity)을 넘길 수 없고, 이미 등록된 사람은
+    // 중복 등록할 수 없다.
     public SlotMember addSlotMember(UUID programId, UUID slotId, AuthenticatedUser actor, UUID userId, UUID userPassId) {
         Program program = findProgram(programId);
         platformAccessGuard.verifyRole(program.getPlatformId(), actor, StaffRole.MANAGER);
-        if (program.getType() == ProgramType.GROUP) {
-            throw new IllegalStateException("GROUP programs use weekly reservations, not a fixed roster");
+        if (!program.isFixedRoster()) {
+            throw new IllegalStateException("Application-mode GROUP programs use weekly reservations, not a fixed roster");
         }
         Slot slot = findSlot(slotId, programId);
         if (slotMemberRepository.existsBySlotIdAndUserIdAndIsActiveTrue(slotId, userId)) {

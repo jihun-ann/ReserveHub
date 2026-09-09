@@ -34,6 +34,11 @@ public class Program extends BaseEntity {
     @Column(nullable = false)
     private ProgramType type = ProgramType.GROUP;
 
+    // GROUP에서만 실제로 선택되는 값 — PRIVATE는 항상 FIXED로 취급한다(isFixedRoster() 참고).
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private EnrollmentMode enrollmentMode = EnrollmentMode.FIXED;
+
     @Column(nullable = false)
     private short capacity = 8;
 
@@ -51,22 +56,32 @@ public class Program extends BaseEntity {
     }
 
     public Program(
-            UUID platformId, String name, ProgramType type, short capacity, short durationMin,
+            UUID platformId, String name, ProgramType type, EnrollmentMode enrollmentMode, short capacity, short durationMin,
             @Nullable String description, @Nullable UUID passId
     ) {
+        this.platformId = platformId;
+        this.name = name;
+        this.passId = passId;
+        applyDetails(type, enrollmentMode, capacity, durationMin, description);
+    }
+
+    public void update(ProgramType type, @Nullable EnrollmentMode enrollmentMode, short capacity, short durationMin, @Nullable String description) {
+        applyDetails(type, enrollmentMode, capacity, durationMin, description);
+    }
+
+    private void applyDetails(ProgramType type, @Nullable EnrollmentMode enrollmentMode, short capacity, short durationMin, @Nullable String description) {
         if (capacity < 1) {
             throw new IllegalArgumentException("capacity must be at least 1");
         }
         if (durationMin <= 0) {
             throw new IllegalArgumentException("durationMin must be positive");
         }
-        this.platformId = platformId;
-        this.name = name;
         this.type = type;
+        // PRIVATE는 항상 고정 배정이라 선택의 여지가 없다 — GROUP일 때만 입력값을 그대로 쓴다.
+        this.enrollmentMode = type == ProgramType.PRIVATE ? EnrollmentMode.FIXED : enrollmentMode;
         this.capacity = capacity;
         this.durationMin = durationMin;
         this.description = description;
-        this.passId = passId;
     }
 
     public UUID getId() {
@@ -88,6 +103,16 @@ public class Program extends BaseEntity {
 
     public ProgramType getType() {
         return type;
+    }
+
+    public EnrollmentMode getEnrollmentMode() {
+        return enrollmentMode;
+    }
+
+    // 이 프로그램의 슬롯이 고정 로스터(SlotMember)를 쓰는지 — PRIVATE는 항상, GROUP은 FIXED로 설정된
+    // 경우만. false면 신청형(Reservation을 학생이 직접 매주 생성)이다.
+    public boolean isFixedRoster() {
+        return type == ProgramType.PRIVATE || enrollmentMode == EnrollmentMode.FIXED;
     }
 
     public short getCapacity() {

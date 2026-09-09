@@ -131,4 +131,14 @@ public class DiscountPolicy extends BaseEntity {
     public void deactivate() {
         this.isActive = false;
     }
+
+    public void update(String name, DiscountType type, BigDecimal rate, @Nullable Integer conditionValue) {
+        if (rate.signum() <= 0 || rate.compareTo(BigDecimal.valueOf(100)) > 0) {
+            throw new IllegalArgumentException("rate must be between 0 (exclusive) and 100");
+        }
+        this.name = name;
+        this.type = type;
+        this.rate = rate;
+        this.conditionValue = conditionValue;
+    }
 }

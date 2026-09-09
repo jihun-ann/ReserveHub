@@ -49,6 +49,18 @@ public class PassService {
     }
 
     @Transactional
+    public Pass update(
+            UUID passId, AuthenticatedUser actor, String name, PassType type,
+            int price, @Nullable Short sessionCount, short validDays
+    ) {
+        Pass pass = findPass(passId);
+        platformAccessGuard.verifyRole(pass.getPlatformId(), actor, StaffRole.MANAGER);
+        pass.update(name, type, price, sessionCount, validDays);
+        actionLogRepository.save(ActionLog.of(pass.getPlatformId(), actor.getId(), ActionTarget.PASS_CHANGE, pass.getId(), "UPDATE", null));
+        return pass;
+    }
+
+    @Transactional
     public void deactivate(UUID passId, AuthenticatedUser actor) {
         Pass pass = findPass(passId);
         platformAccessGuard.verifyRole(pass.getPlatformId(), actor, StaffRole.MANAGER);

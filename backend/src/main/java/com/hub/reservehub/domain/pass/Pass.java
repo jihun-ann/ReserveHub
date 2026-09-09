@@ -96,4 +96,18 @@ public class Pass extends BaseEntity {
     public void deactivate() {
         this.isActive = false;
     }
+
+    public void update(String name, PassType type, int price, @Nullable Short sessionCount, short validDays) {
+        if (price < 0) {
+            throw new IllegalArgumentException("price must not be negative");
+        }
+        if (validDays <= 0) {
+            throw new IllegalArgumentException("validDays must be positive");
+        }
+        this.name = name;
+        this.type = type;
+        this.price = price;
+        this.sessionCount = sessionCount;
+        this.validDays = validDays;
+    }
 }

@@ -109,23 +109,29 @@ COMMENT ON TABLE platform_tax_accountants IS '오너가 초대한 세무사의 �
 -- 3. 프로그램 / 슬롯 도메인
 -- ============================================================
 
-CREATE TYPE program_type AS ENUM ('GROUP', 'PRIVATE', 'SEMIPRIVATE');
+CREATE TYPE program_type AS ENUM ('GROUP', 'PRIVATE');
+
+-- GROUP에서만 실제로 의미 있는 선택 — 슬롯이 고정 로스터(FIXED)로 채워지는지, 매주 신청(APPLICATION)으로
+-- 채워지는지. PRIVATE는 이 값과 무관하게 항상 고정 배정으로 취급한다 (programs.enrollment_mode 참고).
+CREATE TYPE enrollment_mode AS ENUM ('FIXED', 'APPLICATION');
 
 CREATE TABLE programs (
-                          id              UUID            PRIMARY KEY DEFAULT uuid_generate_v4(),
-                          platform_id     UUID            NOT NULL REFERENCES platforms(id) ON DELETE CASCADE,
-                          name            VARCHAR(200)    NOT NULL,  -- 생성 시점 스냅샷. 조회는 pass_id로 join해서 최신 수강권명을 우선한다
-                          pass_id         UUID,  -- 이 프로그램을 구매하는 수강권. FK는 passes 테이블 정의 이후 ALTER TABLE로 추가(전방 참조 회피)
-                          type            program_type    NOT NULL DEFAULT 'GROUP',
-                          capacity        SMALLINT        NOT NULL DEFAULT 8 CHECK (capacity >= 1),
-                          duration_min    SMALLINT        NOT NULL DEFAULT 60 CHECK (duration_min > 0),
-                          description     TEXT,
-                          is_active       BOOLEAN         NOT NULL DEFAULT TRUE,
-                          created_at      TIMESTAMPTZ     NOT NULL DEFAULT NOW(),
-                          updated_at      TIMESTAMPTZ     NOT NULL DEFAULT NOW()
+                          id                UUID              PRIMARY KEY DEFAULT uuid_generate_v4(),
+                          platform_id       UUID              NOT NULL REFERENCES platforms(id) ON DELETE CASCADE,
+                          name              VARCHAR(200)      NOT NULL,  -- 생성 시점 스냅샷. 조회는 pass_id로 join해서 최신 수강권명을 우선한다
+                          pass_id           UUID,  -- 이 프로그램을 구매하는 수강권. FK는 passes 테이블 정의 이후 ALTER TABLE로 추가(전방 참조 회피)
+                          type              program_type      NOT NULL DEFAULT 'GROUP',
+                          enrollment_mode   enrollment_mode   NOT NULL DEFAULT 'FIXED',
+                          capacity          SMALLINT          NOT NULL DEFAULT 8 CHECK (capacity >= 1),
+                          duration_min      SMALLINT          NOT NULL DEFAULT 60 CHECK (duration_min > 0),
+                          description       TEXT,
+                          is_active         BOOLEAN           NOT NULL DEFAULT TRUE,
+                          created_at        TIMESTAMPTZ       NOT NULL DEFAULT NOW(),
+                          updated_at        TIMESTAMPTZ       NOT NULL DEFAULT NOW()
 );
 
-COMMENT ON TABLE programs IS '수업 유형 카탈로그(그룹/개인/반개인). 명칭은 연결된 수강권(pass_id) 이름을 따른다';
+COMMENT ON TABLE  programs                 IS '수업 유형 카탈로그(그룹/개인). 명칭은 연결된 수강권(pass_id) 이름을 따른다';
+COMMENT ON COLUMN programs.enrollment_mode IS 'GROUP일 때만 의미 있음: FIXED(고정 로스터)/APPLICATION(매주 신청). PRIVATE는 항상 고정 배정';
 
 
 -- 정기 슬롯 (요일·시간 기반 반복 일정)
@@ -150,8 +156,8 @@ COMMENT ON TABLE  slots             IS '정기 슬롯. valid_from~valid_until �
 COMMENT ON COLUMN slots.valid_until IS 'NULL이면 종료일 없음';
 
 
--- 고정 로스터 (PRIVATE/SEMIPRIVATE 슬롯 전용) — 등록해두면 매주 신청 없이 Lesson 생성 시
--- reservations가 이 사람 몫으로 자동 생성된다. GROUP(신청형) 슬롯은 이 테이블을 쓰지 않는다.
+-- 고정 로스터 (PRIVATE, 또는 GROUP+FIXED 슬롯 전용) — 등록해두면 매주 신청 없이 Lesson 생성 시
+-- reservations가 이 사람 몫으로 자동 생성된다. GROUP+APPLICATION(신청형) 슬롯은 이 테이블을 쓰지 않는다.
 CREATE TABLE slot_members (
                                id              UUID        PRIMARY KEY DEFAULT uuid_generate_v4(),
                                slot_id         UUID        NOT NULL REFERENCES slots(id),
@@ -161,7 +167,7 @@ CREATE TABLE slot_members (
                                created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-COMMENT ON TABLE slot_members IS '개인/반개인 슬롯의 고정 배정 로스터. 멤버는 이후에도 추가/제외될 수 있음';
+COMMENT ON TABLE slot_members IS '개인 또는 고정형 그룹 슬롯의 고정 배정 로스터. 멤버는 이후에도 추가/제외될 수 있음';
 
 
 -- ============================================================
@@ -434,7 +440,8 @@ CREATE TYPE action_target AS ENUM (
     'PROGRAM_CHANGE',     -- 프로그램/슬롯 등록·중단
     'PASS_CHANGE',        -- 수강권 등록·중단
     'DISCOUNT_CHANGE',    -- 할인 정책 등록·중단
-    'FINANCIAL_REQUEST'   -- 세무사가 등록한 재무 일정 승인/반려
+    'FINANCIAL_REQUEST',  -- 세무사가 등록한 재무 일정 승인/반려
+    'FACILITY_CHANGE'     -- 시설물 등록/예약/고장신고/보수처리
 );
 
 CREATE TABLE action_logs (
@@ -502,6 +509,62 @@ CREATE TABLE calendar_events (
 
 COMMENT ON TABLE  calendar_events            IS '캘린더 이벤트. platform_id가 NULL이면 전 플랫폼 공통';
 COMMENT ON COLUMN calendar_events.event_type IS 'HQ_NOTICE는 오너만 생성 가능 (앱 레이어 검증)';
+
+
+-- ============================================================
+-- 7-1. 시설물(연습실 등) 도메인
+-- ============================================================
+
+-- 오너가 등록하는 예약 가능 시설물 (예: "2층 연습실", "3층 연습실")
+CREATE TABLE facilities (
+                            id              UUID        PRIMARY KEY DEFAULT uuid_generate_v4(),
+                            platform_id     UUID        NOT NULL REFERENCES platforms(id) ON DELETE CASCADE,
+                            name            VARCHAR(200) NOT NULL,
+                            description     TEXT,
+                            is_active       BOOLEAN     NOT NULL DEFAULT TRUE,
+                            created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                            updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+COMMENT ON TABLE facilities IS '오너가 관리하는 예약 가능 시설물 카탈로그';
+
+CREATE TYPE facility_booking_status AS ENUM ('CONFIRMED', 'CANCELLED');
+
+-- 시설물의 시간대별 예약 — 같은 시설물+날짜에 시간이 겹치는 CONFIRMED 예약은 앱 레이어에서 차단한다.
+CREATE TABLE facility_bookings (
+                                    id              UUID                     PRIMARY KEY DEFAULT uuid_generate_v4(),
+                                    facility_id     UUID                     NOT NULL REFERENCES facilities(id),
+                                    platform_id     UUID                     NOT NULL REFERENCES platforms(id),
+                                    user_id         UUID                     NOT NULL REFERENCES users(id),
+                                    booking_date    DATE                     NOT NULL,
+                                    start_time      TIME                     NOT NULL,
+                                    end_time        TIME                     NOT NULL,
+                                    purpose         TEXT,
+                                    status          facility_booking_status  NOT NULL DEFAULT 'CONFIRMED',
+                                    cancelled_at    TIMESTAMPTZ,
+                                    created_at      TIMESTAMPTZ              NOT NULL DEFAULT NOW(),
+                                    CONSTRAINT chk_facility_booking_time CHECK (end_time > start_time)
+);
+
+COMMENT ON TABLE facility_bookings IS '시설물 시간대별 예약 (연습실 등)';
+
+CREATE TYPE facility_issue_status AS ENUM ('OPEN', 'IN_PROGRESS', 'RESOLVED');
+
+-- 시설물 고장/이상 신고 — 누구나 등록, 매니저 이상만 상태 변경(보수 처리)
+CREATE TABLE facility_issues (
+                                  id                UUID                    PRIMARY KEY DEFAULT uuid_generate_v4(),
+                                  facility_id       UUID                    NOT NULL REFERENCES facilities(id),
+                                  platform_id       UUID                    NOT NULL REFERENCES platforms(id),
+                                  reported_by       UUID                    NOT NULL REFERENCES users(id),
+                                  description       TEXT                    NOT NULL,
+                                  status            facility_issue_status   NOT NULL DEFAULT 'OPEN',
+                                  resolved_by       UUID                    REFERENCES users(id),
+                                  resolved_at       TIMESTAMPTZ,
+                                  resolution_memo   TEXT,
+                                  created_at        TIMESTAMPTZ             NOT NULL DEFAULT NOW()
+);
+
+COMMENT ON TABLE facility_issues IS '시설물 고장/이상 신고 및 보수 처리 이력';
 
 
 -- ============================================================

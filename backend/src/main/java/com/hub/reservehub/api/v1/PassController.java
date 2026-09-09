@@ -16,6 +16,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -50,6 +51,15 @@ public class PassController {
     @GetMapping("/api/v1/passes/{id}")
     public PassResponse getPass(@PathVariable UUID id) {
         return PassResponse.from(passService.get(id));
+    }
+
+    @PatchMapping("/api/v1/passes/{id}")
+    public PassResponse updatePass(@PathVariable UUID id, @Valid @RequestBody CreatePassRequest request) {
+        Pass pass = passService.update(
+                id, currentAuthenticatedUser.get(), request.name(), request.type(),
+                request.price(), request.sessionCount(), request.validDays()
+        );
+        return PassResponse.from(pass);
     }
 
     @DeleteMapping("/api/v1/passes/{id}")

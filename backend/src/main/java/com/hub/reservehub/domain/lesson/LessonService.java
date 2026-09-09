@@ -5,7 +5,6 @@ import com.hub.reservehub.domain.pass.UserPassRepository;
 import com.hub.reservehub.domain.platform.PlatformAccessGuard;
 import com.hub.reservehub.domain.program.Program;
 import com.hub.reservehub.domain.program.ProgramRepository;
-import com.hub.reservehub.domain.program.ProgramType;
 import com.hub.reservehub.domain.program.Slot;
 import com.hub.reservehub.domain.program.SlotMember;
 import com.hub.reservehub.domain.program.SlotMemberRepository;
@@ -56,9 +55,9 @@ public class LessonService {
     }
 
     @Transactional
-    // PRIVATE/SEMIPRIVATE(고정 로스터) 슬롯이면, 이 로스터에 등록된 사람들 몫의 Reservation을 이 날짜로
+    // 고정형(PRIVATE, 또는 GROUP+FIXED) 슬롯이면, 이 로스터에 등록된 사람들 몫의 Reservation을 이 날짜로
     // 자동 생성한다 — 매주 신청할 필요 없이 출석/세션차감 파이프라인(Attendance→UserPass.useSession)을
-    // 그대로 탄다. GROUP(신청형)은 그대로 사용자가 직접 신청한 Reservation만 존재한다.
+    // 그대로 탄다. 신청형(GROUP+APPLICATION)은 그대로 사용자가 직접 신청한 Reservation만 존재한다.
     public Lesson create(UUID slotId, AuthenticatedUser actor, LocalDate lessonDate) {
         Slot slot = slotRepository.findById(slotId)
                 .orElseThrow(() -> new IllegalArgumentException("Slot not found"));
@@ -71,7 +70,7 @@ public class LessonService {
         }
         Lesson lesson = lessonRepository.save(new Lesson(slotId, slot.getInstructorId(), program.getPlatformId(), program.getId(), lessonDate));
 
-        if (program.getType() != ProgramType.GROUP) {
+        if (program.isFixedRoster()) {
             for (SlotMember member : slotMemberRepository.findBySlotIdAndIsActiveTrue(slotId)) {
                 if (!reservationRepository.existsByUserIdAndSlotIdAndScheduledDate(member.getUserId(), slotId, lessonDate)) {
                     reservationRepository.save(new Reservation(member.getUserId(), slotId, member.getUserPassId(), lessonDate));

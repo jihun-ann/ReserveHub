@@ -1,6 +1,7 @@
 package com.hub.reservehub.api.v1;
 
 import com.hub.reservehub.domain.program.DayOfWeek;
+import com.hub.reservehub.domain.program.EnrollmentMode;
 import com.hub.reservehub.domain.program.Program;
 import com.hub.reservehub.domain.program.ProgramService;
 import com.hub.reservehub.domain.program.ProgramType;
@@ -18,6 +19,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -40,7 +42,7 @@ public class ProgramController {
             @PathVariable UUID platformId, @Valid @RequestBody CreateProgramRequest request
     ) {
         Program program = programService.create(
-                platformId, currentAuthenticatedUser.get(), request.passId(), request.type(),
+                platformId, currentAuthenticatedUser.get(), request.passId(), request.type(), request.enrollmentMode(),
                 request.capacity(), request.durationMin(), request.description()
         );
         return ResponseEntity.status(HttpStatus.CREATED).body(ProgramResponse.from(programService.get(program.getId())));
@@ -55,6 +57,15 @@ public class ProgramController {
 
     @GetMapping("/api/v1/programs/{id}")
     public ProgramResponse getProgram(@PathVariable UUID id) {
+        return ProgramResponse.from(programService.get(id));
+    }
+
+    @PatchMapping("/api/v1/programs/{id}")
+    public ProgramResponse updateProgram(@PathVariable UUID id, @Valid @RequestBody UpdateProgramRequest request) {
+        programService.update(
+                id, currentAuthenticatedUser.get(), request.type(), request.enrollmentMode(),
+                request.capacity(), request.durationMin(), request.description()
+        );
         return ProgramResponse.from(programService.get(id));
     }
 
@@ -96,6 +107,16 @@ public class ProgramController {
     public record CreateProgramRequest(
             @NotNull UUID passId,
             @NotNull ProgramType type,
+            EnrollmentMode enrollmentMode,
+            @Positive short capacity,
+            @Positive short durationMin,
+            String description
+    ) {
+    }
+
+    public record UpdateProgramRequest(
+            @NotNull ProgramType type,
+            EnrollmentMode enrollmentMode,
             @Positive short capacity,
             @Positive short durationMin,
             String description
@@ -114,14 +135,14 @@ public class ProgramController {
     }
 
     public record ProgramResponse(
-            UUID id, UUID platformId, UUID passId, String name, ProgramType type,
+            UUID id, UUID platformId, UUID passId, String name, ProgramType type, EnrollmentMode enrollmentMode,
             short capacity, short durationMin, String description, boolean isActive
     ) {
         public static ProgramResponse from(ProgramService.ProgramView view) {
             Program program = view.program();
             return new ProgramResponse(
                     program.getId(), program.getPlatformId(), program.getPassId(), view.displayName(), program.getType(),
-                    program.getCapacity(), program.getDurationMin(), program.getDescription(), program.isActive()
+                    program.getEnrollmentMode(), program.getCapacity(), program.getDurationMin(), program.getDescription(), program.isActive()
             );
         }
     }

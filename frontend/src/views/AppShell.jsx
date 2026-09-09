@@ -44,6 +44,10 @@ import TaxAccountantCalendarView from "./taxaccountant/TaxAccountantCalendarView
 import TaxAccountantMypageView from "./taxaccountant/TaxAccountantMypageView.jsx";
 
 import ManagerActivityLogView from "./manager/ManagerActivityLogView.jsx";
+import ManagerFacilityView from "./manager/ManagerFacilityView.jsx";
+import OwnerFacilityView from "./owner/OwnerFacilityView.jsx";
+import UserFacilityBookingView from "./user/UserFacilityBookingView.jsx";
+import TutorFacilityReportView from "./tutor/TutorFacilityReportView.jsx";
 
 // 우선순위: 플랫폼 진입 시 기본으로 강조할 역할 하나를 고르는 순서(스태프 성격이 강한 순)이자,
 // 메뉴 섹션을 나열하는 순서이기도 하다.
@@ -84,6 +88,8 @@ const ROLE_MENU = {
 	OWNER: [
 		{ id: "dashboard", label: "대시보드", icon: "📊" },
 		{ id: "platform", label: "플랫폼 관리", icon: "🏢" },
+		{ id: "facility", label: "시설물 관리", icon: "🏗" },
+		{ id: "facilityStatus", label: "시설물 현황", icon: "🧾" },
 		{ id: "approval", label: "승인 관리", icon: "✅" }
 	],
 	MANAGER: [
@@ -92,6 +98,7 @@ const ROLE_MENU = {
 		{ id: "members", label: "회원 관리", icon: "👥" },
 		{ id: "tutor", label: "강사 관리", icon: "🧑‍🏫" },
 		{ id: "lessonManage", label: "수업 관리", icon: "📌" },
+		{ id: "facilityStatus", label: "시설물 현황", icon: "🏗" },
 		{ id: "payment", label: "수강권 / 결제", icon: "💳" },
 		{ id: "paymentHistory", label: "결제 이력", icon: "🧾" },
 		{ id: "calc", label: "상담 계산툴", icon: "🧮" },
@@ -101,9 +108,13 @@ const ROLE_MENU = {
 	TUTOR: [
 		{ id: "attendance", label: "출석 관리", icon: "✅" },
 		{ id: "attendHistory", label: "출석 이력", icon: "📋" },
-		{ id: "schedule", label: "일정 변경 요청", icon: "📋" }
+		{ id: "schedule", label: "일정 변경 요청", icon: "📋" },
+		{ id: "facilityReport", label: "시설물 고장 신고", icon: "🏗" }
 	],
-	USER: [{ id: "reservation", label: "예약하기", icon: "🎯" }],
+	USER: [
+		{ id: "reservation", label: "예약하기", icon: "🎯" },
+		{ id: "facility", label: "시설물 예약", icon: "🏗" }
+	],
 	TAX_ACCOUNTANT: [
 		{ id: "revenue", label: "매출 집계", icon: "💰" },
 		{ id: "payroll", label: "직원 정보", icon: "🧾" },
@@ -588,6 +599,10 @@ export default function AppShell() {
 							onPlatformsChanged={refreshPlatforms}
 						/>
 					);
+				case "facility":
+					return <OwnerFacilityView platformId={currentPlatformId} />;
+				case "facilityStatus":
+					return <ManagerFacilityView platformId={currentPlatformId} />;
 				case "approval":
 					return <OwnerApprovalView requests={ownerRequests} onDecided={refreshOwnerRequests} />;
 				default:
@@ -617,6 +632,8 @@ export default function AppShell() {
 					return <ManagerPaymentHistoryView platformId={currentPlatformId} />;
 				case "lessonManage":
 					return <ManagerLessonManageView platformId={currentPlatformId} />;
+				case "facilityStatus":
+					return <ManagerFacilityView platformId={currentPlatformId} />;
 				case "calc":
 					return (
 						<ManagerCalculationView
@@ -641,6 +658,8 @@ export default function AppShell() {
 					return <TutorAttendanceHistoryView platformId={currentPlatformId} />;
 				case "schedule":
 					return <TutorScheduleRequestView platformId={currentPlatformId} />;
+				case "facilityReport":
+					return <TutorFacilityReportView platformId={currentPlatformId} />;
 				default:
 					return null;
 			}
@@ -666,6 +685,8 @@ export default function AppShell() {
 		switch (currentContext) {
 			case "reservation":
 				return <UserReservationView />;
+			case "facility":
+				return <UserFacilityBookingView platformId={currentPlatformId} />;
 			default:
 				return null;
 		}

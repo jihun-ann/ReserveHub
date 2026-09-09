@@ -4,14 +4,14 @@ import {
 	BUSINESS_TYPES,
 	businessTypeLabel,
 	createPlatform,
-	createProgram,
 	grantTaxAccountant,
 	hexAlpha,
 	INCOME_TYPE_LABEL,
 	listActionLogs,
-	listPasses,
 	listPrograms,
 	listStaff,
+	PROGRAM_TYPE_LABEL,
+	ENROLLMENT_MODE_LABEL,
 	listTaxAccountants,
 	revokeTaxAccountant,
 	setPlatformSuspended,
@@ -47,7 +47,6 @@ const TARGET_LABEL = {
 const NOT_CONNECTED_TABS = { members: true, billing: true, stats: true };
 
 const EMPTY_FORM = { name: "", businessType: "PILATES", phone: "", address: "", description: "" };
-const EMPTY_PROGRAM = { passId: "", type: "GROUP", capacity: 8, durationMin: 60, description: "" };
 const EMPTY_TAX_FORM = { username: "", email: "", password: "", name: "", phone: "" };
 
 export default function OwnerPlatformView({ platforms, currentPlatformId, onSelectPlatform, onPlatformsChanged }) {
@@ -57,9 +56,6 @@ export default function OwnerPlatformView({ platforms, currentPlatformId, onSele
 	const [saving, setSaving] = useState(false);
 
 	const [programs, setPrograms] = useState([]);
-	const [passes, setPasses] = useState([]);
-	const [showProgramForm, setShowProgramForm] = useState(false);
-	const [programForm, setProgramForm] = useState(EMPTY_PROGRAM);
 
 	const [staff, setStaff] = useState([]);
 
@@ -94,7 +90,6 @@ export default function OwnerPlatformView({ platforms, currentPlatformId, onSele
 	useEffect(() => {
 		if (!plat) return;
 		listPrograms(plat.id).then(setPrograms).catch(() => setPrograms([]));
-		listPasses(plat.id).then(setPasses).catch(() => setPasses([]));
 		refreshStaff(plat.id);
 		refreshTaxAccountants(plat.id);
 		listActionLogs(plat.id).then(setActivityLogs).catch(() => setActivityLogs([]));
@@ -178,22 +173,6 @@ export default function OwnerPlatformView({ platforms, currentPlatformId, onSele
 			await onPlatformsChanged();
 		} catch (err) {
 			alert(err.message || "상태 변경에 실패했습니다.");
-		}
-	}
-
-	async function submitProgram(e) {
-		e.preventDefault();
-		if (!programForm.passId) return;
-		setSaving(true);
-		try {
-			await createProgram(plat.id, programForm);
-			setProgramForm(EMPTY_PROGRAM);
-			setShowProgramForm(false);
-			setPrograms(await listPrograms(plat.id));
-		} catch (err) {
-			alert(err.message || "프로그램 생성에 실패했습니다.");
-		} finally {
-			setSaving(false);
 		}
 	}
 
@@ -297,39 +276,9 @@ export default function OwnerPlatformView({ platforms, currentPlatformId, onSele
 
 							{activeTab === "programs" && (
 								<div>
-									<div style={{ display: "flex", justifyContent: "flex-end", marginBottom: "14px" }}>
-										<button className="btn btn-primary btn-sm" onClick={() => setShowProgramForm((v) => !v)}>+ 프로그램 추가</button>
+									<div style={{ fontSize: "12px", color: "var(--text-dim)", marginBottom: "14px" }}>
+										수업 종류는 매니저의 "수강권/결제" 메뉴에서 수강권과 함께 등록합니다. 여기서는 조회만 가능합니다.
 									</div>
-									{showProgramForm && (
-										<form onSubmit={submitProgram} style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px", marginBottom: "16px" }}>
-											<div className="form-field">
-												<label>수강권</label>
-												<select required value={programForm.passId} onChange={(e) => setProgramForm({ ...programForm, passId: e.target.value })}>
-													<option value="">선택하세요</option>
-													{passes.filter((p) => p.isActive).map((p) => (
-														<option key={p.id} value={p.id}>{p.name} ({p.price.toLocaleString()}원)</option>
-													))}
-												</select>
-												{passes.length === 0 && (
-													<div style={{ fontSize: "11px", color: "var(--text-dim)", marginTop: "4px" }}>
-														등록된 수강권이 없습니다. 매니저의 "수강권/결제" 메뉴에서 먼저 만들어주세요.
-													</div>
-												)}
-											</div>
-											<div className="form-field">
-												<label>유형</label>
-												<select value={programForm.type} onChange={(e) => setProgramForm({ ...programForm, type: e.target.value })}>
-													<option value="GROUP">그룹레슨</option>
-													<option value="PRIVATE">개인레슨</option>
-													<option value="SEMIPRIVATE">반개인레슨</option>
-												</select>
-											</div>
-											<div className="form-field"><label>정원</label><input type="number" min="1" required value={programForm.capacity} onChange={(e) => setProgramForm({ ...programForm, capacity: Number(e.target.value) })} /></div>
-											<div className="form-field"><label>시간(분)</label><input type="number" min="1" required value={programForm.durationMin} onChange={(e) => setProgramForm({ ...programForm, durationMin: Number(e.target.value) })} /></div>
-											<div className="form-field" style={{ gridColumn: "1/-1" }}><label>설명</label><textarea value={programForm.description} onChange={(e) => setProgramForm({ ...programForm, description: e.target.value })} /></div>
-											<button className="btn btn-primary btn-sm" style={{ gridColumn: "1/-1" }} type="submit" disabled={saving}>{saving ? "생성 중..." : "저장"}</button>
-										</form>
-									)}
 									<div style={{ overflowX: "auto" }}>
 										<table className="data-table">
 											<thead><tr><th>프로그램명</th><th>유형</th><th>정원</th><th>시간</th><th>상태</th></tr></thead>
@@ -337,7 +286,12 @@ export default function OwnerPlatformView({ platforms, currentPlatformId, onSele
 											{programs.map((pr) => (
 												<tr key={pr.id}>
 													<td style={{ fontWeight: 600 }}>{pr.name}</td>
-													<td><span className="plat-chip" style={{ background: "var(--surface2)", color: "var(--text-sub)", borderColor: "var(--border)" }}>{pr.type}</span></td>
+													<td>
+														<span className="plat-chip" style={{ background: "var(--surface2)", color: "var(--text-sub)", borderColor: "var(--border)" }}>
+															{PROGRAM_TYPE_LABEL[pr.type] || pr.type}
+															{pr.type === "GROUP" && ` · ${ENROLLMENT_MODE_LABEL[pr.enrollmentMode] || pr.enrollmentMode}`}
+														</span>
+													</td>
 													<td>{pr.capacity}명</td>
 													<td>{pr.durationMin}분</td>
 													<td><span className={`plat-status ${pr.isActive ? "ps-active" : "ps-expired"}`} style={{ fontSize: "10px" }}>{pr.isActive ? "운영" : "중단"}</span></td>

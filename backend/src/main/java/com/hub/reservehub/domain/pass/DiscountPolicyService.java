@@ -52,6 +52,17 @@ public class DiscountPolicyService {
     }
 
     @Transactional
+    public DiscountPolicy update(
+            UUID policyId, AuthenticatedUser actor, String name, DiscountType type, BigDecimal rate, @Nullable Integer conditionValue
+    ) {
+        DiscountPolicy policy = findPolicy(policyId);
+        platformAccessGuard.verifyRole(policy.getPlatformId(), actor, StaffRole.MANAGER);
+        policy.update(name, type, rate, conditionValue);
+        actionLogRepository.save(ActionLog.of(policy.getPlatformId(), actor.getId(), ActionTarget.DISCOUNT_CHANGE, policy.getId(), "UPDATE", null));
+        return policy;
+    }
+
+    @Transactional
     public void deactivate(UUID policyId, AuthenticatedUser actor) {
         DiscountPolicy policy = findPolicy(policyId);
         platformAccessGuard.verifyRole(policy.getPlatformId(), actor, StaffRole.MANAGER);

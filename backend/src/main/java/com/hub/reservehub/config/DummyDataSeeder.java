@@ -12,6 +12,7 @@ import com.hub.reservehub.domain.platform.PlatformService;
 import com.hub.reservehub.domain.platform.StaffRole;
 import com.hub.reservehub.domain.platform.TaxAccountantService;
 import com.hub.reservehub.domain.program.DayOfWeek;
+import com.hub.reservehub.domain.program.EnrollmentMode;
 import com.hub.reservehub.domain.program.Program;
 import com.hub.reservehub.domain.program.ProgramService;
 import com.hub.reservehub.domain.program.ProgramType;
@@ -332,7 +333,7 @@ public class DummyDataSeeder implements CommandLineRunner {
             DayOfWeek dayOfWeek, UUID tutorId, List<User> members
     ) {
         Program program = programService.create(
-                platformId, ownerPrincipal, passId, ProgramType.GROUP, (short) 8, (short) 60, null
+                platformId, ownerPrincipal, passId, ProgramType.GROUP, EnrollmentMode.APPLICATION, (short) 8, (short) 60, null
         );
         Slot slot = programService.addSlot(
                 program.getId(), ownerPrincipal, slotName, tutorId, dayOfWeek,

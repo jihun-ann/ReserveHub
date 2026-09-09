@@ -95,6 +95,8 @@ export const listPrograms = (platformId) => apiGet(`/api/v1/platforms/${platform
 
 export const createProgram = (platformId, payload) => apiPost(`/api/v1/platforms/${platformId}/programs`, payload);
 
+export const updateProgram = (id, payload) => apiPatch(`/api/v1/programs/${id}`, payload);
+
 export const DAY_OF_WEEK_LABEL = { MON: "월", TUE: "화", WED: "수", THU: "목", FRI: "금", SAT: "토", SUN: "일" };
 
 export const addProgramSlot = (programId, payload) => apiPost(`/api/v1/programs/${programId}/slots`, payload);
@@ -153,6 +155,8 @@ export const listPasses = (platformId) => apiGet(`/api/v1/platforms/${platformId
 
 export const createPass = (platformId, payload) => apiPost(`/api/v1/platforms/${platformId}/passes`, payload);
 
+export const updatePass = (id, payload) => apiPatch(`/api/v1/passes/${id}`, payload);
+
 export const deactivatePass = (id) => apiDelete(`/api/v1/passes/${id}`);
 
 export const DISCOUNT_TYPES = [
@@ -167,6 +171,8 @@ export const listDiscountPolicies = (platformId) => apiGet(`/api/v1/platforms/${
 
 export const createDiscountPolicy = (platformId, payload) =>
 	apiPost(`/api/v1/platforms/${platformId}/discount-policies`, payload);
+
+export const updateDiscountPolicy = (id, payload) => apiPatch(`/api/v1/discount-policies/${id}`, payload);
 
 export const deactivateDiscountPolicy = (id) => apiDelete(`/api/v1/discount-policies/${id}`);
 
@@ -198,7 +204,8 @@ export const getRevenueRecords = (platformId, year, month, includeTax = true) =>
 export const getRevenueSummary = (platformId, year, month, includeTax = true) =>
 	apiGet(`/api/v1/platforms/${platformId}/revenue/summary?year=${year}&month=${month}&includeTax=${includeTax}`);
 
-export const PROGRAM_TYPE_LABEL = { GROUP: "그룹 레슨", PRIVATE: "개인 레슨", SEMIPRIVATE: "소그룹 레슨" };
+export const PROGRAM_TYPE_LABEL = { GROUP: "그룹반", PRIVATE: "개인수업" };
+export const ENROLLMENT_MODE_LABEL = { FIXED: "고정형", APPLICATION: "신청형" };
 
 export const listLessonHistory = (platformId, from, to) =>
 	apiGet(`/api/v1/platforms/${platformId}/lessons?from=${from}&to=${to}`);
@@ -213,6 +220,35 @@ export const recordAttendance = (lessonId, userId, status) =>
 export const startLesson = (lessonId) => apiPost(`/api/v1/lessons/${lessonId}/start`);
 
 export const endLesson = (lessonId) => apiPost(`/api/v1/lessons/${lessonId}/end`);
+
+export const FACILITY_ISSUE_STATUS_LABEL = { OPEN: "접수됨", IN_PROGRESS: "보수 중", RESOLVED: "보수 완료" };
+
+export const createFacility = (platformId, payload) => apiPost(`/api/v1/platforms/${platformId}/facilities`, payload);
+
+export const listFacilities = (platformId) => apiGet(`/api/v1/platforms/${platformId}/facilities`);
+
+export const updateFacility = (id, payload) => apiPatch(`/api/v1/facilities/${id}`, payload);
+
+export const deactivateFacility = (id) => apiDelete(`/api/v1/facilities/${id}`);
+
+export const bookFacility = (facilityId, payload) => apiPost(`/api/v1/facilities/${facilityId}/bookings`, payload);
+
+export const listFacilityBookingsForPlatform = (platformId, date) =>
+	apiGet(`/api/v1/platforms/${platformId}/facility-bookings?date=${date}`);
+
+export const listMyFacilityBookings = () => apiGet("/api/v1/facility-bookings/mine");
+
+export const cancelFacilityBooking = (id) => apiPost(`/api/v1/facility-bookings/${id}/cancel`);
+
+export const reportFacilityIssue = (facilityId, description) =>
+	apiPost(`/api/v1/facilities/${facilityId}/issues`, { description });
+
+export const listFacilityIssues = (platformId) => apiGet(`/api/v1/platforms/${platformId}/facility-issues`);
+
+export const markFacilityIssueInProgress = (id) => apiPost(`/api/v1/facility-issues/${id}/in-progress`);
+
+export const resolveFacilityIssue = (id, resolutionMemo) =>
+	apiPost(`/api/v1/facility-issues/${id}/resolve`, resolutionMemo ? { resolutionMemo } : undefined);
 
 export const listMyScheduleRequests = () => apiGet("/api/v1/schedule-requests/me");
 

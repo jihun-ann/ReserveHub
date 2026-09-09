@@ -18,7 +18,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * PRIVATE/SEMIPRIVATE 슬롯의 고정 로스터 관리 — 매니저가 학생을 미리 등록해두면 매주 신청 없이
+ * 고정형(PRIVATE, 또는 GROUP+FIXED) 슬롯의 고정 로스터 관리 — 매니저가 학생을 미리 등록해두면 매주 신청 없이
  * Lesson 생성 시 Reservation이 자동으로 잡힌다 (LessonService.create 참고).
  */
 @RestController

@@ -8,8 +8,8 @@ import java.time.Instant;
 import java.util.UUID;
 
 /**
- * 고정 배정 로스터 — PRIVATE/SEMIPRIVATE 슬롯에 미리 등록해두는 수강생 목록.
- * GROUP(신청형) 슬롯은 이 테이블을 쓰지 않고 매주 Reservation을 직접 신청한다.
+ * 고정 배정 로스터 — 고정형(PRIVATE, 또는 GROUP+FIXED) 슬롯에 미리 등록해두는 수강생 목록.
+ * 신청형(GROUP+APPLICATION) 슬롯은 이 테이블을 쓰지 않고 매주 Reservation을 직접 신청한다.
  * 등록되어 있으면 Lesson이 생성될 때마다 이 사람 몫의 Reservation이 자동 생성된다(신청 불필요).
  */
 @Entity
