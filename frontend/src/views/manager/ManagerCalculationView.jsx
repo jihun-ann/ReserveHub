@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { Copy, Wallet } from "lucide-react";
 import { listPasses, listDiscountPolicies } from "../../api/common.js";
 
 function fmt(n) {
@@ -124,7 +125,7 @@ export default function ManagerCalculationView({ platformId, platformName }) {
 				<div className="page-subtitle">수강권을 선택하고 할인을 적용해 최종 견적을 계산하세요</div>
 			</div>
 
-			<div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "20px", alignItems: "start" }}>
+			<div className="grid-2col-even" style={{ gap: "20px" }}>
 				<div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
 					<div className="card">
 						<div className="card-title" style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
@@ -200,7 +201,7 @@ export default function ManagerCalculationView({ platformId, platformName }) {
 				<div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
 					<div className="card">
 						<div className="card-title" style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-							<span>💰 견적서</span>
+							<span style={{ display: "flex", alignItems: "center", gap: "6px" }}><Wallet size={15} strokeWidth={1.75} /> 견적서</span>
 							<span style={{ fontFamily: "'DM Mono',monospace", fontSize: "10px", color: "var(--text-dim)" }}>{timestamp()}</span>
 						</div>
 						<div style={{ fontSize: "11px", color: "var(--text-sub)", marginBottom: "6px", letterSpacing: ".5px" }}>수강권</div>
@@ -250,7 +251,7 @@ export default function ManagerCalculationView({ platformId, platformName }) {
 						></textarea>
 						{toast && <div style={{ fontSize: "12px", color: "var(--green)", marginTop: "6px" }}>{toast}</div>}
 						<div style={{ display: "flex", gap: "8px", marginTop: "10px" }}>
-							<button className="btn btn-primary" style={{ flex: "1", background: "var(--manager)", color: "#fff" }} onClick={copyQuote}>📋 복사해서 전송</button>
+							<button className="btn btn-primary" style={{ flex: "1", display: "flex", alignItems: "center", justifyContent: "center", gap: "6px" }} onClick={copyQuote}><Copy size={15} strokeWidth={1.75} /> 복사해서 전송</button>
 							<button className="btn btn-ghost" onClick={reset}>초기화</button>
 						</div>
 					</div>

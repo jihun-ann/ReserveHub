@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { Palmtree } from "lucide-react";
 import {
 	listAllScheduleRequests,
 	approveScheduleRequest,
@@ -15,6 +16,7 @@ import {
 	listStaff
 } from "../../api/common.js";
 import { getCurrentUser } from "../../api/http.js";
+import { openModal, closeModal } from "../default.js";
 import FinancialRequestThread from "../../components/FinancialRequestThread.jsx";
 import ApprovalRequestsTable from "../../components/ApprovalRequestsTable.jsx";
 
@@ -78,15 +80,21 @@ export default function ManagerApprovalView({ platformId }) {
 		refresh();
 	}, [refresh]);
 
+	function openLeaveModal() {
+		setLeaveStart("");
+		setLeaveEnd("");
+		setLeaveReason("");
+		setLeaveError("");
+		openModal("managerLeaveRequestModal");
+	}
+
 	async function submitLeave() {
 		setLeaveError("");
 		if (!leaveStart || !leaveEnd) return;
 		setLeaveSubmitting(true);
 		try {
 			await createLeaveRequest(platformId, { startDate: leaveStart, endDate: leaveEnd, reason: leaveReason.trim() || null });
-			setLeaveStart("");
-			setLeaveEnd("");
-			setLeaveReason("");
+			closeModal("managerLeaveRequestModal");
 			await refresh();
 		} catch (err) {
 			setLeaveError(err.message || "요청 제출에 실패했습니다.");
@@ -154,6 +162,7 @@ export default function ManagerApprovalView({ platformId }) {
 		const r = merged.find((x) => `${x.kind}-${x.id}` === rowId);
 		if (!r) return null;
 		const st = STATUS_LABEL[r.status];
+		const statusColor = r.status === "APPROVED" ? "var(--green)" : r.status === "REJECTED" ? "var(--red)" : "var(--text-dim)";
 		const isFinancial = r.kind === "FINANCIAL";
 		const isLeave = r.kind === "LEAVE";
 		const onDecide = isFinancial ? decideFinancial : isLeave ? decideLeave : decide;
@@ -166,7 +175,7 @@ export default function ManagerApprovalView({ platformId }) {
 					<div style={{ fontSize: "14px", fontWeight: 700 }}>
 						{isFinancial ? `재무 일정 · ${FINANCIAL_REQUEST_TYPE_LABEL[r.type] || r.type}` : isLeave ? "휴가 요청" : "일정 변경 요청"}
 					</div>
-					<span className="badge" style={{ color: st.color }}>{st.lbl}</span>
+					<span className="badge" style={{ color: statusColor }}>{st}</span>
 				</div>
 
 				{isFinancial ? (
@@ -260,7 +269,7 @@ export default function ManagerApprovalView({ platformId }) {
 								<button className="btn btn-danger btn-sm" onClick={() => onDecide(r.id, false)}>반려</button>
 								<button
 									className="btn btn-sm"
-									style={{ background: "rgba(74,222,128,.15)", color: "var(--green)", border: "1px solid rgba(74,222,128,.3)" }}
+									style={{ background: "rgba(var(--green-rgb),.15)", color: "var(--green)", border: "1px solid rgba(var(--green-rgb),.3)" }}
 									onClick={() => onDecide(r.id, true)}
 								>
 									승인
@@ -274,6 +283,7 @@ export default function ManagerApprovalView({ platformId }) {
 	}
 
 	return (
+		<>
 		<div className="page" id="manager-approval">
 			<div className="page-header">
 				<div className="page-label">APPROVAL</div>
@@ -281,28 +291,8 @@ export default function ManagerApprovalView({ platformId }) {
 				<div className="page-subtitle">일정 변경/휴가/재무 일정 요청을 검토하고 처리하세요</div>
 			</div>
 
-			<div className="card" style={{ marginBottom: "20px" }}>
-				<div className="card-title">🏖️ 휴가 요청 제출</div>
-				<div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(160px,1fr))", gap: "14px", marginBottom: "14px" }}>
-					<div className="form-field">
-						<label>시작일</label>
-						<input type="date" value={leaveStart} onChange={(e) => setLeaveStart(e.target.value)} />
-					</div>
-					<div className="form-field">
-						<label>종료일</label>
-						<input type="date" value={leaveEnd} onChange={(e) => setLeaveEnd(e.target.value)} />
-					</div>
-				</div>
-				<div className="form-field" style={{ marginBottom: "14px" }}>
-					<label>사유 (선택)</label>
-					<textarea value={leaveReason} onChange={(e) => setLeaveReason(e.target.value)} placeholder="휴가 사유를 작성해주세요..."></textarea>
-				</div>
-				{leaveError && <div style={{ color: "var(--red)", fontSize: "12px", marginBottom: "8px" }}>{leaveError}</div>}
-				<div style={{ display: "flex", justifyContent: "flex-end" }}>
-					<button className="btn btn-primary btn-sm" disabled={leaveSubmitting || !leaveStart || !leaveEnd} onClick={submitLeave}>
-						{leaveSubmitting ? "제출 중..." : "휴가 요청 제출"}
-					</button>
-				</div>
+			<div style={{ display: "flex", justifyContent: "flex-end", marginBottom: "14px" }}>
+				<button className="btn btn-primary btn-sm" style={{ display: "inline-flex", alignItems: "center", gap: "6px" }} onClick={openLeaveModal}><Palmtree size={14} strokeWidth={1.75} /> + 휴가 요청</button>
 			</div>
 
 			<div style={{ display: "flex", gap: "8px", marginBottom: "10px", flexWrap: "wrap" }}>
@@ -329,7 +319,7 @@ export default function ManagerApprovalView({ platformId }) {
 						className={`filter-chip ${filter === s ? "active" : ""}`}
 						onClick={() => setFilter(s)}
 					>
-						{s === "ALL" ? "전체" : STATUS_LABEL[s].lbl}
+						{s === "ALL" ? "전체" : STATUS_LABEL[s]}
 					</button>
 				))}
 			</div>
@@ -340,5 +330,38 @@ export default function ManagerApprovalView({ platformId }) {
 				<ApprovalRequestsTable rows={rows} expandedId={expandedId} onToggle={setExpandedId} renderDetail={renderDetail} />
 			)}
 		</div>
+
+		<div className="modal-overlay" id="managerLeaveRequestModal">
+			<div className="modal-box">
+				<div className="modal-header">
+					<div className="modal-title">휴가 요청</div>
+					<button className="modal-close" onClick={() => closeModal("managerLeaveRequestModal")}>✕</button>
+				</div>
+				<div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+					<div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(160px,1fr))", gap: "10px" }}>
+						<div className="form-field">
+							<label>시작일</label>
+							<input type="date" value={leaveStart} onChange={(e) => setLeaveStart(e.target.value)} />
+						</div>
+						<div className="form-field">
+							<label>종료일</label>
+							<input type="date" value={leaveEnd} onChange={(e) => setLeaveEnd(e.target.value)} />
+						</div>
+					</div>
+					<div className="form-field">
+						<label>사유 (선택)</label>
+						<textarea value={leaveReason} onChange={(e) => setLeaveReason(e.target.value)} placeholder="휴가 사유를 작성해주세요..."></textarea>
+					</div>
+					{leaveError && <div style={{ color: "var(--red)", fontSize: "12px" }}>{leaveError}</div>}
+					<div style={{ display: "flex", justifyContent: "flex-end", gap: "8px", marginTop: "8px" }}>
+						<button className="btn btn-ghost" onClick={() => closeModal("managerLeaveRequestModal")}>취소</button>
+						<button className="btn btn-primary" disabled={leaveSubmitting || !leaveStart || !leaveEnd} onClick={submitLeave}>
+							{leaveSubmitting ? "제출 중..." : "휴가 요청 제출"}
+						</button>
+					</div>
+				</div>
+			</div>
+		</div>
+		</>
 	);
 }

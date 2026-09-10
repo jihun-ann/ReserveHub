@@ -73,7 +73,7 @@ export default function OwnerApprovalView({ requests, onDecided }) {
 				</div>
 
 				{isLeave ? (
-					<div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
+					<div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(160px,1fr))", gap: "10px" }}>
 						<div style={{ background: "var(--surface)", borderRadius: "var(--radius-sm)", padding: "10px 12px" }}>
 							<div style={{ fontSize: "10px", color: "var(--text-dim)", marginBottom: "4px", letterSpacing: "1px" }}>시작일</div>
 							<div style={{ fontSize: "13px", fontWeight: 600 }}>{r.startDate}</div>
@@ -84,7 +84,7 @@ export default function OwnerApprovalView({ requests, onDecided }) {
 						</div>
 					</div>
 				) : (
-					<div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
+					<div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(160px,1fr))", gap: "10px" }}>
 						<div style={{ background: "var(--surface)", borderRadius: "var(--radius-sm)", padding: "10px 12px" }}>
 							<div style={{ fontSize: "10px", color: "var(--text-dim)", marginBottom: "4px", letterSpacing: "1px" }}>기존 일정</div>
 							<div style={{ fontSize: "13px", fontWeight: 600 }}>{r.originalDate}</div>
@@ -125,7 +125,7 @@ export default function OwnerApprovalView({ requests, onDecided }) {
 							<button
 								className="btn btn-sm"
 								disabled={busyId === r.id}
-								style={{ background: "rgba(74,222,128,0.15)", color: "var(--green)", border: "1px solid rgba(74,222,128,0.3)" }}
+								style={{ background: "rgba(var(--green-rgb),0.15)", color: "var(--green)", border: "1px solid rgba(var(--green-rgb),0.3)" }}
 								onClick={() => decide(r, "approve")}
 							>
 								승인

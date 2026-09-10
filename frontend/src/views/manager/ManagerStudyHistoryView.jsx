@@ -103,7 +103,7 @@ export default function ManagerStudyHistoryView({ platformId }) {
 				</div>
 			</div>
 
-			<div style={{ display: "grid", gridTemplateColumns: "1fr 2fr", gap: "18px" }}>
+			<div className="grid-main-side" style={{ gap: "18px", "--side-w": "2fr" }}>
 				<div className="card">
 					<div className="card-title">강사별 수업 수</div>
 					<div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>

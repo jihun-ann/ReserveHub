@@ -1,9 +1,11 @@
 import { useState, useEffect, useCallback } from "react";
+import { Palmtree } from "lucide-react";
 import {
 	listMyScheduleRequests, listPlatforms, listMySlots, listMyLessons,
 	listReservationsForSlot, createScheduleChangeRequest, getUser,
 	listMyLeaveRequests, createLeaveRequest
 } from "../../api/common.js";
+import { openModal, closeModal } from "../default.js";
 
 const STATUS_STYLE = {
 	PENDING: { label: "검토 중", background: "rgba(246,173,85,0.12)", color: "var(--accent3)" },
@@ -140,15 +142,21 @@ export default function TutorScheduleRequestView({ platformId }) {
 		}
 	}
 
+	function openLeaveModal() {
+		setLeaveStart("");
+		setLeaveEnd("");
+		setLeaveReason("");
+		setLeaveError("");
+		openModal("leaveRequestModal");
+	}
+
 	async function submitLeave() {
 		setLeaveError("");
 		if (!leaveStart || !leaveEnd) return;
 		setLeaveSubmitting(true);
 		try {
 			await createLeaveRequest(platformId, { startDate: leaveStart, endDate: leaveEnd, reason: leaveReason.trim() || null });
-			setLeaveStart("");
-			setLeaveEnd("");
-			setLeaveReason("");
+			closeModal("leaveRequestModal");
 			await refresh();
 		} catch (err) {
 			setLeaveError(err.message || "요청 제출에 실패했습니다.");
@@ -167,6 +175,7 @@ export default function TutorScheduleRequestView({ platformId }) {
 		.sort((a, b) => (a.lessonDate < b.lessonDate ? -1 : 1));
 
 	return (
+		<>
 		<div id="tutor-request" className="page">
 			<div className="page-header">
 				<div className="page-label">Tutor / Schedule Request</div>
@@ -267,7 +276,7 @@ export default function TutorScheduleRequestView({ platformId }) {
 										<span className="res-status" style={{ background: st.background, color: st.color }}>{st.label}</span>
 									)}
 								</div>
-								<div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px", marginBottom: "12px" }}>
+								<div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(160px,1fr))", gap: "10px", marginBottom: "12px" }}>
 									<div style={{ background: "var(--surface2)", borderRadius: "var(--radius-sm)", padding: "10px 12px" }}>
 										<div style={{ fontSize: "10px", color: "var(--text-dim)", marginBottom: "4px", letterSpacing: "1px" }}>기존 일정</div>
 										<div style={{ fontSize: "13px", fontWeight: 600 }}>{r.originalDate}</div>
@@ -294,36 +303,18 @@ export default function TutorScheduleRequestView({ platformId }) {
 				</div>
 			)}
 
-			<div className="card" style={{ margin: "24px 0" }}>
-				<div className="card-title">🏖️ 휴가 요청</div>
-				<div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(160px,1fr))", gap: "14px", marginBottom: "14px" }}>
-					<div className="form-field">
-						<label>시작일</label>
-						<input type="date" value={leaveStart} onChange={(e) => setLeaveStart(e.target.value)} />
-					</div>
-					<div className="form-field">
-						<label>종료일</label>
-						<input type="date" value={leaveEnd} onChange={(e) => setLeaveEnd(e.target.value)} />
-					</div>
-				</div>
-				<div className="form-field" style={{ marginBottom: "14px" }}>
-					<label>사유 (선택)</label>
-					<textarea value={leaveReason} onChange={(e) => setLeaveReason(e.target.value)} placeholder="휴가 사유를 작성해주세요..."></textarea>
-				</div>
-				{leaveError && <div style={{ color: "var(--red)", fontSize: "12px", marginBottom: "8px" }}>{leaveError}</div>}
-				<div style={{ display: "flex", justifyContent: "flex-end" }}>
-					<button
-						className="btn btn-primary"
-						style={{ background: "var(--accent2)", color: "#0f0f13" }}
-						disabled={leaveSubmitting || !leaveStart || !leaveEnd}
-						onClick={submitLeave}
-					>
-						{leaveSubmitting ? "제출 중..." : "휴가 요청 제출"}
-					</button>
-				</div>
+			<div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", margin: "24px 0 14px" }}>
+				<div className="card-title" style={{ marginBottom: 0, display: "flex", alignItems: "center", gap: "6px" }}><Palmtree size={15} strokeWidth={1.75} /> 휴가 요청</div>
+				<button className="btn btn-primary btn-sm" style={{ background: "var(--accent2)", color: "#0f0f13" }} onClick={openLeaveModal}>
+					+ 휴가 요청
+				</button>
 			</div>
 
-			{leaveRequests.length > 0 && (
+			{leaveRequests.length === 0 ? (
+				<div className="card" style={{ padding: "24px", textAlign: "center", color: "var(--text-dim)" }}>
+					제출한 휴가 요청이 없습니다
+				</div>
+			) : (
 				<div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
 					{leaveRequests.map((r) => {
 						const st = STATUS_STYLE[r.status];
@@ -355,5 +346,42 @@ export default function TutorScheduleRequestView({ platformId }) {
 				</div>
 			)}
 		</div>
+
+		<div className="modal-overlay" id="leaveRequestModal">
+			<div className="modal-box">
+				<div className="modal-header">
+					<div className="modal-title">휴가 요청</div>
+					<button className="modal-close" onClick={() => closeModal("leaveRequestModal")}>✕</button>
+				</div>
+				<div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+					<div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(160px,1fr))", gap: "10px" }}>
+						<div className="form-field">
+							<label>시작일</label>
+							<input type="date" value={leaveStart} onChange={(e) => setLeaveStart(e.target.value)} />
+						</div>
+						<div className="form-field">
+							<label>종료일</label>
+							<input type="date" value={leaveEnd} onChange={(e) => setLeaveEnd(e.target.value)} />
+						</div>
+					</div>
+					<div className="form-field">
+						<label>사유 (선택)</label>
+						<textarea value={leaveReason} onChange={(e) => setLeaveReason(e.target.value)} placeholder="휴가 사유를 작성해주세요..."></textarea>
+					</div>
+					{leaveError && <div style={{ color: "var(--red)", fontSize: "12px" }}>{leaveError}</div>}
+					<div style={{ display: "flex", justifyContent: "flex-end", gap: "8px", marginTop: "8px" }}>
+						<button className="btn btn-ghost" onClick={() => closeModal("leaveRequestModal")}>취소</button>
+						<button
+							className="btn btn-primary"
+							disabled={leaveSubmitting || !leaveStart || !leaveEnd}
+							onClick={submitLeave}
+						>
+							{leaveSubmitting ? "제출 중..." : "휴가 요청 제출"}
+						</button>
+					</div>
+				</div>
+			</div>
+		</div>
+		</>
 	);
 }

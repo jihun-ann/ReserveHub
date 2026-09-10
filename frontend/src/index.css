@@ -1,4 +1,7 @@
-/* ── 리셋 & 변수 ── */
+/* ── 리셋 & 변수 ──
+   레퍼런스(cloudcash 스타일 핀테크 대시보드) 방향 리디자인 — 부드러운 블루 브랜드 컬러,
+   큼직하게 둥근 카드(테두리 대신 은은한 그림자), 완전히 둥근 알약형 활성 메뉴, 골드색
+   CTA 버튼(브랜드색과 분리)을 적용한다. 정보 구조(사이드바, 카드, 표, 배지)는 유지한다. */
 
 *, *::before, *::after {
   box-sizing: border-box;
@@ -7,46 +10,53 @@
 }
 
 :root {
-  --accent: #7c6af7; /* 보라 — 사용자 */
-  --accent2: #4fd1c5; /* 민트 */
-  --accent3: #f6ad55; /* 오렌지 */
-  --red: #c23b3b;
-  --green: #178a4c;
+  --accent: #4c7cf0; /* 브랜드 블루 — 활성 메뉴, 잔액/링크 등 정보성 강조 */
+  --accent2: #2f9c86; /* 보조 강조(틸) */
+  --accent3: #f0a355; /* 앰버 — 대기/주의 배지, 카테고리 아이콘 */
+  --cta: #f5a623; /* CTA 버튼 전용 골드 — 브랜드색과 분리해 "결제/제출" 액션에만 쓴다 */
+  --cta-text: #2b1c04;
+  --red: #ff6a55;
+  --green: #2ecc8f;
   --confirmed: var(--green);
   --canceled: var(--red);
-  --sw: 220px; /* 사이드바 너비 */
+  --sw: 224px; /* 사이드바 너비 */
   --sw-c: 60px; /* 접힌 너비 */
-  --r: 14px;
-  --rs: 8px;
+  --r: 18px;
+  --rs: 11px;
   --radius: var(--r);
   --radius-sm: var(--rs);
-  --tr: .22s ease;
+  --tr: .18s ease;
+  --shadow-card: 0 4px 18px rgba(30, 41, 59, .06);
 
   /* 라이트 테마 배경/텍스트 — 카드/보더 색상이 여기서 파생됨 */
-  --bg: #f5f6f8;
+  --bg: #eef1f6;
   --surface: #ffffff;
-  --surface2: #eef1f4;
-  --border: #e3e6eb;
-  --text: #171a21;
-  --text-sub: #5b6270;
-  --text-dim: #9aa0ac;
-  --green-rgb: 23, 138, 76;
-  --red-rgb: 194, 59, 59;
+  --surface2: #f4f6fa;
+  --border: #eaedf3;
+  --text: #1a2138;
+  --text-sub: #8891a1;
+  --text-dim: #b2b9c6;
+  --green-rgb: 46, 204, 143;
+  --red-rgb: 255, 106, 85;
+  --accent-rgb: 76, 124, 240;
+  --accent3-rgb: 240, 163, 85;
 }
 
 /* dark theme — toggled via data-theme on <html>, persisted in localStorage (see src/theme.js) */
 :root[data-theme="dark"] {
-  --bg: #0b0b10;
-  --surface: #16161d;
-  --surface2: #1c1c25;
-  --border: #2a2a35;
-  --text: #f2f2f5;
-  --text-sub: #9797a8;
-  --text-dim: #6c6c7a;
-  --red: #f87171;
-  --green: #4ade80;
-  --green-rgb: 74, 222, 128;
-  --red-rgb: 248, 113, 113;
+  --bg: #10141d;
+  --surface: #171d29;
+  --surface2: #1e2534;
+  --border: #2a3142;
+  --text: #eaedf4;
+  --text-sub: #9aa3b5;
+  --text-dim: #626b7d;
+  --red: #ff7c69;
+  --green: #38d69b;
+  --green-rgb: 56, 214, 155;
+  --red-rgb: 255, 124, 105;
+  --accent-rgb: 108, 150, 245;
+  --shadow-card: 0 4px 18px rgba(0, 0, 0, .28);
 }
 
 body {
@@ -63,6 +73,51 @@ body {
   display: flex;
   height: 100vh;
   overflow: hidden;
+}
+
+.main {
+  flex: 1;
+  overflow-y: auto;
+}
+
+.content {
+  padding: 28px 32px;
+}
+
+@media (max-width: 640px) {
+  .content {
+    padding: 16px;
+  }
+}
+
+/* ── 반응형 2열 그리드 ──
+   "본문+사이드" 형태의 페이지 레이아웃에서 쓴다. --side-w로 사이드 트랙의 폭/비율(px 또는 fr)을
+   호출부에서 지정하고, 좁은 화면에서는 사이드가 본문 아래로 쌓이도록 1열로 바뀐다. */
+.grid-main-side {
+  display: grid;
+  grid-template-columns: 1fr var(--side-w, 320px);
+  align-items: start;
+}
+
+.grid-side-main {
+  display: grid;
+  grid-template-columns: var(--side-w, 260px) 1fr;
+  align-items: start;
+}
+
+/* 좌우 균등 2단(예: 입력 폼 | 결과 요약) — 좁은 화면에서 위아래로 쌓인다 */
+.grid-2col-even {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  align-items: start;
+}
+
+@media (max-width: 900px) {
+  .grid-main-side,
+  .grid-side-main,
+  .grid-2col-even {
+    grid-template-columns: 1fr;
+  }
 }
 
 /* ── 오버레이 (모바일) ── */
@@ -105,7 +160,7 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 20px 16px 16px;
+  padding: 18px 16px 15px;
   border-bottom: 1px solid var(--border);
 }
 
@@ -119,18 +174,20 @@ body {
 .logo-icon {
   width: 32px;
   height: 32px;
-  border-radius: 8px;
-  background: linear-gradient(135deg, var(--accent), #a78bfa);
+  border-radius: 10px;
+  background: var(--accent);
+  color: #fff;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 16px;
+  font-size: 15px;
   flex-shrink: 0;
 }
 
 .logo-text {
-  font-size: 15px;
+  font-size: 14.5px;
   font-weight: 700;
+  letter-spacing: -.01em;
   white-space: nowrap;
   overflow: hidden;
 }
@@ -184,7 +241,7 @@ body {
 .tier-switch-label {
   font-size: 9px;
   color: var(--text-dim);
-  letter-spacing: 1.5px;
+  letter-spacing: 1px;
   text-transform: uppercase;
   margin-bottom: 4px;
 }
@@ -358,7 +415,8 @@ body {
   width: 36px;
   height: 36px;
   border-radius: 50%;
-  background: linear-gradient(135deg, var(--accent), #a78bfa);
+  background: var(--accent3);
+  color: #2b1c04;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -389,10 +447,10 @@ body {
 
 .nav {
   flex: 1;
-  padding: 12px 10px;
+  padding: 10px 8px;
   display: flex;
   flex-direction: column;
-  gap: 3px;
+  gap: 1px;
   overflow-y: auto;
 }
 
@@ -405,10 +463,10 @@ body {
 .nav-section-label {
   font-size: 10px;
   font-weight: 600;
-  letter-spacing: .08em;
+  letter-spacing: .06em;
   text-transform: uppercase;
   color: var(--text-dim);
-  padding: 4px 10px 4px;
+  padding: 4px 12px 4px;
 }
 
 .sidebar.collapsed .nav-section-label {
@@ -418,14 +476,14 @@ body {
 .nav-item {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 10px 10px;
+  gap: 11px;
+  padding: 10px 14px;
   border-radius: var(--rs);
   background: none;
   border: none;
   color: var(--text-sub);
   cursor: pointer;
-  font-size: 13px;
+  font-size: 13.5px;
   font-weight: 500;
   font-family: inherit;
   transition: background var(--tr), color var(--tr);
@@ -441,15 +499,15 @@ body {
 }
 
 .nav-item.active {
-  background: rgba(124, 106, 247, .15);
+  background: rgba(var(--accent-rgb), .12);
   color: var(--accent);
   font-weight: 600;
 }
 
 .nav-icon {
-  font-size: 17px;
+  font-size: 16px;
   flex-shrink: 0;
-  width: 22px;
+  width: 20px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -461,6 +519,7 @@ body {
 
 .sidebar.collapsed .nav-item {
   justify-content: center;
+  padding-left: 10px;
 }
 
 .sidebar-bottom {
@@ -494,59 +553,125 @@ body {
   display: none;
 }
 
+/* ── 페이지 헤더 ── */
 
-.grid {
-  max-width: 860px;
-  margin: 0 auto;
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 14px;
+.page-header {
+  margin-bottom: 24px;
 }
+
+.page-label {
+  font-size: 10px;
+  color: var(--text-dim);
+  letter-spacing: 1px;
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+
+.page-title {
+  font-size: 28px;
+  font-weight: 800;
+  letter-spacing: -.015em;
+}
+
+.page-subtitle {
+  font-size: 13.5px;
+  color: var(--text-sub);
+  margin-top: 5px;
+}
+
+/* ── 카드 ──
+   보더 대신 은은한 그림자로 표면을 띄우고, 모서리를 큼직하게 둥글려 위젯처럼 보이게 한다. */
 
 .card {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  padding: 20px 18px;
-  border-radius: 14px;
-  border: 1px solid #dbe2ee;
-  background: #ffffff;
-  text-decoration: none;
-  color: inherit;
-  box-shadow: 0 6px 20px rgba(15, 23, 42, 0.06);
-  transition: transform 0.16s ease, box-shadow 0.16s ease, border-color 0.16s ease;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  padding: 20px 22px;
+  box-shadow: var(--shadow-card);
 }
 
-.card strong {
-  font-size: 1rem;
+.card-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text);
+  letter-spacing: -.005em;
+  margin-bottom: 16px;
 }
 
-.card span {
-  color: #6b7280;
-  font-size: 0.92rem;
-  line-height: 1.45;
+/* ── 버튼 ── */
+
+.btn {
+  padding: 8px 16px;
+  border-radius: var(--rs);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+  border: none;
+  transition: all var(--tr);
 }
 
-.card:hover {
-  transform: translateY(-2px);
-  border-color: #93c5fd;
-  box-shadow: 0 12px 28px rgba(37, 99, 235, 0.14);
+.btn-primary {
+  background: var(--cta);
+  color: #fff;
+  box-shadow: 0 3px 10px rgba(245, 166, 35, .3);
 }
 
-.card:focus-visible {
-  outline: 3px solid #93c5fd;
-  outline-offset: 1px;
+.btn-primary:hover {
+  opacity: .9;
 }
+
+.btn-ghost {
+  background: none;
+  border: 1px solid var(--border);
+  color: var(--text-sub);
+}
+
+.btn-ghost:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.btn-danger {
+  background: none;
+  border: 1px solid var(--border);
+  color: var(--red);
+}
+
+.btn-danger:hover {
+  border-color: var(--red);
+  background: rgba(var(--red-rgb), .1);
+}
+
+.btn-sm {
+  padding: 5px 12px;
+  font-size: 12px;
+}
+
+/* ── 모바일 전용 (topbar/hamburger — 데스크톱엔 없는 요소) ── */
 
 @media (max-width: 768px) {
-  .home {
-    padding: 42px 16px 60px;
+  /* 사이드바를 화면 밖으로 숨겨두고, 햄버거로 열면 슬라이드 인 — .sidebar.open 토글은
+     default.js(openSidebar/closeSidebar)가 이미 하고 있어서 여기 CSS만 비어 있었다. */
+  .sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    transform: translateX(-100%);
+    transition: transform var(--tr);
+    box-shadow: 0 0 0 transparent;
   }
 
-  .grid {
-    grid-template-columns: 1fr;
+  .sidebar.open {
+    transform: translateX(0);
+    box-shadow: 8px 0 24px rgba(0, 0, 0, .18);
   }
 
+  .sidebar.collapsed {
+    width: var(--sw);
+    min-width: var(--sw);
+  }
 
   .main {
     flex: 1;
@@ -568,7 +693,9 @@ body {
   }
 
   .hamburger {
-    display: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     background: none;
     border: none;
     color: var(--text);
@@ -612,89 +739,7 @@ body {
 
   .content {
     flex: 1;
-    padding: 24px;
-  }
-
-  /* ── 페이지 ── */
-
-
-  .page-header {
-    margin-bottom: 24px;
-  }
-
-  .page-label {
-    font-size: 10px;
-    color: var(--accent);
-    letter-spacing: 2px;
-    font-weight: 600;
-    margin-bottom: 4px;
-  }
-
-  .page-title {
-    font-size: 22px;
-    font-weight: 700;
-  }
-
-  .page-subtitle {
-    font-size: 13px;
-    color: var(--text-sub);
-    margin-top: 4px;
-  }
-
-  /* ── 카드 ── */
-
-  .card {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: var(--r);
     padding: 20px;
-  }
-
-  .card-title {
-    font-size: 13px;
-    font-weight: 700;
-    color: var(--text-sub);
-    letter-spacing: .5px;
-    margin-bottom: 14px;
-    text-transform: uppercase;
-  }
-
-  /* ── 버튼 ── */
-
-  .btn {
-    padding: 8px 16px;
-    border-radius: var(--rs);
-    font-size: 13px;
-    font-weight: 600;
-    cursor: pointer;
-    font-family: inherit;
-    border: none;
-    transition: all var(--tr);
-  }
-
-  .btn-primary {
-    background: var(--accent);
-    color: white;
-  }
-
-  .btn-primary:hover {
-    opacity: .85;
-  }
-
-  .btn-ghost {
-    background: none;
-    border: 1px solid var(--border);
-    color: var(--text-sub);
-  }
-
-  .btn-ghost:hover {
-    border-color: var(--accent);
-    color: var(--accent);
-  }
-
-  .btn-sm {
-    padding: 5px 12px;
-    font-size: 12px;
   }
 }
 

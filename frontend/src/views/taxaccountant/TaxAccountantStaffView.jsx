@@ -1,4 +1,5 @@
 import { Fragment, useState, useEffect, useCallback } from "react";
+import { FileSpreadsheet } from "lucide-react";
 import { listStaffPayroll, INCOME_TYPE_LABEL } from "../../api/common.js";
 import { exportCsv } from "../../utils/exportCsv.js";
 
@@ -70,8 +71,8 @@ export default function TaxAccountantStaffView({ platformId }) {
 						{MONTHS.map((m) => <option key={m} value={m}>{m}월</option>)}
 					</select>
 				</div>
-				<button className="btn btn-ghost btn-sm" disabled={staff.length === 0} onClick={handleExport}>
-					📊 엑셀로 내보내기
+				<button className="btn btn-ghost btn-sm" style={{ display: "inline-flex", alignItems: "center", gap: "6px" }} disabled={staff.length === 0} onClick={handleExport}>
+					<FileSpreadsheet size={14} strokeWidth={1.75} /> 엑셀로 내보내기
 				</button>
 			</div>
 
@@ -98,7 +99,7 @@ export default function TaxAccountantStaffView({ platformId }) {
 									<Fragment key={key}>
 									<tr
 										onClick={() => setExpandedKey(expanded ? null : key)}
-										style={{ cursor: "pointer", background: expanded ? "var(--surface-alt, rgba(124,106,247,0.06))" : undefined }}
+										style={{ cursor: "pointer", background: expanded ? "var(--surface-alt, rgba(var(--taxacct-rgb),0.06))" : undefined }}
 									>
 										<td style={{ fontWeight: 600 }}>{s.name}</td>
 										<td>

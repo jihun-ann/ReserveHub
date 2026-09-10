@@ -105,12 +105,12 @@ export default function ManagerCalendarView({ platformId }) {
 						{s.label}
 					</div>
 				))}
-				<button className="btn btn-primary btn-sm" style={{ marginLeft: "auto", background: "var(--manager)", color: "#fff" }} onClick={openShareEventModal}>
+				<button className="btn btn-primary btn-sm" style={{ marginLeft: "auto" }} onClick={openShareEventModal}>
 					+ 공유 이벤트 등록
 				</button>
 			</div>
 
-			<div style={{ display: "grid", gridTemplateColumns: "1fr 320px", gap: "20px", alignItems: "start" }}>
+			<div className="grid-main-side" style={{ gap: "20px", "--side-w": "320px" }}>
 				<div className="card">
 					<div className="cal-nav-row">
 						<span className="cal-month-lbl">{calYear}년 {calMonth}월</span>

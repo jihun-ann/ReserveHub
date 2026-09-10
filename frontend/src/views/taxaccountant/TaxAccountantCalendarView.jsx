@@ -66,7 +66,7 @@ export default function TaxAccountantCalendarView({ platformId, platformName }) 
 			<div className="card" style={{ marginBottom: "20px" }}>
 				<div className="card-title">재무 일정 등록</div>
 				<form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
-					<div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px" }}>
+					<div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(160px,1fr))", gap: "14px" }}>
 						<div className="form-field">
 							<label>구분</label>
 							<select value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value })}>

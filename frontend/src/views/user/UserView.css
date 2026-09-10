@@ -1,4 +1,8 @@
 #user-app {
+    /* 고객용 화면은 이번 "financial dashboard" 리디자인 대상(관리자용 B2B 업무시스템)이 아니라서
+       기존 보라색 정체성을 그대로 유지한다 — 공유 --accent가 놋쇠 골드로 바뀌어도 여기 새지 않도록
+       다른 역할들처럼 자체 변수로 명시적으로 고정해둔다. */
+    --user: #7c6af7;
     --user-rgb: 124, 106, 247;
 
     .plat-dot {
@@ -6,6 +10,17 @@
         height: 8px;
         border-radius: 2px;
         flex-shrink: 0;
+    }
+
+    .nav-item.active {
+        background: rgba(var(--user-rgb), .15);
+        color: var(--user);
+        font-weight: 600;
+    }
+
+    .theme-toggle:hover,
+    .collapse-btn:hover {
+        color: var(--user);
     }
 
     /* ── 메인 ── */
@@ -68,7 +83,7 @@
         width: 7px;
         height: 7px;
         border-radius: 50%;
-        background: var(--accent);
+        background: var(--user);
         border: 2px solid var(--surface);
     }
 
@@ -86,15 +101,16 @@
 
     .page-label {
         font-size: 10px;
-        color: var(--accent);
+        color: var(--user);
         letter-spacing: 2px;
         font-weight: 600;
         margin-bottom: 4px;
     }
 
     .page-title {
-        font-size: 22px;
-        font-weight: 700;
+        font-size: 28px;
+        font-weight: 800;
+        letter-spacing: -.015em;
     }
 
     .page-subtitle {
@@ -110,15 +126,14 @@
         border: 1px solid var(--border);
         border-radius: var(--r);
         padding: 20px;
+        box-shadow: var(--shadow-card);
     }
 
     .card-title {
-        font-size: 13px;
+        font-size: 15px;
         font-weight: 700;
-        color: var(--text-sub);
-        letter-spacing: .5px;
-        margin-bottom: 14px;
-        text-transform: uppercase;
+        color: var(--text);
+        margin-bottom: 16px;
     }
 
     /* ── 버튼 ── */
@@ -135,8 +150,9 @@
     }
 
     .btn-primary {
-        background: var(--accent);
+        background: var(--cta);
         color: white;
+        box-shadow: 0 3px 10px rgba(245, 166, 35, .3);
     }
 
     .btn-primary:hover {
@@ -150,8 +166,8 @@
     }
 
     .btn-ghost:hover {
-        border-color: var(--accent);
-        color: var(--accent);
+        border-color: var(--user);
+        color: var(--user);
     }
 
     .btn-sm {
@@ -204,8 +220,8 @@
     }
 
     .cal-nav-btn:hover {
-        background: var(--accent);
-        border-color: var(--accent);
+        background: var(--user);
+        border-color: var(--user);
         color: white;
     }
 
@@ -261,15 +277,15 @@
 
     .cal-cell.today {
         background: rgba(124, 106, 247, .15);
-        border-color: var(--accent);
-        color: var(--accent);
+        border-color: var(--user);
+        color: var(--user);
         font-weight: 700;
     }
 
     .cal-cell.selected {
-        background: var(--accent);
+        background: var(--user);
         color: white;
-        border-color: var(--accent);
+        border-color: var(--user);
     }
 
     .cal-cell.selected:hover {
@@ -337,14 +353,14 @@
         padding: 12px;
         background: var(--surface2);
         border-radius: var(--rs);
-        border-left: 3px solid var(--accent);
+        border-left: 3px solid var(--user);
     }
 
     .lesson-time {
         font-family: 'DM Mono', monospace;
         font-size: 14px;
         font-weight: 500;
-        color: var(--accent);
+        color: var(--user);
         min-width: 42px;
     }
 
@@ -372,13 +388,13 @@
         padding: 3px 8px;
         border-radius: 20px;
         background: rgba(124, 106, 247, .15);
-        color: var(--accent);
+        color: var(--user);
         white-space: nowrap;
         font-weight: 600;
     }
 
     .lesson-tag.music {
-        background: rgba(246, 173, 85, .15);
+        background: rgba(var(--accent3-rgb), .15);
         color: var(--accent3);
     }
 
@@ -458,8 +474,8 @@
 
     .type-btn.active {
         background: rgba(124, 106, 247, .2);
-        border-color: var(--accent);
-        color: var(--accent);
+        border-color: var(--user);
+        color: var(--user);
     }
 
     .timer-digits {
@@ -515,7 +531,7 @@
         font-family: 'DM Mono', monospace;
         font-size: 16px;
         font-weight: 500;
-        color: var(--accent);
+        color: var(--user);
     }
 
     .timer-stat-key {
@@ -598,14 +614,14 @@
     }
 
     .filter-chip:hover {
-        border-color: var(--accent);
-        color: var(--accent);
+        border-color: var(--user);
+        color: var(--user);
     }
 
     .filter-chip.active {
         background: rgba(124, 106, 247, .15);
-        border-color: var(--accent);
-        color: var(--accent);
+        border-color: var(--user);
+        color: var(--user);
     }
 
     .program-list {
@@ -627,11 +643,11 @@
     }
 
     .program-card:hover {
-        border-color: var(--accent);
+        border-color: var(--user);
     }
 
     .program-card.selected {
-        border-color: var(--accent);
+        border-color: var(--user);
         background: rgba(124, 106, 247, .08);
     }
 
@@ -673,7 +689,7 @@
 
     .badge-group {
         background: rgba(124, 106, 247, .15);
-        color: var(--accent);
+        color: var(--user);
     }
 
     .badge-private {
@@ -682,7 +698,7 @@
     }
 
     .badge-room {
-        background: rgba(246, 173, 85, .15);
+        background: rgba(var(--accent3-rgb), .15);
         color: var(--accent3);
     }
 
@@ -728,8 +744,8 @@
 
     .slot-nav-btn.active {
         background: rgba(124, 106, 247, .15);
-        border-color: var(--accent);
-        color: var(--accent);
+        border-color: var(--user);
+        color: var(--user);
     }
 
     .slot-list {
@@ -752,11 +768,11 @@
     }
 
     .slot-item:hover:not(.full) {
-        border-color: var(--accent);
+        border-color: var(--user);
     }
 
     .slot-item.selected-slot {
-        border-color: var(--accent);
+        border-color: var(--user);
         background: rgba(124, 106, 247, .1);
     }
 
@@ -804,17 +820,17 @@
     }
 
     .status-open {
-        background: rgba(74, 222, 128, .12);
+        background: rgba(var(--green-rgb), .12);
         color: var(--green);
     }
 
     .status-few {
-        background: rgba(246, 173, 85, .12);
+        background: rgba(var(--accent3-rgb), .12);
         color: var(--accent3);
     }
 
     .status-full {
-        background: rgba(248, 113, 113, .12);
+        background: rgba(var(--red-rgb), .12);
         color: var(--red);
     }
 
@@ -844,7 +860,7 @@
         padding: 12px;
         margin-top: 12px;
         border-radius: var(--r);
-        background: linear-gradient(135deg, var(--accent), #a78bfa);
+        background: linear-gradient(135deg, var(--user), #a78bfa);
         border: none;
         color: white;
         font-size: 14px;
@@ -882,7 +898,7 @@
         width: 56px;
         height: 56px;
         border-radius: 50%;
-        background: linear-gradient(135deg, var(--accent), #a78bfa);
+        background: linear-gradient(135deg, var(--user), #a78bfa);
         display: flex;
         align-items: center;
         justify-content: center;
@@ -918,7 +934,7 @@
         padding: 3px 10px;
         border-radius: 20px;
         background: rgba(124, 106, 247, .12);
-        color: var(--accent);
+        color: var(--user);
         font-weight: 600;
     }
 
@@ -940,7 +956,7 @@
         font-family: 'DM Mono', monospace;
         font-size: 28px;
         font-weight: 500;
-        color: var(--accent);
+        color: var(--user);
     }
 
     .mypage-stat-key {
@@ -1017,17 +1033,17 @@
     }
 
     .ps-active {
-        background: rgba(74, 222, 128, .12);
+        background: rgba(var(--green-rgb), .12);
         color: var(--green);
     }
 
     .ps-soon {
-        background: rgba(246, 173, 85, .12);
+        background: rgba(var(--accent3-rgb), .12);
         color: var(--accent3);
     }
 
     .ps-exp {
-        background: rgba(248, 113, 113, .12);
+        background: rgba(var(--red-rgb), .12);
         color: var(--red);
     }
 
@@ -1056,7 +1072,7 @@
         font-family: 'DM Mono', monospace;
         font-size: 18px;
         font-weight: 600;
-        color: var(--accent);
+        color: var(--user);
         line-height: 1;
     }
 
@@ -1096,7 +1112,7 @@
 
     .rs-upcoming {
         background: rgba(124, 106, 247, .12);
-        color: var(--accent);
+        color: var(--user);
     }
 
     .rs-done {
@@ -1105,7 +1121,7 @@
     }
 
     .rs-cancel {
-        background: rgba(248, 113, 113, .12);
+        background: rgba(var(--red-rgb), .12);
         color: var(--red);
     }
 
@@ -1188,12 +1204,12 @@
         left: 50%;
         transform: translateX(-50%) translateY(80px);
         background: var(--surface);
-        border: 1px solid var(--accent);
+        border: 1px solid var(--user);
         border-radius: var(--r);
         padding: 14px 24px;
         font-size: 14px;
         font-weight: 600;
-        color: var(--accent);
+        color: var(--user);
         z-index: 999;
         transition: transform .3s ease, opacity .3s ease;
         opacity: 0;
@@ -1230,7 +1246,7 @@
     }
 
     .form-field input:focus {
-        border-color: var(--accent);
+        border-color: var(--user);
     }
 
 }

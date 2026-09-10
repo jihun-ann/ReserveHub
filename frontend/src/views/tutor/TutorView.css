@@ -113,8 +113,9 @@
     }
 
     .page-title {
-        font-size: 24px;
-        font-weight: 700;
+        font-size: 28px;
+        font-weight: 800;
+        letter-spacing: -.015em;
     }
 
     .page-subtitle {
@@ -128,14 +129,13 @@
         border: 1px solid var(--border);
         border-radius: var(--radius);
         padding: 22px;
+        box-shadow: var(--shadow-card);
     }
 
     .card-title {
-        font-size: 11px;
-        font-weight: 600;
-        color: var(--text-sub);
-        text-transform: uppercase;
-        letter-spacing: 1px;
+        font-size: 15px;
+        font-weight: 700;
+        color: var(--text);
         margin-bottom: 16px;
     }
 
@@ -151,12 +151,13 @@
     }
 
     .btn-primary {
-        background: var(--tutor);
+        background: var(--cta);
         color: white;
+        box-shadow: 0 3px 10px rgba(245, 166, 35, .3);
     }
 
     .btn-primary:hover {
-        background: #1f4aa8;
+        opacity: .9;
     }
 
     .btn-ghost {
@@ -643,8 +644,8 @@
     }
 
     .atbtn.late {
-        background: rgba(246, 173, 85, 0.15);
-        border-color: rgba(246, 173, 85, 0.4);
+        background: rgba(var(--accent3-rgb), 0.15);
+        border-color: rgba(var(--accent3-rgb), 0.4);
         color: var(--accent3);
     }
 

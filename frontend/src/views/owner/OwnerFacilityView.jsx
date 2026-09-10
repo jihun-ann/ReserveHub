@@ -233,7 +233,7 @@ export default function OwnerFacilityView({ platformId }) {
 						<label>시설물명</label>
 						<input type="text" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="예: 2층 연습실" />
 					</div>
-					<div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
+					<div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(160px,1fr))", gap: "10px" }}>
 						<div className="form-field">
 							<label>층 (선택)</label>
 							<input type="text" value={form.floor} onChange={(e) => setForm({ ...form, floor: e.target.value })} placeholder="예: 1층, 지하1층" />
@@ -243,7 +243,7 @@ export default function OwnerFacilityView({ platformId }) {
 							<input type="number" min="1" value={form.capacity} onChange={(e) => setForm({ ...form, capacity: e.target.value })} />
 						</div>
 					</div>
-					<div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
+					<div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(160px,1fr))", gap: "10px" }}>
 						<div className="form-field">
 							<label>이용 시작 시간 (선택)</label>
 							<input type="time" value={form.openTime} onChange={(e) => setForm({ ...form, openTime: e.target.value })} />

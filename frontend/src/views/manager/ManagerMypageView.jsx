@@ -144,7 +144,7 @@ export default function ManagerMypageView({ platformId, currentPlatform }) {
 					<div style={{ fontSize: "12px", color: "var(--text-dim)", padding: "8px 0" }}>배정된 플랫폼이 없습니다</div>
 				) : (
 					<div style={{ display: "flex", alignItems: "center", gap: "12px", padding: "14px 0" }}>
-						<div style={{ width: "38px", height: "38px", borderRadius: "10px", background: "rgba(124,106,247,.12)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "18px", flexShrink: "0" }}>
+						<div style={{ width: "38px", height: "38px", borderRadius: "10px", background: "rgba(var(--manager-rgb),.12)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "18px", flexShrink: "0" }}>
 							{currentPlatform.emoji}
 						</div>
 						<div style={{ flex: "1" }}>

@@ -196,7 +196,7 @@ export default function OwnerPlatformView({ platforms, currentPlatformId, onSele
 				<div className="page-subtitle">플랫폼을 선택해 상세 정보를 관리하세요</div>
 			</div>
 
-			<div style={{ display: "grid", gridTemplateColumns: "260px 1fr", gap: "20px", alignItems: "start" }}>
+			<div className="grid-side-main" style={{ gap: "20px", "--side-w": "260px" }}>
 
 				{/* 플랫폼 목록 */}
 				<div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
@@ -276,7 +276,7 @@ export default function OwnerPlatformView({ platforms, currentPlatformId, onSele
 						<div style={{ padding: "20px" }}>
 
 							{activeTab === "info" && (
-								<div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px" }}>
+								<div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(160px,1fr))", gap: "14px" }}>
 									<div className="form-field"><label>플랫폼명</label><input readOnly value={plat.name} /></div>
 									<div className="form-field"><label>업종</label><input readOnly value={businessTypeLabel(plat.businessType)} /></div>
 									<div className="form-field"><label>대표 전화</label><input readOnly value={plat.phone || "-"} /></div>
@@ -415,7 +415,7 @@ export default function OwnerPlatformView({ platforms, currentPlatformId, onSele
 
 									<button className="btn btn-primary btn-sm" onClick={() => setShowTaxForm((v) => !v)}>+ 세무사 초대</button>
 									{showTaxForm && (
-										<form onSubmit={submitTaxAccountant} className="card" style={{ marginTop: "12px", display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
+										<form onSubmit={submitTaxAccountant} className="card" style={{ marginTop: "12px", display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(160px,1fr))", gap: "10px" }}>
 											<div className="form-field"><label>아이디</label><input required value={taxForm.username} onChange={(e) => setTaxForm({ ...taxForm, username: e.target.value })} /></div>
 											<div className="form-field"><label>이메일</label><input type="email" required value={taxForm.email} onChange={(e) => setTaxForm({ ...taxForm, email: e.target.value })} /></div>
 											<div className="form-field"><label>이름</label><input required value={taxForm.name} onChange={(e) => setTaxForm({ ...taxForm, name: e.target.value })} /></div>

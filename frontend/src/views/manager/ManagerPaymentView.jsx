@@ -322,7 +322,7 @@ export default function ManagerPaymentView({ platformId }) {
 									</select>
 								</div>
 							)}
-							<div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
+							<div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(160px,1fr))", gap: "12px" }}>
 								<div className="form-field">
 									<label>최대 인원</label>
 									<input type="number" min="1" value={passForm.capacity} onChange={(e) => setPassForm({ ...passForm, capacity: e.target.value })} />

@@ -82,12 +82,13 @@ export default function LoginView() {
 						padding: "11px",
 						border: "none",
 						borderRadius: "var(--radius-sm)",
-						background: "var(--accent)",
+						background: "var(--cta)",
 						color: "white",
 						fontWeight: 600,
 						fontSize: "14px",
 						fontFamily: "'Pretendard', sans-serif",
 						cursor: loading ? "default" : "pointer",
+						boxShadow: "0 3px 10px rgba(245,166,35,.3)",
 						opacity: loading ? 0.7 : 1
 					}}
 				>

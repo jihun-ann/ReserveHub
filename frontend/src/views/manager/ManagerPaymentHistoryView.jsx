@@ -118,7 +118,7 @@ export default function ManagerPaymentHistoryView({ platformId }) {
 										<Fragment key={o.id}>
 										<tr
 											onClick={() => setExpandedId(expanded ? null : o.id)}
-											style={{ cursor: "pointer", background: expanded ? "var(--surface-alt, rgba(124,106,247,0.06))" : undefined }}
+											style={{ cursor: "pointer", background: expanded ? "var(--surface-alt, rgba(var(--manager-rgb),0.06))" : undefined }}
 										>
 											<td style={{ fontFamily: "'DM Mono',monospace", fontSize: "12px" }}>
 												{o.paidAt ? new Date(o.paidAt).toLocaleDateString() : "-"}

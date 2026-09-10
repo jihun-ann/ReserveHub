@@ -394,7 +394,7 @@ export default function ManagerMemberManageView({ platformId }) {
 																	fontFamily: "'Pretendard',sans-serif"
 																}}
 															/>
-															<button className="btn btn-primary btn-sm" style={{ background: "var(--manager)", color: "#fff" }} onClick={addMemo}>
+															<button className="btn btn-primary btn-sm" onClick={addMemo}>
 																추가
 															</button>
 														</div>

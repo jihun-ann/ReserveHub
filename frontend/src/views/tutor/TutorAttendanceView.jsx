@@ -154,7 +154,7 @@ export default function TutorAttendanceView({ platformId }) {
 											<div style={{ fontSize: "11px", color: "var(--text-sub)" }}>{platformsById[lesson.platformId]}</div>
 										</div>
 										{!lesson.startedAt ? (
-											<button className="btn btn-sm" style={{ background: "rgba(74,222,128,.12)", color: "var(--green)", border: "1px solid rgba(74,222,128,.3)" }} onClick={() => begin(lesson.id)}>
+											<button className="btn btn-sm" style={{ background: "rgba(var(--green-rgb),.12)", color: "var(--green)", border: "1px solid rgba(var(--green-rgb),.3)" }} onClick={() => begin(lesson.id)}>
 												수업 시작
 											</button>
 										) : !lesson.endedAt ? (

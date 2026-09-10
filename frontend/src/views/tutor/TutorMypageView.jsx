@@ -166,10 +166,10 @@ export default function TutorMypageView() {
 				) : (
 					platforms.map((p) => (
 						<div className="platform-item" key={p.id}>
-							<div className="plat-emoji" style={{ background: "rgba(124,106,247,0.1)" }}>{p.emoji}</div>
+							<div className="plat-emoji" style={{ background: "rgba(var(--tutor-rgb),0.1)" }}>{p.emoji}</div>
 							<div className="plat-detail">
 								<div className="plat-name">{p.name}</div>
-								<span className="plat-tag" style={{ background: "rgba(124,106,247,0.15)", color: "#7c6af7" }}>
+								<span className="plat-tag" style={{ background: "rgba(var(--tutor-rgb),0.15)", color: "var(--tutor)" }}>
 									{p.businessType}
 								</span>
 							</div>

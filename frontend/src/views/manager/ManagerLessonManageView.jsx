@@ -238,7 +238,7 @@ export default function ManagerLessonManageView({ platformId }) {
 															key={s.id}
 															onClick={() => setExpandedSlot(isSelected ? null : s)}
 															style={{
-																background: isSelected ? "rgba(124,106,247,0.12)" : "var(--surface2)",
+																background: isSelected ? "rgba(var(--manager-rgb),0.12)" : "var(--surface2)",
 																border: isSelected ? "1px solid var(--manager)" : "1px solid transparent",
 																borderRadius: "var(--radius-sm)", padding: "8px", marginBottom: "6px", cursor: "pointer"
 															}}
@@ -390,7 +390,7 @@ export default function ManagerLessonManageView({ platformId }) {
 										{DAY_KEYS.map((key) => <option key={key} value={key}>{DAY_OF_WEEK_LABEL[key]}요일</option>)}
 									</select>
 								</div>
-								<div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
+								<div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(160px,1fr))", gap: "10px" }}>
 									<div className="form-field">
 										<label>시작일</label>
 										<input type="date" value={addForm.validFrom} onChange={(e) => setAddForm({ ...addForm, validFrom: e.target.value })} />
@@ -408,7 +408,7 @@ export default function ManagerLessonManageView({ platformId }) {
 							</div>
 						)}
 
-						<div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
+						<div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(160px,1fr))", gap: "10px" }}>
 							<div className="form-field">
 								<label>시작 시간</label>
 								<input type="time" value={addForm.startTime} onChange={(e) => setAddForm({ ...addForm, startTime: e.target.value })} />

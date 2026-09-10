@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { FileSpreadsheet } from "lucide-react";
 import { getRevenueSummary, getRevenueRecords, ORDER_STATUS_LABEL, PAYMENT_METHOD_LABEL, CASH_RECEIPT_STATUS_LABEL } from "../../api/common.js";
 import { exportCsv } from "../../utils/exportCsv.js";
 
@@ -94,8 +95,8 @@ export default function TaxAccountantRevenueView({ platformId, platformName }) {
 						세액 포함
 					</label>
 				</div>
-				<button className="btn btn-ghost btn-sm" disabled={loading} onClick={handleExport}>
-					📊 엑셀로 내보내기
+				<button className="btn btn-ghost btn-sm" style={{ display: "inline-flex", alignItems: "center", gap: "6px" }} disabled={loading} onClick={handleExport}>
+					<FileSpreadsheet size={14} strokeWidth={1.75} /> 엑셀로 내보내기
 				</button>
 			</div>
 

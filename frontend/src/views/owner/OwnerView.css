@@ -130,9 +130,9 @@
 	}
 
 	.page-title {
-		font-size: 26px;
+		font-size: 28px;
 		font-weight: 800;
-		letter-spacing: -.01em;
+		letter-spacing: -.015em;
 	}
 
 	.page-subtitle {
@@ -146,14 +146,13 @@
 		border: 1px solid var(--border);
 		border-radius: var(--radius);
 		padding: 22px;
+		box-shadow: var(--shadow-card);
 	}
 
 	.card-title {
-		font-size: 11px;
+		font-size: 15px;
 		font-weight: 700;
-		color: var(--text-sub);
-		text-transform: uppercase;
-		letter-spacing: .08em;
+		color: var(--text);
 		margin-bottom: 16px;
 	}
 
@@ -169,12 +168,13 @@
 	}
 
 	.btn-primary {
-		background: var(--owner);
+		background: var(--cta);
 		color: #fff;
+		box-shadow: 0 3px 10px rgba(245, 166, 35, .3);
 	}
 
 	.btn-primary:hover {
-		background: #8a4c16;
+		opacity: .9;
 	}
 
 	.btn-ghost {
@@ -480,12 +480,10 @@
 	}
 
 	.data-table th {
-		font-size: 11px;
+		font-size: 12px;
 		font-weight: 600;
-		color: var(--text-sub);
-		text-transform: uppercase;
-		letter-spacing: .06em;
-		padding: 8px 12px;
+		color: var(--text-dim);
+		padding: 10px 12px;
 		text-align: left;
 		border-bottom: 1px solid var(--border);
 	}

@@ -32,7 +32,7 @@ export default function OwnerDashboardView({ platforms, requests, onDecided, onN
 			</div>
 
 			{/* KPI 2칸 (매출/회원 집계는 아직 백엔드 미지원) */}
-			<div style={{ display: "grid", gridTemplateColumns: "repeat(2,1fr)", gap: "16px", marginBottom: "24px" }}>
+			<div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(160px,1fr))", gap: "16px", marginBottom: "24px" }}>
 				<div className="card" style={{ padding: "20px", textAlign: "center" }}>
 					<div style={{ fontSize: "11px", color: "var(--text-dim)", letterSpacing: "1px", textTransform: "uppercase", marginBottom: "8px" }}>활성 플랫폼</div>
 					<div style={{ fontFamily: "'DM Mono',monospace", fontSize: "32px", fontWeight: 500, color: "var(--owner)", lineHeight: 1 }}>{platforms.length}</div>
@@ -44,7 +44,7 @@ export default function OwnerDashboardView({ platforms, requests, onDecided, onN
 				</div>
 			</div>
 
-			<div style={{ display: "grid", gridTemplateColumns: "1fr 340px", gap: "20px" }}>
+			<div className="grid-main-side" style={{ gap: "20px", "--side-w": "340px" }}>
 
 				{/* 플랫폼 목록 */}
 				<div className="card">
@@ -115,7 +115,7 @@ export default function OwnerDashboardView({ platforms, requests, onDecided, onN
 									<button
 										className="btn btn-sm"
 										disabled={busyId === r.id}
-										style={{ flex: 1, background: "rgba(74,222,128,0.12)", color: "var(--green)", border: "1px solid rgba(74,222,128,0.3)" }}
+										style={{ flex: 1, background: "rgba(var(--green-rgb),0.12)", color: "var(--green)", border: "1px solid rgba(var(--green-rgb),0.3)" }}
 										onClick={() => decide(r, "approve")}
 									>
 										승인

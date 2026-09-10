@@ -1,6 +1,11 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
+import {
+	LayoutDashboard, CheckSquare, Users, GraduationCap, Pin, Warehouse, ClipboardCheck,
+	CreditCard, Receipt, Calculator, ClipboardList, History, CalendarClock, Wrench, Target,
+	Wallet, CalendarDays, Calendar, User, Building2, Moon, Sun, Bell, LogOut
+} from "lucide-react";
 import { closeSidebar, toggleCollapse, openSidebar } from "./default.js";
 import { getTheme, toggleTheme } from "../theme.js";
 import "./manager/ManagerView.css";
@@ -75,8 +80,8 @@ const DEFAULT_CONTEXT = {
 };
 
 const COMMON_MENU = [
-	{ id: "calendar", label: "캘린더", icon: "📅" },
-	{ id: "mypage", label: "내 정보", icon: "👤" }
+	{ id: "calendar", label: "캘린더", icon: Calendar },
+	{ id: "mypage", label: "내 정보", icon: User }
 ];
 // 강사/매니저는 업무가 겹쳐 역할 섹션이 같이 뜨는 경우가 많다 — 캘린더/내 정보를 섹션마다
 // 중복 노출하는 대신 사이드바 맨 아래에 공유 메뉴 하나로 뺀다.
@@ -86,39 +91,39 @@ const SHARED_BOTTOM_ROLES = ["TUTOR", "MANAGER"];
 const NO_CALENDAR_ROLES = ["TAX_ACCOUNTANT"];
 const ROLE_MENU = {
 	OWNER: [
-		{ id: "dashboard", label: "대시보드", icon: "📊" },
-		{ id: "platform", label: "플랫폼 관리", icon: "🏢" },
-		{ id: "facility", label: "시설물 관리", icon: "🏗" },
-		{ id: "facilityStatus", label: "시설물 현황", icon: "🧾" },
-		{ id: "approval", label: "승인 관리", icon: "✅" }
+		{ id: "dashboard", label: "대시보드", icon: LayoutDashboard },
+		{ id: "platform", label: "플랫폼 관리", icon: Building2 },
+		{ id: "facility", label: "시설물 관리", icon: Warehouse },
+		{ id: "facilityStatus", label: "시설물 현황", icon: ClipboardCheck },
+		{ id: "approval", label: "승인 관리", icon: CheckSquare }
 	],
 	MANAGER: [
-		{ id: "dashboard", label: "대시보드", icon: "📊" },
-		{ id: "approval", label: "승인 관리", icon: "✅" },
-		{ id: "members", label: "회원 관리", icon: "👥" },
-		{ id: "tutor", label: "강사 관리", icon: "🧑‍🏫" },
-		{ id: "lessonManage", label: "수업 관리", icon: "📌" },
-		{ id: "facilityStatus", label: "시설물 현황", icon: "🏗" },
-		{ id: "payment", label: "수강권 / 결제", icon: "💳" },
-		{ id: "paymentHistory", label: "결제 이력", icon: "🧾" },
-		{ id: "calc", label: "상담 계산툴", icon: "🧮" },
-		{ id: "history", label: "수업 이력", icon: "📋" },
-		{ id: "activityLog", label: "활동 이력", icon: "🕒" }
+		{ id: "dashboard", label: "대시보드", icon: LayoutDashboard },
+		{ id: "approval", label: "승인 관리", icon: CheckSquare },
+		{ id: "members", label: "회원 관리", icon: Users },
+		{ id: "tutor", label: "강사 관리", icon: GraduationCap },
+		{ id: "lessonManage", label: "수업 관리", icon: Pin },
+		{ id: "facilityStatus", label: "시설물 현황", icon: Warehouse },
+		{ id: "payment", label: "수강권 / 결제", icon: CreditCard },
+		{ id: "paymentHistory", label: "결제 이력", icon: Receipt },
+		{ id: "calc", label: "상담 계산툴", icon: Calculator },
+		{ id: "history", label: "수업 이력", icon: ClipboardList },
+		{ id: "activityLog", label: "활동 이력", icon: History }
 	],
 	TUTOR: [
-		{ id: "attendance", label: "출석 관리", icon: "✅" },
-		{ id: "attendHistory", label: "출석 이력", icon: "📋" },
-		{ id: "schedule", label: "일정 변경 요청", icon: "📋" },
-		{ id: "facilityReport", label: "시설물 고장 신고", icon: "🏗" }
+		{ id: "attendance", label: "출석 관리", icon: CheckSquare },
+		{ id: "attendHistory", label: "출석 이력", icon: ClipboardList },
+		{ id: "schedule", label: "일정 변경 요청", icon: CalendarClock },
+		{ id: "facilityReport", label: "시설물 고장 신고", icon: Wrench }
 	],
 	USER: [
-		{ id: "reservation", label: "수업 예약", icon: "🎯" },
-		{ id: "facility", label: "시설물 예약", icon: "🏗" }
+		{ id: "reservation", label: "수업 예약", icon: Target },
+		{ id: "facility", label: "시설물 예약", icon: Warehouse }
 	],
 	TAX_ACCOUNTANT: [
-		{ id: "revenue", label: "매출 집계", icon: "💰" },
-		{ id: "payroll", label: "직원 정보", icon: "🧾" },
-		{ id: "finCalendar", label: "재무 일정", icon: "🗓" }
+		{ id: "revenue", label: "매출 집계", icon: Wallet },
+		{ id: "payroll", label: "직원 정보", icon: Receipt },
+		{ id: "finCalendar", label: "재무 일정", icon: CalendarDays }
 	]
 };
 
@@ -375,7 +380,7 @@ export default function AppShell() {
 			<nav className="sidebar">
 				<div className="sidebar-top">
 					<div className="logo">
-						<div className="logo-icon">🗓</div>
+						<div className="logo-icon"><CalendarDays size={18} strokeWidth={1.75} /></div>
 						<span className="logo-text">ReserveHub</span>
 					</div>
 					<div className="sidebar-top-actions">
@@ -384,7 +389,7 @@ export default function AppShell() {
 							title="테마 전환"
 							onClick={() => setTheme(toggleTheme())}
 						>
-							{theme === "dark" ? "☀️" : "🌙"}
+							{theme === "dark" ? <Sun size={16} strokeWidth={1.75} /> : <Moon size={16} strokeWidth={1.75} />}
 						</button>
 						<button className="collapse-btn" onClick={toggleCollapse}>
 							◀
@@ -478,7 +483,7 @@ export default function AppShell() {
 									className={`nav-item ${activeRole === section.role && currentContext === m.id ? "active" : ""}`}
 									onClick={() => selectMenuItem(section.role, m.id)}
 								>
-									<span className="nav-icon">{m.icon}</span>
+									<span className="nav-icon"><m.icon size={17} strokeWidth={1.75} /></span>
 									<span className="nav-label">{m.label}</span>
 									{m.id === "approval" && section.role === "OWNER" && pendingOwnerCount > 0 && (
 										<span
@@ -509,7 +514,7 @@ export default function AppShell() {
 									className={`nav-item ${currentContext === m.id ? "active" : ""}`}
 									onClick={() => setCurrentContext(m.id)}
 								>
-									<span className="nav-icon">{m.icon}</span>
+									<span className="nav-icon"><m.icon size={17} strokeWidth={1.75} /></span>
 									<span className="nav-label">{m.label}</span>
 								</button>
 							))}
@@ -519,7 +524,7 @@ export default function AppShell() {
 
 				<div className="sidebar-bottom">
 					<button className="btn-logout" onClick={handleLogout}>
-						🚪 <span>로그아웃</span>
+						<LogOut size={16} strokeWidth={1.75} /> <span>로그아웃</span>
 					</button>
 				</div>
 			</nav>
@@ -532,7 +537,7 @@ export default function AppShell() {
 					<div className="topbar-title">{topbarTitle}</div>
 					<div className="topbar-right">
 						<button className="notif-btn" title="알림">
-							🔔<span className="notif-dot"></span>
+							<Bell size={17} strokeWidth={1.75} /><span className="notif-dot"></span>
 						</button>
 					</div>
 				</div>
