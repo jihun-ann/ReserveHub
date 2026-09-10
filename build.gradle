@@ -3,6 +3,7 @@ plugins {
     id 'org.springframework.boot' version '4.0.3'
     id 'io.spring.dependency-management' version '1.1.7'
     id 'com.google.cloud.tools.jib' version '3.5.4'
+    id 'org.siouan.frontend-gradle-plugin' version '9.0.0'
 }
 
 group = 'com.hub'
@@ -83,4 +84,20 @@ jib {
     container {
         ports = ['8080']
     }
+}
+
+frontend {
+    nodeVersion = '20.11.1'
+    packageJsonDirectory = file('frontend')
+    assembleScript = 'run build'
+}
+
+tasks.register('copyFrontend', Copy) {
+    dependsOn tasks.named('assembleFrontend')
+    from file('frontend/dist')
+    into layout.buildDirectory.dir('resources/main/static')
+}
+
+tasks.named('processResources') {
+    dependsOn tasks.named('copyFrontend')
 }
