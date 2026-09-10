@@ -53,7 +53,7 @@ jobs:
           echo "=== Docker container -> GitHub ==="
           docker run --rm curlimages/curl:latest \
             -I -L --connect-timeout 10 \
-            https://github.com
+            "https://github.com"
 
           echo "=== Docker container -> BellSoft ==="
           docker run --rm curlimages/curl:latest \
