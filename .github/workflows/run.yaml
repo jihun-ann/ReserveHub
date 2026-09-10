@@ -18,6 +18,15 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Grant Execute Permission
+        run: chmod +x gradlew
+
       - name: Docker Login
         run: |
           echo "${{ secrets.GITHUB_TOKEN }}" | \
@@ -25,17 +34,16 @@ jobs:
             -u "${{ github.actor }}" \
             --password-stdin
 
-      - name: Docker Build
+      - name: Build Application Image
         run: |
-          docker build \
-            -t ghcr.io/${{ github.repository_owner }}/reservehub:${{ github.sha }} \
-            .
+          ./gradlew bootBuildImage \
+            --imageName=ghcr.io/${{ github.repository_owner }}/reservehub:${{ github.sha }}
 
       - name: Docker Push
         run: |
           docker push \
             ghcr.io/${{ github.repository_owner }}/reservehub:${{ github.sha }}
-            
+
       - name: Update Kubernetes Image
         run: |
           sed -i \
