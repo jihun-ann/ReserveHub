@@ -1,25 +1,55 @@
-name: ARC Runner Test
+name: ReserveHub CI
 
 on:
-  workflow_dispatch:
   push:
     branches:
       - sub-branch
 
+permissions:
+  contents: write
+  packages: write
+
 jobs:
-  test:
+  build:
+    name: Build and Push
     runs-on: k8s-runner
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Runner Info
+      - name: Docker Login
         run: |
-          echo "Running on Kubernetes self-hosted runner"
-          hostname
-          uname -a
+          echo "${{ secrets.GITHUB_TOKEN }}" | \
+          docker login ghcr.io \
+            -u "${{ github.actor }}" \
+            --password-stdin
 
-      - name: Docker Check
+      - name: Docker Build
         run: |
-          docker version
+          docker build \
+            -t ghcr.io/${{ github.repository_owner }}/reservehub:${{ github.sha }} \
+            .
+
+      - name: Docker Push
+        run: |
+          docker push \
+            ghcr.io/${{ github.repository_owner }}/reservehub:${{ github.sha }}
+            
+      - name: Update Kubernetes Image
+        run: |
+          sed -i \
+            "s|image: ghcr.io/.*/reservehub:.*|image: ghcr.io/${{ github.repository_owner }}/reservehub:${{ github.sha }}|" \
+            k8s/deployment.yaml
+
+      - name: Commit Deployment
+        run: |
+          git config user.name "github-actions"
+          git config user.email "github-actions@github.com"
+
+          git add k8s/deployment.yaml
+
+          git diff --cached --quiet || \
+          git commit -m "deploy: ${{ github.sha }}"
+
+          git push

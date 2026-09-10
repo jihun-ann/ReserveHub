@@ -1,0 +1,37 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: reservehub
+spec:
+  replicas: 1
+
+  selector:
+    matchLabels:
+      app: reservehub
+
+  template:
+    metadata:
+      labels:
+        app: reservehub
+
+    spec:
+      containers:
+        - name: reservehub
+          image: ghcr.io/jihun-ann/reservehub:initial
+
+          ports:
+            - containerPort: 8080
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: reservehub
+spec:
+  selector:
+    app: reservehub
+
+  ports:
+    - port: 8080
+      targetPort: 8080
+      nodePort: 30080
+  type: NodePort
