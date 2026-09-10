@@ -48,6 +48,18 @@ jobs:
           docker run --rm --network host curlimages/curl:latest \
           -I -L --connect-timeout 10 https://github.com
 
+      - name: Test DinD With Proxy
+        run: |
+          docker run --rm --network host \
+            -e HTTP_PROXY="${HTTP_PROXY}" \
+            -e HTTPS_PROXY="${HTTPS_PROXY}" \
+            -e NO_PROXY="${NO_PROXY}" \
+            -e http_proxy="${http_proxy}" \
+            -e https_proxy="${https_proxy}" \
+            -e no_proxy="${no_proxy}" \
+            curlimages/curl:latest \
+            -4 -I -L --connect-timeout 10 https://github.com
+            
       - name: Check DinD Network
         run: |
           echo "=== Docker container -> GitHub ==="
