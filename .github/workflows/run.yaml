@@ -34,10 +34,21 @@ jobs:
             -u "${{ github.actor }}" \
             --password-stdin
 
+      # Runner에서 GitHub 및 BellSoft JRE 다운로드가 가능한지 확인
+      - name: Network Check
+        run: |
+          echo "=== GitHub connectivity ==="
+          curl -I -L --connect-timeout 10 https://github.com
+
+          echo "=== BellSoft JRE connectivity ==="
+          curl -I -L --connect-timeout 10 \
+            "https://github.com/bell-sw/Liberica/releases/download/17.0.20%2B10/bellsoft-jre17.0.20%2B10-linux-amd64.tar.gz"
+
       - name: Build Application Image
         run: |
           ./gradlew bootBuildImage \
-            --imageName=ghcr.io/${{ github.repository_owner }}/reservehub:${{ github.sha }}
+            --imageName=ghcr.io/${{ github.repository_owner }}/reservehub:${{ github.sha }} \
+            --info
 
       - name: Docker Push
         run: |
