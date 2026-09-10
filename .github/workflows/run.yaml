@@ -1,0 +1,25 @@
+name: ARC Runner Test
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - sub-branch
+
+jobs:
+  test:
+    runs-on: k8s-runner
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Runner Info
+        run: |
+          echo "Running on Kubernetes self-hosted runner"
+          hostname
+          uname -a
+
+      - name: Docker Check
+        run: |
+          docker version

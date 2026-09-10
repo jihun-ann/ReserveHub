@@ -21,6 +21,8 @@ import com.hub.reservehub.domain.program.Slot;
 import com.hub.reservehub.domain.calendar.CalendarEventService;
 import com.hub.reservehub.domain.calendar.EventType;
 import com.hub.reservehub.domain.calendar.ShareScope;
+import com.hub.reservehub.domain.facility.Facility;
+import com.hub.reservehub.domain.facility.FacilityService;
 import com.hub.reservehub.domain.lesson.AttendStatus;
 import com.hub.reservehub.domain.lesson.Lesson;
 import com.hub.reservehub.domain.lesson.LessonService;
@@ -73,6 +75,7 @@ public class DummyDataSeeder implements CommandLineRunner {
     private final ReservationService reservationService;
     private final ScheduleChangeRequestService scheduleChangeRequestService;
     private final FinancialRequestService financialRequestService;
+    private final FacilityService facilityService;
 
     public DummyDataSeeder(
             AuthService authService, PlatformService platformService,
@@ -83,7 +86,7 @@ public class DummyDataSeeder implements CommandLineRunner {
             CalendarEventService calendarEventService, ProgramService programService,
             LessonService lessonService, ReservationService reservationService,
             ScheduleChangeRequestService scheduleChangeRequestService,
-            FinancialRequestService financialRequestService
+            FinancialRequestService financialRequestService, FacilityService facilityService
     ) {
         this.authService = authService;
         this.platformService = platformService;
@@ -100,6 +103,7 @@ public class DummyDataSeeder implements CommandLineRunner {
         this.reservationService = reservationService;
         this.scheduleChangeRequestService = scheduleChangeRequestService;
         this.financialRequestService = financialRequestService;
+        this.facilityService = facilityService;
     }
 
     @Override
@@ -112,7 +116,7 @@ public class DummyDataSeeder implements CommandLineRunner {
         User managerMid = authService.register("manager_mid", "manager-mid@test.com", PASSWORD, Role.MANAGER, "정하윤", "010-2222-4444");
         User managerJunior = authService.register("manager_low", "manager-low@test.com", PASSWORD, Role.MANAGER, "오지훈", "010-2222-5555");
         User tutor = authService.register("tutor", "tutor@test.com", PASSWORD, Role.TUTOR, "박지훈", "010-3333-4444");
-        authService.register("user", "user@test.com", PASSWORD, Role.USER, "최민서", "010-4444-5555");
+        User user = authService.register("user", "user@test.com", PASSWORD, Role.USER, "최민서", "010-4444-5555");
 
         // 세무사가 조회할 정산 계좌 — 실제 서비스에선 본인이 마이페이지에서 등록하지만, 더미데이터는
         // 미리 채워둬서 세무사 계정 시드 즉시 "직원 정보" 화면에 값이 보이도록 한다.
@@ -134,6 +138,7 @@ public class DummyDataSeeder implements CommandLineRunner {
         seedCalendarEvents(platform.getId(), ownerPrincipal);
         Slot slot = seedLessonsForSlot(platform.getId(), ownerPrincipal, seeded.pass().getId(), "그룹반 A", DayOfWeek.MON, tutor.getId(), members);
         seedReservationAndRequest(platform.getId(), ownerPrincipal, tutor, slot, members.get(0), "수강생 요청으로 다음 그룹반 일정을 조정합니다.");
+        seedFacilities(platform.getId(), ownerPrincipal, user);
 
         // tutor@test.com이 자신이 강사로 소속된 플랫폼에서 동시에 수강권을 구매한 고객이기도 한
         // 시나리오 — 한 플랫폼 안에서 스태프이면서 사용자인 다중 역할 케이스를 재현한다.
@@ -263,6 +268,31 @@ public class DummyDataSeeder implements CommandLineRunner {
         scheduleChangeRequestRepository.save(pending2);
         scheduleChangeRequestRepository.save(approved);
         scheduleChangeRequestRepository.save(rejected);
+    }
+
+    // 배치도(2개는 배치, 1개는 미배치)와 예약 현황 화면을 바로 확인할 수 있도록 시설물 2건을
+    // user@test.com 명의로 미리 예약해둔다.
+    private void seedFacilities(UUID platformId, AuthenticatedUser ownerPrincipal, User user) {
+        Facility studioRoom = facilityService.create(
+                platformId, ownerPrincipal, "1층 필라테스룸", "리포머 5대 구비", "1층", 2,
+                LocalTime.of(9, 0), LocalTime.of(22, 0)
+        );
+        facilityService.updatePosition(studioRoom.getId(), ownerPrincipal, 25, 40);
+
+        Facility practiceRoom = facilityService.create(
+                platformId, ownerPrincipal, "2층 개인연습실", "거울/바 설치", "2층", 1,
+                LocalTime.of(9, 0), LocalTime.of(22, 0)
+        );
+        facilityService.updatePosition(practiceRoom.getId(), ownerPrincipal, 70, 55);
+
+        facilityService.create(
+                platformId, ownerPrincipal, "지하 요가룸", null, "지하1층", 4, null, null
+        );
+
+        AuthenticatedUser userPrincipal = AuthenticatedUser.from(user);
+        LocalDate today = LocalDate.now();
+        facilityService.book(studioRoom.getId(), userPrincipal, today.plusDays(1), LocalTime.of(10, 0), LocalTime.of(11, 0), "개인 연습");
+        facilityService.book(practiceRoom.getId(), userPrincipal, today.plusDays(2), LocalTime.of(14, 0), LocalTime.of(15, 0), null);
     }
 
     private record MembersAndPass(List<User> members, Pass pass) {

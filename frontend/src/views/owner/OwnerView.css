@@ -53,6 +53,8 @@
 		display: flex;
 		align-items: center;
 		gap: 14px;
+		min-height: 65px;
+		box-sizing: border-box;
 		padding: 18px 40px;
 		border-bottom: 1px solid var(--border);
 		background: var(--surface);

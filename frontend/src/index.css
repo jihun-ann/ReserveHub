@@ -11,6 +11,7 @@
 
 :root {
   --accent: #4c7cf0; /* 브랜드 블루 — 활성 메뉴, 잔액/링크 등 정보성 강조 */
+  --accent-active-text: #3560d6; /* 클릭/활성 상태 버튼 텍스트 — --accent보다 진하게 */
   --accent2: #2f9c86; /* 보조 강조(틸) */
   --accent3: #f0a355; /* 앰버 — 대기/주의 배지, 카테고리 아이콘 */
   --cta: #f5a623; /* CTA 버튼 전용 골드 — 브랜드색과 분리해 "결제/제출" 액션에만 쓴다 */
@@ -29,7 +30,7 @@
   --shadow-card: 0 4px 18px rgba(30, 41, 59, .06);
 
   /* 라이트 테마 배경/텍스트 — 카드/보더 색상이 여기서 파생됨 */
-  --bg: #eef1f6;
+  --bg: #f4f4f8;
   --surface: #ffffff;
   --surface2: #f4f6fa;
   --border: #eaedf3;
@@ -388,7 +389,7 @@ body {
 }
 
 .tier-dropdown-item.active {
-  color: var(--accent);
+  color: var(--accent-active-text);
   font-weight: 700;
 }
 
@@ -500,7 +501,7 @@ body {
 
 .nav-item.active {
   background: rgba(var(--accent-rgb), .12);
-  color: var(--accent);
+  color: var(--accent-active-text);
   font-weight: 600;
 }
 
