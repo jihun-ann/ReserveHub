@@ -7,6 +7,7 @@ import com.hub.reservehub.domain.approval.ScheduleChangeRequest;
 import com.hub.reservehub.domain.approval.ScheduleChangeRequestRepository;
 import com.hub.reservehub.domain.approval.ScheduleChangeRequestService;
 import com.hub.reservehub.domain.platform.BusinessType;
+import com.hub.reservehub.domain.platform.ManagerTier;
 import com.hub.reservehub.domain.platform.Platform;
 import com.hub.reservehub.domain.platform.PlatformService;
 import com.hub.reservehub.domain.platform.StaffRole;
@@ -106,6 +107,10 @@ public class DummyDataSeeder implements CommandLineRunner {
         System.out.println("[DummyDataSeeder] seeding start");
         User owner = authService.register("owner", "owner@test.com", PASSWORD, Role.OWNER, "김도윤", "010-1111-2222");
         User manager = authService.register("manager", "manager@test.com", PASSWORD, Role.MANAGER, "이서연", "010-2222-3333");
+        // 매니저 등급(L/M/H) 데모용 — manager@test.com은 HIGH로 기존 시나리오를 그대로 유지하고,
+        // 등급별 차이를 눈으로 볼 수 있도록 MEDIUM/LOW 매니저 계정을 추가로 둔다.
+        User managerMid = authService.register("manager_mid", "manager-mid@test.com", PASSWORD, Role.MANAGER, "정하윤", "010-2222-4444");
+        User managerJunior = authService.register("manager_low", "manager-low@test.com", PASSWORD, Role.MANAGER, "오지훈", "010-2222-5555");
         User tutor = authService.register("tutor", "tutor@test.com", PASSWORD, Role.TUTOR, "박지훈", "010-3333-4444");
         authService.register("user", "user@test.com", PASSWORD, Role.USER, "최민서", "010-4444-5555");
 
@@ -119,7 +124,9 @@ public class DummyDataSeeder implements CommandLineRunner {
                 ownerPrincipal, "ReserveHub 테스트 스튜디오", BusinessType.PILATES,
                 "02-1234-5678", "서울시 강남구", "더미 데이터용 테스트 플랫폼"
         );
-        platformService.assignStaff(platform.getId(), ownerPrincipal, manager.getId(), StaffRole.MANAGER);
+        platformService.assignStaff(platform.getId(), ownerPrincipal, manager.getId(), StaffRole.MANAGER, ManagerTier.HIGH);
+        platformService.assignStaff(platform.getId(), ownerPrincipal, managerMid.getId(), StaffRole.MANAGER, ManagerTier.MEDIUM);
+        platformService.assignStaff(platform.getId(), ownerPrincipal, managerJunior.getId(), StaffRole.MANAGER, ManagerTier.LOW);
         platformService.assignStaff(platform.getId(), ownerPrincipal, tutor.getId(), StaffRole.TUTOR);
         seedScheduleChangeRequests(platform.getId(), tutor.getId(), manager.getId());
         MembersAndPass seeded = seedMembers(platform.getId(), ownerPrincipal);

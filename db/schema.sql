@@ -75,19 +75,24 @@ COMMENT ON TABLE platforms IS '플랫폼 (스튜디오/센터 단위). 오너만
 -- 매니저: 플랫폼 1개 고정 (UI 확정), 강사: 복수 플랫폼 가능
 CREATE TYPE staff_role AS ENUM ('MANAGER', 'TUTOR');
 
+-- 매니저 권한 등급 — L/M/H 순으로 할 수 있는 일이 늘어난다 (휴가 승인, 스태프 배정/제거, 등급 변경 등).
+CREATE TYPE manager_tier AS ENUM ('LOW', 'MEDIUM', 'HIGH');
+
 CREATE TABLE platform_staff (
-                                id              UUID        PRIMARY KEY DEFAULT uuid_generate_v4(),
-                                platform_id     UUID        NOT NULL REFERENCES platforms(id) ON DELETE CASCADE,
-                                user_id         UUID        NOT NULL REFERENCES users(id)     ON DELETE CASCADE,
-                                staff_role      staff_role  NOT NULL,
-                                is_active       BOOLEAN     NOT NULL DEFAULT TRUE,
-                                joined_at       TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                                id              UUID          PRIMARY KEY DEFAULT uuid_generate_v4(),
+                                platform_id     UUID          NOT NULL REFERENCES platforms(id) ON DELETE CASCADE,
+                                user_id         UUID          NOT NULL REFERENCES users(id)     ON DELETE CASCADE,
+                                staff_role      staff_role    NOT NULL,
+                                is_active       BOOLEAN       NOT NULL DEFAULT TRUE,
+                                joined_at       TIMESTAMPTZ   NOT NULL DEFAULT NOW(),
                                 left_at         TIMESTAMPTZ,                         -- 퇴사/해제 시각
+                                manager_tier    manager_tier,                        -- MANAGER 역할에서만 의미 있음. TUTOR는 NULL
                                 UNIQUE (platform_id, user_id, staff_role)
 );
 
-COMMENT ON TABLE  platform_staff           IS '플랫폼-스태프 매핑. 한 계정이 한 플랫폼에서 MANAGER+TUTOR을 동시에 가질 수 있음. MANAGER는 1개 플랫폼만 허용 (앱 레이어에서 검증)';
-COMMENT ON COLUMN platform_staff.left_at   IS 'NULL이면 재직 중. Soft delete 방식으로 이력 보존';
+COMMENT ON TABLE  platform_staff              IS '플랫폼-스태프 매핑. 한 계정이 한 플랫폼에서 MANAGER+TUTOR을 동시에 가질 수 있음. MANAGER는 1개 플랫폼만 허용 (앱 레이어에서 검증)';
+COMMENT ON COLUMN platform_staff.left_at      IS 'NULL이면 재직 중. Soft delete 방식으로 이력 보존';
+COMMENT ON COLUMN platform_staff.manager_tier IS 'MANAGER 권한 등급(LOW/MEDIUM/HIGH). 새로 배정된 매니저는 LOW로 시작';
 
 
 -- 플랫폼 ↔ 세무사 — platform_staff와 별개 테이블. 스태프가 아니라 오너가 초대한 읽기 전용

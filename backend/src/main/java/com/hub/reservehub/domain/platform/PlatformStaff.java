@@ -45,14 +45,26 @@ public class PlatformStaff {
     @Nullable
     private Integer sessionRate;
 
+    // 매니저 권한 등급 — MANAGER 역할에서만 의미를 가진다. TUTOR 배정에는 null.
+    @Nullable
+    @Enumerated(EnumType.STRING)
+    private ManagerTier managerTier;
+
     protected PlatformStaff() {
         // JPA only.
     }
 
     public PlatformStaff(UUID platformId, UUID userId, StaffRole staffRole) {
+        this(platformId, userId, staffRole, staffRole == StaffRole.MANAGER ? ManagerTier.LOW : null);
+    }
+
+    // 매니저를 배정하며 시작 등급을 바로 지정할 때 사용 — 지정하지 않으면 가장 낮은 LOW로 시작한다
+    // (새로 배정된 매니저는 기본적으로 제한된 권한에서 출발해, 이후 HIGH 등급 매니저/오너가 승급시킨다).
+    public PlatformStaff(UUID platformId, UUID userId, StaffRole staffRole, @Nullable ManagerTier managerTier) {
         this.platformId = platformId;
         this.userId = userId;
         this.staffRole = staffRole;
+        this.managerTier = managerTier;
         this.joinedAt = Instant.now();
     }
 
@@ -104,6 +116,18 @@ public class PlatformStaff {
             throw new IllegalArgumentException("sessionRate must not be negative");
         }
         this.sessionRate = sessionRate;
+    }
+
+    @Nullable
+    public ManagerTier getManagerTier() {
+        return managerTier;
+    }
+
+    public void changeManagerTier(ManagerTier managerTier) {
+        if (staffRole != StaffRole.MANAGER) {
+            throw new IllegalStateException("Only a MANAGER assignment has a manager tier");
+        }
+        this.managerTier = managerTier;
     }
 
     // Soft-deletes the assignment instead of removing history (AGENT.md 4-4).

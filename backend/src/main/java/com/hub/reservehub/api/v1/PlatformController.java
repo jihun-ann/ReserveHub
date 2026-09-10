@@ -2,6 +2,7 @@ package com.hub.reservehub.api.v1;
 
 import com.hub.reservehub.domain.platform.BusinessType;
 import com.hub.reservehub.domain.platform.IncomeType;
+import com.hub.reservehub.domain.platform.ManagerTier;
 import com.hub.reservehub.domain.platform.Platform;
 import com.hub.reservehub.domain.platform.PlatformService;
 import com.hub.reservehub.domain.platform.PlatformStaff;
@@ -80,9 +81,19 @@ public class PlatformController {
             @PathVariable UUID id, @Valid @RequestBody AssignStaffRequest request
     ) {
         PlatformStaff staff = platformService.assignStaff(
-                id, currentAuthenticatedUser.get(), request.userId(), request.staffRole()
+                id, currentAuthenticatedUser.get(), request.userId(), request.staffRole(), request.managerTier()
         );
         return ResponseEntity.status(HttpStatus.CREATED).body(PlatformStaffResponse.from(staff));
+    }
+
+    @PatchMapping("/{id}/staff/{userId}/manager-tier")
+    // 매니저 권한 등급 변경("권한 변경") — 서비스에서 HIGH 등급 매니저 또는 오너만 통과시킨다.
+    public PlatformStaffResponse updateManagerTier(
+            @PathVariable UUID id, @PathVariable UUID userId, @Valid @RequestBody UpdateManagerTierRequest request
+    ) {
+        return PlatformStaffResponse.from(
+                platformService.updateManagerTier(id, currentAuthenticatedUser.get(), userId, request.managerTier())
+        );
     }
 
     @DeleteMapping("/{id}/staff/{userId}")
@@ -140,7 +151,10 @@ public class PlatformController {
     ) {
     }
 
-    public record AssignStaffRequest(@NotNull UUID userId, @NotNull StaffRole staffRole) {
+    public record AssignStaffRequest(@NotNull UUID userId, @NotNull StaffRole staffRole, ManagerTier managerTier) {
+    }
+
+    public record UpdateManagerTierRequest(@NotNull ManagerTier managerTier) {
     }
 
     public record UpdateIncomeTypeRequest(@NotNull IncomeType incomeType) {
@@ -164,12 +178,12 @@ public class PlatformController {
 
     public record PlatformStaffResponse(
             UUID id, UUID platformId, UUID userId, StaffRole staffRole, boolean isActive,
-            IncomeType incomeType, Integer sessionRate
+            IncomeType incomeType, Integer sessionRate, ManagerTier managerTier
     ) {
         public static PlatformStaffResponse from(PlatformStaff staff) {
             return new PlatformStaffResponse(
                     staff.getId(), staff.getPlatformId(), staff.getUserId(), staff.getStaffRole(),
-                    staff.isActive(), staff.getIncomeType(), staff.getSessionRate()
+                    staff.isActive(), staff.getIncomeType(), staff.getSessionRate(), staff.getManagerTier()
             );
         }
     }

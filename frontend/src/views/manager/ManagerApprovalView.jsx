@@ -4,21 +4,22 @@ import {
 	approveScheduleRequest,
 	rejectScheduleRequest,
 	listAllLeaveRequests,
+	createLeaveRequest,
 	approveLeaveRequest,
 	rejectLeaveRequest,
 	listFinancialRequests,
 	approveFinancialRequest,
 	rejectFinancialRequest,
 	FINANCIAL_REQUEST_TYPE_LABEL,
-	getUser
+	getUser,
+	listStaff
 } from "../../api/common.js";
+import { getCurrentUser } from "../../api/http.js";
 import FinancialRequestThread from "../../components/FinancialRequestThread.jsx";
+import ApprovalRequestsTable from "../../components/ApprovalRequestsTable.jsx";
 
-const STATUS_LABEL = {
-	PENDING: { lbl: "대기 중", color: "var(--accent3)" },
-	APPROVED: { lbl: "승인됨", color: "var(--green)" },
-	REJECTED: { lbl: "반려됨", color: "var(--red)" }
-};
+const STATUS_LABEL = { PENDING: "대기 중", APPROVED: "승인됨", REJECTED: "반려됨" };
+const KIND_LABEL = { SCHEDULE: "일정 변경", LEAVE: "휴가", FINANCIAL: "재무 일정" };
 
 function formatDateTime(iso) {
 	if (!iso) return "-";
@@ -34,7 +35,24 @@ export default function ManagerApprovalView({ platformId }) {
 	const [kindFilter, setKindFilter] = useState("ALL");
 	const [memoById, setMemoById] = useState({});
 	const [expandedId, setExpandedId] = useState(null);
+	const [openThreadId, setOpenThreadId] = useState(null);
 	const [userNames, setUserNames] = useState({});
+	const [myTier, setMyTier] = useState(null);
+	const myId = getCurrentUser()?.id;
+
+	useEffect(() => {
+		if (!platformId || !myId) return;
+		listStaff(platformId).then((staff) => {
+			const mine = staff.find((s) => s.userId === myId && s.staffRole === "MANAGER");
+			setMyTier(mine?.managerTier || null);
+		}).catch(() => setMyTier(null));
+	}, [platformId, myId]);
+
+	const [leaveStart, setLeaveStart] = useState("");
+	const [leaveEnd, setLeaveEnd] = useState("");
+	const [leaveReason, setLeaveReason] = useState("");
+	const [leaveSubmitting, setLeaveSubmitting] = useState(false);
+	const [leaveError, setLeaveError] = useState("");
 
 	const refresh = useCallback(async () => {
 		if (!platformId) {
@@ -59,6 +77,23 @@ export default function ManagerApprovalView({ platformId }) {
 	useEffect(() => {
 		refresh();
 	}, [refresh]);
+
+	async function submitLeave() {
+		setLeaveError("");
+		if (!leaveStart || !leaveEnd) return;
+		setLeaveSubmitting(true);
+		try {
+			await createLeaveRequest(platformId, { startDate: leaveStart, endDate: leaveEnd, reason: leaveReason.trim() || null });
+			setLeaveStart("");
+			setLeaveEnd("");
+			setLeaveReason("");
+			await refresh();
+		} catch (err) {
+			setLeaveError(err.message || "요청 제출에 실패했습니다.");
+		} finally {
+			setLeaveSubmitting(false);
+		}
+	}
 
 	async function decide(id, approve) {
 		const memo = memoById[id];
@@ -100,16 +135,174 @@ export default function ManagerApprovalView({ platformId }) {
 		});
 		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [requests, leaveRequests, financialRequests]);
+
 	const data = merged
 		.filter((r) => filter === "ALL" || r.status === filter)
 		.filter((r) => kindFilter === "ALL" || r.kind === kindFilter);
+
+	const rows = data.map((r) => ({
+		id: `${r.kind}-${r.id}`,
+		kindLabel: KIND_LABEL[r.kind],
+		requesterName: userNames[r.requestedBy] || r.requestedBy,
+		createdAt: r.createdAt,
+		status: r.status,
+		deciderName: r.decidedBy ? (userNames[r.decidedBy] || r.decidedBy) : null,
+		decidedAt: r.updatedAt
+	}));
+
+	function renderDetail(rowId) {
+		const r = merged.find((x) => `${x.kind}-${x.id}` === rowId);
+		if (!r) return null;
+		const st = STATUS_LABEL[r.status];
+		const isFinancial = r.kind === "FINANCIAL";
+		const isLeave = r.kind === "LEAVE";
+		const onDecide = isFinancial ? decideFinancial : isLeave ? decideLeave : decide;
+		const isMine = r.requestedBy === myId;
+		const tierBlocked = isLeave && myTier !== "HIGH";
+
+		return (
+			<div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+				<div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "8px" }}>
+					<div style={{ fontSize: "14px", fontWeight: 700 }}>
+						{isFinancial ? `재무 일정 · ${FINANCIAL_REQUEST_TYPE_LABEL[r.type] || r.type}` : isLeave ? "휴가 요청" : "일정 변경 요청"}
+					</div>
+					<span className="badge" style={{ color: st.color }}>{st.lbl}</span>
+				</div>
+
+				{isFinancial ? (
+					<div className="req-date-row">
+						<div className="req-date-box">
+							<div className="req-date-lbl">해당 일자</div>
+							<div className="req-date-val" style={{ color: "var(--manager)" }}>{r.eventDate}</div>
+						</div>
+						{r.memo && (
+							<div className="req-date-box">
+								<div className="req-date-lbl">세무사 메모</div>
+								<div className="req-date-val">{r.memo}</div>
+							</div>
+						)}
+					</div>
+				) : isLeave ? (
+					<div className="req-date-row">
+						<div className="req-date-box">
+							<div className="req-date-lbl">시작일</div>
+							<div className="req-date-val">{r.startDate}</div>
+						</div>
+						<div className="req-date-box">
+							<div className="req-date-lbl">종료일</div>
+							<div className="req-date-val" style={{ color: "var(--manager)" }}>{r.endDate}</div>
+						</div>
+					</div>
+				) : (
+					<div className="req-date-row">
+						<div className="req-date-box">
+							<div className="req-date-lbl">기존 일정</div>
+							<div className="req-date-val">{r.originalDate}</div>
+						</div>
+						<div className="req-date-box">
+							<div className="req-date-lbl">변경 희망</div>
+							<div className="req-date-val" style={{ color: "var(--manager)" }}>{r.requestedDate}</div>
+						</div>
+					</div>
+				)}
+
+				{!isFinancial && r.reason && (
+					<div style={{ fontSize: "13px", color: "var(--text-sub)" }}>사유: {r.reason}</div>
+				)}
+
+				{!isFinancial && (
+					<div style={{ fontSize: "11px", color: "var(--text-dim)" }}>
+						신청: {userNames[r.requestedBy] || r.requestedBy} · {formatDateTime(r.createdAt)}
+						{r.status !== "PENDING" && r.decidedBy && (
+							<> &nbsp;|&nbsp; 처리: {userNames[r.decidedBy] || r.decidedBy} · {formatDateTime(r.updatedAt)}</>
+						)}
+					</div>
+				)}
+
+				{r.status !== "PENDING" && r.decisionMemo && (
+					<div style={{ fontSize: "12px", color: "var(--text-sub)" }}>
+						<span style={{ fontSize: "10px", color: "var(--text-dim)", letterSpacing: "1px" }}>
+							{r.status === "REJECTED" ? "반려 사유" : "승인 메모"}
+						</span>
+						<div style={{ marginTop: "4px" }}>{r.decisionMemo}</div>
+					</div>
+				)}
+
+				{isFinancial && (
+					<>
+						<button
+							type="button"
+							className="btn btn-ghost btn-sm"
+							style={{ alignSelf: "flex-start" }}
+							onClick={() => setOpenThreadId(openThreadId === r.id ? null : r.id)}
+						>
+							{openThreadId === r.id ? "댓글 닫기" : "댓글 / 파일 첨부"}
+						</button>
+						{openThreadId === r.id && <FinancialRequestThread requestId={r.id} />}
+					</>
+				)}
+
+				{r.status === "PENDING" && (
+					isMine ? (
+						<div style={{ fontSize: "12px", color: "var(--text-dim)" }}>본인이 제출한 요청은 직접 승인/반려할 수 없습니다. 다른 매니저나 오너가 처리해야 합니다.</div>
+					) : tierBlocked ? (
+						<div style={{ fontSize: "12px", color: "var(--text-dim)" }}>휴가 승인/반려는 H 등급 매니저만 처리할 수 있습니다.</div>
+					) : (
+						<div>
+							<div style={{ fontSize: "10px", color: "var(--text-dim)", letterSpacing: "1px", marginBottom: "5px" }}>처리 메모</div>
+							<textarea
+								className="req-memo"
+								placeholder="처리 사유나 특이사항을 입력하세요..."
+								value={memoById[r.id] || ""}
+								onChange={(e) => setMemoById((prev) => ({ ...prev, [r.id]: e.target.value }))}
+							/>
+							<div style={{ display: "flex", gap: "8px", justifyContent: "flex-end", marginTop: "8px" }}>
+								<button className="btn btn-danger btn-sm" onClick={() => onDecide(r.id, false)}>반려</button>
+								<button
+									className="btn btn-sm"
+									style={{ background: "rgba(74,222,128,.15)", color: "var(--green)", border: "1px solid rgba(74,222,128,.3)" }}
+									onClick={() => onDecide(r.id, true)}
+								>
+									승인
+								</button>
+							</div>
+						</div>
+					)
+				)}
+			</div>
+		);
+	}
 
 	return (
 		<div className="page" id="manager-approval">
 			<div className="page-header">
 				<div className="page-label">APPROVAL</div>
 				<div className="page-title">승인 관리</div>
-				<div className="page-subtitle">일정 변경 요청을 검토하고 처리하세요</div>
+				<div className="page-subtitle">일정 변경/휴가/재무 일정 요청을 검토하고 처리하세요</div>
+			</div>
+
+			<div className="card" style={{ marginBottom: "20px" }}>
+				<div className="card-title">🏖️ 휴가 요청 제출</div>
+				<div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(160px,1fr))", gap: "14px", marginBottom: "14px" }}>
+					<div className="form-field">
+						<label>시작일</label>
+						<input type="date" value={leaveStart} onChange={(e) => setLeaveStart(e.target.value)} />
+					</div>
+					<div className="form-field">
+						<label>종료일</label>
+						<input type="date" value={leaveEnd} onChange={(e) => setLeaveEnd(e.target.value)} />
+					</div>
+				</div>
+				<div className="form-field" style={{ marginBottom: "14px" }}>
+					<label>사유 (선택)</label>
+					<textarea value={leaveReason} onChange={(e) => setLeaveReason(e.target.value)} placeholder="휴가 사유를 작성해주세요..."></textarea>
+				</div>
+				{leaveError && <div style={{ color: "var(--red)", fontSize: "12px", marginBottom: "8px" }}>{leaveError}</div>}
+				<div style={{ display: "flex", justifyContent: "flex-end" }}>
+					<button className="btn btn-primary btn-sm" disabled={leaveSubmitting || !leaveStart || !leaveEnd} onClick={submitLeave}>
+						{leaveSubmitting ? "제출 중..." : "휴가 요청 제출"}
+					</button>
+				</div>
 			</div>
 
 			<div style={{ display: "flex", gap: "8px", marginBottom: "10px", flexWrap: "wrap" }}>
@@ -143,127 +336,8 @@ export default function ManagerApprovalView({ platformId }) {
 
 			{loading ? (
 				<div style={{ padding: "40px", textAlign: "center", color: "var(--text-dim)" }}>불러오는 중...</div>
-			) : data.length === 0 ? (
-				<div className="card" style={{ textAlign: "center", padding: "32px", color: "var(--text-dim)" }}>
-					해당 조건의 요청이 없습니다
-				</div>
 			) : (
-				<div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-					{data.map((r) => {
-						const st = STATUS_LABEL[r.status];
-						const isFinancial = r.kind === "FINANCIAL";
-						const isLeave = r.kind === "LEAVE";
-						const onDecide = isFinancial ? decideFinancial : isLeave ? decideLeave : decide;
-						const requesterName = userNames[r.requestedBy] || r.requestedBy;
-						const deciderName = r.decidedBy ? (userNames[r.decidedBy] || r.decidedBy) : null;
-						return (
-							<div key={`${r.kind}-${r.id}`} className="req-card" style={{ borderLeftColor: st.color }}>
-								<div className="req-header">
-									<div>
-										<div className="req-title">
-											{isFinancial ? `재무 일정 · ${FINANCIAL_REQUEST_TYPE_LABEL[r.type] || r.type}` : isLeave ? "휴가 요청" : "일정 변경 요청"}
-										</div>
-										<div className="req-meta">
-											{isFinancial ? r.title : isLeave ? `사유: ${r.reason || "-"}` : `요청 사유: ${r.reason || "-"}`}
-										</div>
-									</div>
-									<span className="badge" style={{ color: st.color }}>{st.lbl}</span>
-								</div>
-								{isFinancial ? (
-									<div className="req-date-row">
-										<div className="req-date-box">
-											<div className="req-date-lbl">해당 일자</div>
-											<div className="req-date-val" style={{ color: "var(--manager)" }}>{r.eventDate}</div>
-										</div>
-										{r.memo && (
-											<div className="req-date-box">
-												<div className="req-date-lbl">세무사 메모</div>
-												<div className="req-date-val">{r.memo}</div>
-											</div>
-										)}
-									</div>
-								) : isLeave ? (
-									<div className="req-date-row">
-										<div className="req-date-box">
-											<div className="req-date-lbl">시작일</div>
-											<div className="req-date-val">{r.startDate}</div>
-										</div>
-										<div className="req-date-box">
-											<div className="req-date-lbl">종료일</div>
-											<div className="req-date-val" style={{ color: "var(--manager)" }}>{r.endDate}</div>
-										</div>
-									</div>
-								) : (
-									<div className="req-date-row">
-										<div className="req-date-box">
-											<div className="req-date-lbl">기존 일정</div>
-											<div className="req-date-val">{r.originalDate}</div>
-										</div>
-										<div className="req-date-box">
-											<div className="req-date-lbl">변경 희망</div>
-											<div className="req-date-val" style={{ color: "var(--manager)" }}>{r.requestedDate}</div>
-										</div>
-									</div>
-								)}
-								{!isFinancial && (
-									<div style={{ marginTop: "10px", fontSize: "11px", color: "var(--text-dim)" }}>
-										신청: {requesterName} · {formatDateTime(r.createdAt)}
-										{r.status !== "PENDING" && deciderName && (
-											<> &nbsp;|&nbsp; 처리: {deciderName} · {formatDateTime(r.updatedAt)}</>
-										)}
-									</div>
-								)}
-								{r.status !== "PENDING" && r.decisionMemo && (
-									<div style={{ marginTop: "10px", fontSize: "12px", color: "var(--text-sub)" }}>
-										<span style={{ fontSize: "10px", color: "var(--text-dim)", letterSpacing: "1px" }}>
-											{r.status === "REJECTED" ? "반려 사유" : "승인 메모"}
-										</span>
-										<div style={{ marginTop: "4px" }}>{r.decisionMemo}</div>
-									</div>
-								)}
-								{isFinancial && (
-									<>
-										<button
-											type="button"
-											className="btn btn-ghost btn-sm"
-											style={{ marginTop: "10px" }}
-											onClick={() => setExpandedId(expandedId === r.id ? null : r.id)}
-										>
-											{expandedId === r.id ? "댓글 닫기" : "댓글 / 파일 첨부"}
-										</button>
-										{expandedId === r.id && <FinancialRequestThread requestId={r.id} />}
-									</>
-								)}
-								{r.status === "PENDING" && (
-									<div style={{ marginTop: "10px" }}>
-										<div style={{ fontSize: "10px", color: "var(--text-dim)", letterSpacing: "1px", marginBottom: "5px" }}>
-											처리 메모
-										</div>
-										<textarea
-											className="req-memo"
-											placeholder="처리 사유나 특이사항을 입력하세요..."
-											value={memoById[r.id] || ""}
-											onChange={(e) => setMemoById((prev) => ({ ...prev, [r.id]: e.target.value }))}
-										/>
-										<div className="req-footer">
-											<div />
-											<div style={{ display: "flex", gap: "8px" }}>
-												<button className="btn btn-danger btn-sm" onClick={() => onDecide(r.id, false)}>반려</button>
-												<button
-													className="btn btn-sm"
-													style={{ background: "rgba(74,222,128,.15)", color: "var(--green)", border: "1px solid rgba(74,222,128,.3)" }}
-													onClick={() => onDecide(r.id, true)}
-												>
-													승인
-												</button>
-											</div>
-										</div>
-									</div>
-								)}
-							</div>
-						);
-					})}
-				</div>
+				<ApprovalRequestsTable rows={rows} expandedId={expandedId} onToggle={setExpandedId} renderDetail={renderDetail} />
 			)}
 		</div>
 	);

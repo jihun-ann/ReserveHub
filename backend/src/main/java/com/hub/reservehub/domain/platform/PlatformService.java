@@ -102,15 +102,27 @@ public class PlatformService {
     @Transactional
     // Assigns a staff member to a platform; enforces the MANAGER single-platform rule (AGENT.md 3, double-checked with the DB trigger).
     // 플랫폼에 스태프를 배정한다. MANAGER는 1개 플랫폼만 담당 가능한 규칙을 서비스 레이어에서도 검증한다 (DB 트리거와 이중 검증).
+    // 등급 게이트: TUTOR 배정은 MEDIUM 이상, MANAGER 배정(관리자 지정)은 HIGH만 가능 — "관리자 설정 변경" 권한.
     public PlatformStaff assignStaff(UUID platformId, AuthenticatedUser actor, UUID targetUserId, StaffRole staffRole) {
-        platformAccessGuard.verifyRole(platformId, actor, StaffRole.MANAGER);
+        return assignStaff(platformId, actor, targetUserId, staffRole, null);
+    }
+
+    @Transactional
+    public PlatformStaff assignStaff(
+            UUID platformId, AuthenticatedUser actor, UUID targetUserId, StaffRole staffRole, @Nullable ManagerTier initialManagerTier
+    ) {
+        platformAccessGuard.verifyManagerTier(platformId, actor, staffRole == StaffRole.MANAGER ? ManagerTier.HIGH : ManagerTier.MEDIUM);
 
         if (staffRole == StaffRole.MANAGER
                 && platformStaffRepository.existsByUserIdAndStaffRoleAndIsActiveTrue(targetUserId, StaffRole.MANAGER)) {
             throw new IllegalStateException("이미 다른 플랫폼의 MANAGER로 배정된 사용자입니다.");
         }
 
-        PlatformStaff staff = platformStaffRepository.save(new PlatformStaff(platformId, targetUserId, staffRole));
+        PlatformStaff staff = platformStaffRepository.save(
+                staffRole == StaffRole.MANAGER
+                        ? new PlatformStaff(platformId, targetUserId, staffRole, initialManagerTier != null ? initialManagerTier : ManagerTier.LOW)
+                        : new PlatformStaff(platformId, targetUserId, staffRole)
+        );
         actionLogRepository.save(ActionLog.of(
                 platformId, actor.getId(), ActionTarget.STAFF_CHANGE, staff.getId(), "ASSIGN_" + staffRole.name(), null
         ));
@@ -121,18 +133,33 @@ public class PlatformService {
     // Removes the target from the platform entirely — if they hold more than one active StaffRole
     // there (e.g. MANAGER+TUTOR), all of them end at once, matching the single "제거" action in the UI.
     // 대상을 플랫폼에서 완전히 제거한다 — 여러 StaffRole(예: MANAGER+TUTOR)을 동시에 갖고 있어도
-    // UI의 단일 "제거" 동작에 맞춰 한 번에 모두 해제한다.
+    // UI의 단일 "제거" 동작에 맞춰 한 번에 모두 해제한다. 등급 게이트는 배정과 대칭: 대상이 MANAGER를
+    // 하나라도 갖고 있으면 HIGH, TUTOR뿐이면 MEDIUM 이상이 필요하다.
     public void removeStaff(UUID platformId, AuthenticatedUser actor, UUID targetUserId) {
-        platformAccessGuard.verifyRole(platformId, actor, StaffRole.MANAGER);
-
         List<PlatformStaff> staffList = platformStaffRepository.findByPlatformIdAndUserId(platformId, targetUserId).stream()
                 .filter(PlatformStaff::isActive)
                 .toList();
         if (staffList.isEmpty()) {
             throw new IllegalArgumentException("Staff assignment not found");
         }
+        boolean removesManager = staffList.stream().anyMatch(s -> s.getStaffRole() == StaffRole.MANAGER);
+        platformAccessGuard.verifyManagerTier(platformId, actor, removesManager ? ManagerTier.HIGH : ManagerTier.MEDIUM);
+
         staffList.forEach(PlatformStaff::leave);
         actionLogRepository.save(ActionLog.of(platformId, actor.getId(), ActionTarget.STAFF_CHANGE, targetUserId, "REMOVE", null));
+    }
+
+    @Transactional
+    // 매니저 권한 등급 변경("권한 변경") — HIGH 등급 매니저 또는 오너만 가능.
+    public PlatformStaff updateManagerTier(UUID platformId, AuthenticatedUser actor, UUID targetUserId, ManagerTier newTier) {
+        platformAccessGuard.verifyManagerTier(platformId, actor, ManagerTier.HIGH);
+        PlatformStaff staff = platformStaffRepository.findByPlatformIdAndUserId(platformId, targetUserId).stream()
+                .filter(s -> s.isActive() && s.getStaffRole() == StaffRole.MANAGER)
+                .findFirst()
+                .orElseThrow(() -> new IllegalArgumentException("이 사용자는 이 플랫폼의 매니저가 아닙니다."));
+        staff.changeManagerTier(newTier);
+        actionLogRepository.save(ActionLog.of(platformId, actor.getId(), ActionTarget.STAFF_CHANGE, staff.getId(), "CHANGE_MANAGER_TIER", newTier.name()));
+        return staff;
     }
 
     @Transactional(readOnly = true)

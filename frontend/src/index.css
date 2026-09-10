@@ -449,6 +449,10 @@ body {
 .nav-icon {
   font-size: 17px;
   flex-shrink: 0;
+  width: 22px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .sidebar.collapsed .nav-label {

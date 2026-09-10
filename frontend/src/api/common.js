@@ -31,11 +31,17 @@ export const setPlatformSuspended = (id, suspended) => apiPatch(`/api/v1/platfor
 export const listStaff = (platformId, includeInactive = false) =>
 	apiGet(`/api/v1/platforms/${platformId}/staff?includeInactive=${includeInactive}`);
 
-export const assignStaff = (platformId, userId, staffRole) =>
-	apiPost(`/api/v1/platforms/${platformId}/staff`, { userId, staffRole });
+export const assignStaff = (platformId, userId, staffRole, managerTier) =>
+	apiPost(`/api/v1/platforms/${platformId}/staff`, { userId, staffRole, managerTier });
 
 export const removeStaff = (platformId, userId) =>
 	apiDelete(`/api/v1/platforms/${platformId}/staff/${userId}`);
+
+// 매니저 권한 등급(L/M/H) — HIGH 등급 매니저 또는 오너만 변경 가능.
+export const MANAGER_TIER_LABEL = { LOW: "L (제한)", MEDIUM: "M (일반)", HIGH: "H (전체)" };
+
+export const updateManagerTier = (platformId, userId, managerTier) =>
+	apiPatch(`/api/v1/platforms/${platformId}/staff/${userId}/manager-tier`, { managerTier });
 
 // 세무사 — 스태프가 아니라 오너가 초대한 별도의 재무 데이터 접근 권한.
 export const listTaxAccountants = (platformId) => apiGet(`/api/v1/platforms/${platformId}/tax-accountants`);

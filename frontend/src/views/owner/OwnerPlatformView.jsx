@@ -17,7 +17,9 @@ import {
 	setPlatformSuspended,
 	updateStaffIncomeType,
 	updateStaffSessionRate,
-	updateTaxAccountantIncomeType
+	updateTaxAccountantIncomeType,
+	updateManagerTier,
+	MANAGER_TIER_LABEL
 } from "../../api/common.js";
 import { formatDateTime } from "../../utils/formatDateTime.js";
 
@@ -25,6 +27,7 @@ const TABS = [
 	{ key: "info", label: "기본 정보" },
 	{ key: "programs", label: "프로그램/슬롯" },
 	{ key: "instructors", label: "강사" },
+	{ key: "managers", label: "매니저" },
 	{ key: "members", label: "사용자" },
 	{ key: "billing", label: "수강권/결제" },
 	{ key: "stats", label: "수익/통계" },
@@ -139,6 +142,15 @@ export default function OwnerPlatformView({ platforms, currentPlatformId, onSele
 			refreshStaff(plat.id);
 		} catch (err) {
 			alert(err.message || "강사료 변경에 실패했습니다.");
+		}
+	}
+
+	async function changeManagerTier(userId, managerTier) {
+		try {
+			await updateManagerTier(plat.id, userId, managerTier);
+			refreshStaff(plat.id);
+		} catch (err) {
+			alert(err.message || "권한 등급 변경에 실패했습니다.");
 		}
 	}
 
@@ -341,6 +353,34 @@ export default function OwnerPlatformView({ platforms, currentPlatformId, onSele
 										<div style={{ fontSize: "12px", color: "var(--text-dim)", textAlign: "center", padding: "16px 0" }}>배정된 강사가 없습니다</div>
 									)}
 									<div style={{ fontSize: "11px", color: "var(--text-dim)" }}>* 이메일로 사용자를 검색해 배정하는 API가 아직 없어 등록 UI는 제공하지 않습니다.</div>
+								</div>
+							)}
+
+							{activeTab === "managers" && (
+								<div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+									<div style={{ fontSize: "12px", color: "var(--text-dim)", marginBottom: "4px" }}>
+										매니저 권한 등급(L/M/H) — L은 일반 처리만, M은 강사 배정까지, H는 휴가 승인과 등급 변경까지 가능합니다.
+									</div>
+									{staff.filter((s) => s.staffRole === "MANAGER").map((s) => (
+										<div key={s.id} style={{ background: "var(--surface2)", border: "1px solid var(--border)", borderRadius: "var(--radius-sm)", padding: "14px", display: "flex", alignItems: "center", gap: "14px" }}>
+											<div className="avatar" style={{ background: "linear-gradient(135deg,var(--owner),#f7b955)", width: "38px", height: "38px", fontSize: "15px" }}>{s.email?.[0]?.toUpperCase() || "?"}</div>
+											<div style={{ flex: 1 }}>
+												<div style={{ fontSize: "14px", fontWeight: 700 }}>{s.email}</div>
+											</div>
+											<select
+												value={s.managerTier || ""}
+												onChange={(e) => changeManagerTier(s.userId, e.target.value)}
+												style={{ fontSize: "12px", padding: "4px 8px" }}
+											>
+												<option value="" disabled>등급 선택</option>
+												{Object.entries(MANAGER_TIER_LABEL).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+											</select>
+											<span className="plat-status ps-active" style={{ fontSize: "10px" }}>재직</span>
+										</div>
+									))}
+									{staff.filter((s) => s.staffRole === "MANAGER").length === 0 && (
+										<div style={{ fontSize: "12px", color: "var(--text-dim)", textAlign: "center", padding: "16px 0" }}>배정된 매니저가 없습니다</div>
+									)}
 								</div>
 							)}
 

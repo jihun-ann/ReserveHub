@@ -1,9 +1,11 @@
 import { useState, useEffect } from "react";
 import {
-	approveScheduleRequest, rejectScheduleRequest, approveLeaveRequest, rejectLeaveRequest, hexAlpha, getUser
+	approveScheduleRequest, rejectScheduleRequest, approveLeaveRequest, rejectLeaveRequest, getUser
 } from "../../api/common.js";
+import { getCurrentUser } from "../../api/http.js";
+import ApprovalRequestsTable from "../../components/ApprovalRequestsTable.jsx";
 
-const STATUS_LABEL = { PENDING: "대기 중", APPROVED: "승인됨", REJECTED: "반려됨" };
+const KIND_LABEL = { SCHEDULE_CHANGE: "일정 변경", LEAVE: "휴가" };
 
 function formatDateTime(iso) {
 	if (!iso) return "-";
@@ -14,6 +16,8 @@ export default function OwnerApprovalView({ requests, onDecided }) {
 	const [filter, setFilter] = useState("all");
 	const [busyId, setBusyId] = useState(null);
 	const [userNames, setUserNames] = useState({});
+	const [expandedId, setExpandedId] = useState(null);
+	const myId = getCurrentUser()?.id;
 
 	useEffect(() => {
 		const ids = new Set();
@@ -46,6 +50,92 @@ export default function OwnerApprovalView({ requests, onDecided }) {
 	}
 
 	const visible = filter === "all" ? requests : requests.filter((r) => r.status === filter.toUpperCase());
+	const rows = visible.map((r) => ({
+		id: r.id,
+		kindLabel: KIND_LABEL[r.requestType] || r.requestType,
+		requesterName: userNames[r.requestedBy] || r.requestedBy,
+		createdAt: r.createdAt,
+		status: r.status,
+		deciderName: r.decidedBy ? (userNames[r.decidedBy] || r.decidedBy) : null,
+		decidedAt: r.updatedAt
+	}));
+
+	function renderDetail(id) {
+		const r = visible.find((x) => x.id === id);
+		if (!r) return null;
+		const isLeave = r.requestType === "LEAVE";
+		const isMine = r.requestedBy === myId;
+
+		return (
+			<div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+				<div style={{ fontSize: "14px", fontWeight: 700 }}>
+					{isLeave ? `${r.startDate} ~ ${r.endDate} 휴가 요청` : `${r.requestedDate} 일정 변경 요청`}
+				</div>
+
+				{isLeave ? (
+					<div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
+						<div style={{ background: "var(--surface)", borderRadius: "var(--radius-sm)", padding: "10px 12px" }}>
+							<div style={{ fontSize: "10px", color: "var(--text-dim)", marginBottom: "4px", letterSpacing: "1px" }}>시작일</div>
+							<div style={{ fontSize: "13px", fontWeight: 600 }}>{r.startDate}</div>
+						</div>
+						<div style={{ background: "var(--surface)", borderRadius: "var(--radius-sm)", padding: "10px 12px" }}>
+							<div style={{ fontSize: "10px", color: "var(--text-dim)", marginBottom: "4px", letterSpacing: "1px" }}>종료일</div>
+							<div style={{ fontSize: "13px", fontWeight: 600, color: "var(--owner)" }}>{r.endDate}</div>
+						</div>
+					</div>
+				) : (
+					<div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
+						<div style={{ background: "var(--surface)", borderRadius: "var(--radius-sm)", padding: "10px 12px" }}>
+							<div style={{ fontSize: "10px", color: "var(--text-dim)", marginBottom: "4px", letterSpacing: "1px" }}>기존 일정</div>
+							<div style={{ fontSize: "13px", fontWeight: 600 }}>{r.originalDate}</div>
+						</div>
+						<div style={{ background: "var(--surface)", borderRadius: "var(--radius-sm)", padding: "10px 12px" }}>
+							<div style={{ fontSize: "10px", color: "var(--text-dim)", marginBottom: "4px", letterSpacing: "1px" }}>변경 희망</div>
+							<div style={{ fontSize: "13px", fontWeight: 600, color: "var(--owner)" }}>{r.requestedDate}</div>
+						</div>
+					</div>
+				)}
+
+				{r.reason && (
+					<div style={{ background: "var(--surface)", borderRadius: "var(--radius-sm)", padding: "10px 12px", fontSize: "13px", color: "var(--text-sub)", lineHeight: 1.5 }}>{r.reason}</div>
+				)}
+
+				{r.status !== "PENDING" && r.decisionMemo && (
+					<div style={{ fontSize: "12px", color: "var(--text-sub)" }}>
+						<span style={{ fontSize: "10px", color: "var(--text-dim)", letterSpacing: "1px" }}>
+							{r.status === "REJECTED" ? "반려 사유" : "승인 메모"}
+						</span>
+						<div style={{ marginTop: "4px" }}>{r.decisionMemo}</div>
+					</div>
+				)}
+
+				<div style={{ fontSize: "11px", color: "var(--text-dim)" }}>
+					신청: {userNames[r.requestedBy] || r.requestedBy} · {formatDateTime(r.createdAt)}
+					{r.status !== "PENDING" && r.decidedBy && (
+						<> &nbsp;|&nbsp; 처리: {userNames[r.decidedBy] || r.decidedBy} · {formatDateTime(r.updatedAt)}</>
+					)}
+				</div>
+
+				{r.status === "PENDING" && (
+					isMine ? (
+						<div style={{ fontSize: "12px", color: "var(--text-dim)" }}>본인이 제출한 요청은 직접 승인/반려할 수 없습니다. 다른 매니저나 오너가 처리해야 합니다.</div>
+					) : (
+						<div style={{ display: "flex", gap: "8px", justifyContent: "flex-end" }}>
+							<button className="btn btn-sm btn-danger" disabled={busyId === r.id} onClick={() => decide(r, "reject")}>반려</button>
+							<button
+								className="btn btn-sm"
+								disabled={busyId === r.id}
+								style={{ background: "rgba(74,222,128,0.15)", color: "var(--green)", border: "1px solid rgba(74,222,128,0.3)" }}
+								onClick={() => decide(r, "approve")}
+							>
+								승인
+							</button>
+						</div>
+					)
+				)}
+			</div>
+		);
+	}
 
 	return (
 		<div id="owner-approval" className="page">
@@ -55,7 +145,6 @@ export default function OwnerApprovalView({ requests, onDecided }) {
 				<div className="page-subtitle">일정 변경 요청과 휴가 요청을 검토하고 승인하세요</div>
 			</div>
 
-			{/* 필터 */}
 			<div style={{ display: "flex", gap: "8px", marginBottom: "20px", flexWrap: "wrap" }}>
 				<button className={`filter-chip ${filter === "all" ? "active" : ""}`} onClick={() => setFilter("all")}>전체</button>
 				<button className={`filter-chip ${filter === "pending" ? "active" : ""}`} onClick={() => setFilter("pending")}>대기 중</button>
@@ -63,90 +152,7 @@ export default function OwnerApprovalView({ requests, onDecided }) {
 				<button className={`filter-chip ${filter === "rejected" ? "active" : ""}`} onClick={() => setFilter("rejected")}>반려됨</button>
 			</div>
 
-			<div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-				{visible.map((r) => {
-					const isLeave = r.requestType === "LEAVE";
-					const requesterName = userNames[r.requestedBy] || r.requestedBy;
-					const deciderName = r.decidedBy ? (userNames[r.decidedBy] || r.decidedBy) : null;
-					return (
-						<div
-							key={r.id}
-							className="card"
-							style={{
-								borderLeft: `3px solid ${r.status === "PENDING" ? "var(--owner)" : r.status === "APPROVED" ? "var(--green)" : "var(--red)"}`,
-								opacity: r.status === "PENDING" ? 1 : 0.7
-							}}
-						>
-							<div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "12px", marginBottom: r.status === "PENDING" ? "12px" : "10px", flexWrap: "wrap" }}>
-								<div>
-									<div style={{ fontSize: "14px", fontWeight: 700 }}>
-										{isLeave ? `${r.startDate} ~ ${r.endDate} 휴가 요청` : `${r.requestedDate} 일정 변경 요청`}
-									</div>
-									<div style={{ display: "flex", alignItems: "center", gap: "8px", marginTop: "5px", flexWrap: "wrap" }}>
-										<span className="plat-chip" style={{ background: hexAlpha(r.platform.colorHex, 0.12), color: r.platform.colorHex, borderColor: hexAlpha(r.platform.colorHex, 0.3) }}>
-											{r.platform.emoji} {r.platform.name}
-										</span>
-										<span className="plat-chip" style={{ background: "var(--surface2)", color: "var(--text-sub)", borderColor: "var(--border)" }}>
-											{isLeave ? "휴가" : "일정 변경"}
-										</span>
-									</div>
-								</div>
-								{r.status === "PENDING" ? (
-									<span className="res-status" style={{ background: "rgba(var(--owner-rgb),0.12)", color: "var(--owner)", flexShrink: 0 }}>대기 중</span>
-								) : (
-									<span className={`res-status ${r.status === "APPROVED" ? "rs-completed" : "rs-canceled"}`}>{STATUS_LABEL[r.status]}</span>
-								)}
-							</div>
-
-							{!isLeave && r.status === "PENDING" && (
-								<div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px", marginBottom: "12px" }}>
-									<div style={{ background: "var(--surface2)", borderRadius: "var(--radius-sm)", padding: "10px 12px" }}>
-										<div style={{ fontSize: "10px", color: "var(--text-dim)", marginBottom: "4px", letterSpacing: "1px" }}>기존 일정</div>
-										<div style={{ fontSize: "13px", fontWeight: 600 }}>{r.originalDate}</div>
-									</div>
-									<div style={{ background: "var(--surface2)", borderRadius: "var(--radius-sm)", padding: "10px 12px" }}>
-										<div style={{ fontSize: "10px", color: "var(--text-dim)", marginBottom: "4px", letterSpacing: "1px" }}>변경 희망</div>
-										<div style={{ fontSize: "13px", fontWeight: 600, color: "var(--owner)" }}>{r.requestedDate}</div>
-									</div>
-								</div>
-							)}
-							{!isLeave && r.status !== "PENDING" && (
-								<div style={{ fontSize: "12px", color: "var(--text-dim)", fontFamily: "'DM Mono',monospace", marginBottom: "10px" }}>
-									{r.originalDate} → {r.requestedDate}
-								</div>
-							)}
-
-							{r.reason && (
-								<div style={{ background: "var(--surface2)", borderRadius: "var(--radius-sm)", padding: "10px 12px", marginBottom: "12px", fontSize: "13px", color: "var(--text-sub)", lineHeight: 1.5 }}>{r.reason}</div>
-							)}
-
-							<div style={{ fontSize: "11px", color: "var(--text-dim)", marginBottom: r.status === "PENDING" ? "12px" : "0" }}>
-								신청: {requesterName} · {formatDateTime(r.createdAt)}
-								{r.status !== "PENDING" && deciderName && (
-									<> &nbsp;|&nbsp; 처리: {deciderName} · {formatDateTime(r.updatedAt)}</>
-								)}
-							</div>
-
-							{r.status === "PENDING" && (
-								<div style={{ display: "flex", gap: "8px", justifyContent: "flex-end" }}>
-									<button className="btn btn-sm btn-danger" disabled={busyId === r.id} onClick={() => decide(r, "reject")}>반려</button>
-									<button
-										className="btn btn-sm"
-										disabled={busyId === r.id}
-										style={{ background: "rgba(74,222,128,0.15)", color: "var(--green)", border: "1px solid rgba(74,222,128,0.3)" }}
-										onClick={() => decide(r, "approve")}
-									>
-										승인
-									</button>
-								</div>
-							)}
-						</div>
-					);
-				})}
-				{visible.length === 0 && (
-					<div className="card" style={{ textAlign: "center", padding: "32px", color: "var(--text-dim)" }}>해당 조건의 요청이 없습니다</div>
-				)}
-			</div>
+			<ApprovalRequestsTable rows={rows} expandedId={expandedId} onToggle={setExpandedId} renderDetail={renderDetail} />
 		</div>
 	);
 }

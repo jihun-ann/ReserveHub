@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { openModal, closeModal } from "../default.js";
 import { listStaff, removeStaff, getUser, enrollTutor } from "../../api/common.js";
+import { getCurrentUser } from "../../api/http.js";
 
 export default function ManagerTutorManageView({ platformId }) {
 	const [tutors, setTutors] = useState([]);
@@ -13,6 +14,10 @@ export default function ManagerTutorManageView({ platformId }) {
 	const [enrolling, setEnrolling] = useState(false);
 	const [enrollError, setEnrollError] = useState("");
 	const [expandedId, setExpandedId] = useState(null);
+	const [myTier, setMyTier] = useState(null);
+	const myId = getCurrentUser()?.id;
+	// 강사 등록/배정 해제는 M 등급 이상만 — L 등급 매니저는 조회만 가능하다.
+	const canManageTutors = myTier === "MEDIUM" || myTier === "HIGH";
 
 	const refresh = useCallback(async () => {
 		if (!platformId) {
@@ -21,7 +26,10 @@ export default function ManagerTutorManageView({ platformId }) {
 			return;
 		}
 		setLoading(true);
-		const staff = (await listStaff(platformId, true)).filter((s) => s.staffRole === "TUTOR");
+		const allStaff = await listStaff(platformId, true);
+		const mine = allStaff.find((s) => s.userId === myId && s.staffRole === "MANAGER");
+		setMyTier(mine?.managerTier || null);
+		const staff = allStaff.filter((s) => s.staffRole === "TUTOR");
 		const withDetail = await Promise.all(
 			staff.map(async (s) => {
 				const u = await getUser(s.userId);
@@ -30,7 +38,7 @@ export default function ManagerTutorManageView({ platformId }) {
 		);
 		setTutors(withDetail);
 		setLoading(false);
-	}, [platformId]);
+	}, [platformId, myId]);
 
 	useEffect(() => {
 		refresh();
@@ -89,10 +97,16 @@ export default function ManagerTutorManageView({ platformId }) {
 						outline: "none"
 					}}
 				/>
-				<button className="btn btn-primary btn-sm" onClick={() => openModal("addInstructorModal")}>
-					+ 강사 등록
-				</button>
+				{canManageTutors && (
+					<button className="btn btn-primary btn-sm" onClick={() => openModal("addInstructorModal")}>
+						+ 강사 등록
+					</button>
+				)}
 			</div>
+
+			{!canManageTutors && myTier && (
+				<div style={{ fontSize: "12px", color: "var(--text-dim)", marginBottom: "16px" }}>L 등급 매니저는 강사 목록 조회만 가능합니다. 등록/배정 해제는 M 등급 이상만 처리할 수 있습니다.</div>
+			)}
 
 			<div className="card" style={{ padding: "0", overflow: "hidden" }}>
 				<div style={{ overflowX: "auto" }}>
@@ -136,7 +150,7 @@ export default function ManagerTutorManageView({ platformId }) {
 												<td colSpan={5} style={{ padding: 0 }}>
 													<div className="member-detail" style={{ margin: "8px 12px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
 														<div style={{ fontSize: "12px", color: "var(--text-dim)" }}>담당 이메일: {t.email}</div>
-														{t.isActive && (
+														{t.isActive && canManageTutors && (
 															<button
 																className="btn btn-ghost btn-sm"
 																onClick={(e) => { e.stopPropagation(); remove(t.userId); }}

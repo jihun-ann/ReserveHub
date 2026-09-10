@@ -61,6 +61,21 @@ public class PlatformAccessGuard {
         }
     }
 
+    // 매니저 등급(L/M/H) 기반 검증 — 오너는 항상 통과하고, 그 외에는 이 플랫폼의 활성 MANAGER 배정 중
+    // 하나라도 minTier 이상이어야 한다. 이 기능이 생기기 전에 배정된(등급 미지정, null) 매니저는 기존
+    // 동작이 갑자기 제한되지 않도록 HIGH로 간주한다(하위호환 목적의 fail-open).
+    public void verifyManagerTier(UUID platformId, AuthenticatedUser user, ManagerTier minTier) {
+        if (platformRepository.existsByIdAndCreatedBy(platformId, user.getId())) {
+            return;
+        }
+        boolean hasTier = platformStaffRepository.findByPlatformIdAndUserId(platformId, user.getId()).stream()
+                .filter(staff -> staff.isActive() && staff.getStaffRole() == StaffRole.MANAGER)
+                .anyMatch(staff -> (staff.getManagerTier() != null ? staff.getManagerTier() : ManagerTier.HIGH).ordinal() >= minTier.ordinal());
+        if (!hasTier) {
+            throw new PlatformAccessDeniedException(platformId);
+        }
+    }
+
     // 재무/정산 데이터(매출, 스태프 계좌정보) 전용 — 오너, 이 플랫폼의 MANAGER, 또는 오너가 초대한
     // 세무사(PlatformTaxAccountant, 스태프가 아니라 별도 부여)만 볼 수 있다.
     // Financial/payroll data only — the owner, this platform's MANAGER, or a tax accountant the owner
