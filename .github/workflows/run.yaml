@@ -43,7 +43,10 @@ jobs:
           echo "=== BellSoft JRE connectivity ==="
           curl -I -L --connect-timeout 10 \
             "https://github.com/bell-sw/Liberica/releases/download/17.0.20%2B10/bellsoft-jre17.0.20%2B10-linux-amd64.tar.gz"
-
+      - name: Check Docker Host Network
+        run: |
+          docker run --rm --network host curlimages/curl:latest \
+          -I -L --connect-timeout 10 https://github.com
       - name: Check DinD Network
         run: |
           echo "=== Docker container -> GitHub ==="
