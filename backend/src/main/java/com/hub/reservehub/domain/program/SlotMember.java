@@ -2,6 +2,7 @@ package com.hub.reservehub.domain.program;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.Table;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.Id;
 import java.time.Instant;
@@ -13,6 +14,7 @@ import java.util.UUID;
  * 등록되어 있으면 Lesson이 생성될 때마다 이 사람 몫의 Reservation이 자동 생성된다(신청 불필요).
  */
 @Entity
+@Table(name = "slot_members")
 public class SlotMember {
 
     @Id

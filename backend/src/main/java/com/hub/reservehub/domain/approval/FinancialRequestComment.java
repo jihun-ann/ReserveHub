@@ -2,9 +2,9 @@ package com.hub.reservehub.domain.approval;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.Table;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.Id;
-import jakarta.persistence.Lob;
 import java.time.Instant;
 import java.util.UUID;
 import org.springframework.lang.Nullable;
@@ -14,6 +14,7 @@ import org.springframework.lang.Nullable;
  * 텍스트 없이 파일만 첨부할 수도 있다 (content/첨부 중 최소 하나는 있어야 함, 서비스에서 검증).
  */
 @Entity
+@Table(name = "financial_request_comments")
 public class FinancialRequestComment {
 
     @Id
@@ -27,7 +28,6 @@ public class FinancialRequestComment {
     private UUID authorId;
 
     @Nullable
-    @Lob
     private String content;
 
     @Nullable

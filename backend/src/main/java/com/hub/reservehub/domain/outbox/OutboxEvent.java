@@ -2,6 +2,7 @@ package com.hub.reservehub.domain.outbox;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.Table;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
@@ -20,6 +21,7 @@ import tools.jackson.databind.json.JsonMapper;
  * 커밋 이후 안전하게 발행할 수 있게 한다 (AGENT.md 5).
  */
 @Entity
+@Table(name = "outbox_events")
 public class OutboxEvent {
 
     private static final JsonMapper JSON = JsonMapper.shared();

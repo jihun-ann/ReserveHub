@@ -2,6 +2,7 @@ package com.hub.reservehub.domain.program;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.Table;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
@@ -13,6 +14,7 @@ import java.util.UUID;
 import org.springframework.lang.Nullable;
 
 @Entity
+@Table(name = "slots")
 public class Slot {
 
     @Id

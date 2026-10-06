@@ -2,6 +2,7 @@ package com.hub.reservehub.domain.pass;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.Table;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.Id;
 import java.math.BigDecimal;
@@ -14,6 +15,7 @@ import org.springframework.lang.Nullable;
  * 순차(복리) 할인 적용 이력 한 단계. 정책이 삭제돼도 policyName 스냅샷으로 이력을 보존한다.
  */
 @Entity
+@Table(name = "order_discounts")
 public class OrderDiscount {
 
     @Id

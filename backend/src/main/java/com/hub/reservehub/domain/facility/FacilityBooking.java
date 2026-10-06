@@ -2,6 +2,7 @@ package com.hub.reservehub.domain.facility;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.Table;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
@@ -17,6 +18,7 @@ import org.springframework.lang.Nullable;
  * (FacilityService.create에서 검증).
  */
 @Entity
+@Table(name = "facility_bookings")
 public class FacilityBooking {
 
     @Id

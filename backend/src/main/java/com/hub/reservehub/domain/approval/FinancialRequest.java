@@ -3,6 +3,7 @@ package com.hub.reservehub.domain.approval;
 import com.hub.reservehub.common.audit.BaseEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.Table;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
@@ -17,6 +18,7 @@ import org.springframework.lang.Nullable;
  * 승인된 요청은 세무사와 매니저 양쪽 캘린더에 재무 일정으로 남는다.
  */
 @Entity
+@Table(name = "financial_requests")
 public class FinancialRequest extends BaseEntity {
 
     @Id

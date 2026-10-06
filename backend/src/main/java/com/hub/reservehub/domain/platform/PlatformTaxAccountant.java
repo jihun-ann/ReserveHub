@@ -2,6 +2,7 @@ package com.hub.reservehub.domain.platform;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.Table;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
@@ -16,6 +17,7 @@ import org.springframework.lang.Nullable;
  * 오너가 명시적으로 초대한 세무사 — MANAGER/TUTOR 같은 스태프가 아니라, 읽기 전용 재무 접근 권한만 부여한다.
  */
 @Entity
+@Table(name = "platform_tax_accountants")
 public class PlatformTaxAccountant {
 
     @Id

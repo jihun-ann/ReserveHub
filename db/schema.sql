@@ -33,6 +33,8 @@ CREATE TABLE users (
                        bank_name             VARCHAR(50),   -- 정산 계좌 — 본인이 마이페이지에서 등록
                        bank_account_number   VARCHAR(50),
                        bank_account_holder   VARCHAR(100),
+                       guardian_name         VARCHAR(100),  -- 수강생 계정의 보호자 정보. 매니저가 입력/수정
+                       guardian_phone        VARCHAR(20),
                        is_active             BOOLEAN     NOT NULL DEFAULT TRUE,
                        last_login_at         TIMESTAMPTZ,
                        created_at            TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -78,6 +80,9 @@ CREATE TYPE staff_role AS ENUM ('MANAGER', 'TUTOR');
 -- 매니저 권한 등급 — L/M/H 순으로 할 수 있는 일이 늘어난다 (휴가 승인, 스태프 배정/제거, 등급 변경 등).
 CREATE TYPE manager_tier AS ENUM ('LOW', 'MEDIUM', 'HIGH');
 
+-- 원천징수 계산용 소득 구분 — 강사/매니저/세무사 공통으로 쓰인다.
+CREATE TYPE income_type AS ENUM ('EMPLOYMENT', 'BUSINESS', 'OTHER', 'DAILY');
+
 CREATE TABLE platform_staff (
                                 id              UUID          PRIMARY KEY DEFAULT uuid_generate_v4(),
                                 platform_id     UUID          NOT NULL REFERENCES platforms(id) ON DELETE CASCADE,
@@ -87,12 +92,15 @@ CREATE TABLE platform_staff (
                                 joined_at       TIMESTAMPTZ   NOT NULL DEFAULT NOW(),
                                 left_at         TIMESTAMPTZ,                         -- 퇴사/해제 시각
                                 manager_tier    manager_tier,                        -- MANAGER 역할에서만 의미 있음. TUTOR는 NULL
+                                income_type     income_type,                         -- 원천징수용 소득 구분. 배정 시점엔 미정일 수 있음
+                                session_rate    INT,                                 -- 강사 회당 강사료. TUTOR 역할에서만 의미 있음
                                 UNIQUE (platform_id, user_id, staff_role)
 );
 
 COMMENT ON TABLE  platform_staff              IS '플랫폼-스태프 매핑. 한 계정이 한 플랫폼에서 MANAGER+TUTOR을 동시에 가질 수 있음. MANAGER는 1개 플랫폼만 허용 (앱 레이어에서 검증)';
 COMMENT ON COLUMN platform_staff.left_at      IS 'NULL이면 재직 중. Soft delete 방식으로 이력 보존';
 COMMENT ON COLUMN platform_staff.manager_tier IS 'MANAGER 권한 등급(LOW/MEDIUM/HIGH). 새로 배정된 매니저는 LOW로 시작';
+COMMENT ON COLUMN platform_staff.session_rate IS '강사 정산용 회당 강사료 — TUTOR 역할에서만 의미를 가짐';
 
 
 -- 플랫폼 ↔ 세무사 — platform_staff와 별개 테이블. 스태프가 아니라 오너가 초대한 읽기 전용
@@ -104,6 +112,7 @@ CREATE TABLE platform_tax_accountants (
                                           is_active       BOOLEAN     NOT NULL DEFAULT TRUE,
                                           joined_at       TIMESTAMPTZ NOT NULL DEFAULT NOW(),
                                           left_at         TIMESTAMPTZ,
+                                          income_type     income_type,
                                           UNIQUE (platform_id, user_id)
 );
 
@@ -159,20 +168,6 @@ CREATE TABLE slots (
 
 COMMENT ON TABLE  slots             IS '정기 슬롯. valid_from~valid_until 기간 동안 매주 반복';
 COMMENT ON COLUMN slots.valid_until IS 'NULL이면 종료일 없음';
-
-
--- 고정 로스터 (PRIVATE, 또는 GROUP+FIXED 슬롯 전용) — 등록해두면 매주 신청 없이 Lesson 생성 시
--- reservations가 이 사람 몫으로 자동 생성된다. GROUP+APPLICATION(신청형) 슬롯은 이 테이블을 쓰지 않는다.
-CREATE TABLE slot_members (
-                               id              UUID        PRIMARY KEY DEFAULT uuid_generate_v4(),
-                               slot_id         UUID        NOT NULL REFERENCES slots(id),
-                               user_id         UUID        NOT NULL REFERENCES users(id),
-                               user_pass_id    UUID        NOT NULL REFERENCES user_passes(id),
-                               is_active       BOOLEAN     NOT NULL DEFAULT TRUE,
-                               created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
-);
-
-COMMENT ON TABLE slot_members IS '개인 또는 고정형 그룹 슬롯의 고정 배정 로스터. 멤버는 이후에도 추가/제외될 수 있음';
 
 
 -- ============================================================
@@ -231,42 +226,53 @@ COMMENT ON COLUMN discount_policies.rate            IS '할인율(%). 순차 적
 
 
 -- 주문 (장바구니 → 결제 단위)
-CREATE TYPE order_status AS ENUM ('PENDING', 'PAID', 'CANCELLED', 'REFUNDED');
+CREATE TYPE order_status AS ENUM ('PENDING', 'PARTIAL', 'PAID', 'CANCELLED', 'REFUNDED');
+CREATE TYPE payment_method AS ENUM ('CARD', 'BANK_TRANSFER', 'CASH', 'OTHER');
+CREATE TYPE cash_receipt_status AS ENUM ('ISSUED', 'NOT_ISSUED', 'SELF_ISSUED');
 
 CREATE TABLE orders (
-                        id              UUID            PRIMARY KEY DEFAULT uuid_generate_v4(),
-                        user_id         UUID            NOT NULL REFERENCES users(id),
-                        platform_id     UUID            NOT NULL REFERENCES platforms(id),
-                        status          order_status    NOT NULL DEFAULT 'PENDING',
-                        original_amount INT             NOT NULL DEFAULT 0,  -- 할인 전 합계
-                        discount_amount INT             NOT NULL DEFAULT 0,  -- 총 할인액
-                        final_amount    INT             NOT NULL DEFAULT 0,  -- 실 결제액
-                        paid_at         TIMESTAMPTZ,
-                        memo            TEXT,
-                        created_by      UUID            REFERENCES users(id), -- 상담 처리한 스태프 (NULL = 자기 결제)
-                        processed_by    UUID            REFERENCES users(id), -- 결제(pay/partial-pay)를 실제로 확정한 사람
-                        created_at      TIMESTAMPTZ     NOT NULL DEFAULT NOW(),
-                        updated_at      TIMESTAMPTZ     NOT NULL DEFAULT NOW(),
+                        id                   UUID                PRIMARY KEY DEFAULT uuid_generate_v4(),
+                        user_id              UUID                NOT NULL REFERENCES users(id),
+                        platform_id          UUID                NOT NULL REFERENCES platforms(id),
+                        status               order_status        NOT NULL DEFAULT 'PENDING',
+                        original_amount      INT                 NOT NULL DEFAULT 0,  -- 할인 전 합계
+                        discount_amount      INT                 NOT NULL DEFAULT 0,  -- 총 할인액
+                        final_amount         INT                 NOT NULL DEFAULT 0,  -- 실 결제액
+                        paid_at              TIMESTAMPTZ,
+                        memo                 TEXT,
+                        created_by           UUID                REFERENCES users(id), -- 상담 처리한 스태프 (NULL = 자기 결제)
+                        processed_by         UUID                REFERENCES users(id), -- 결제(pay/partial-pay)를 실제로 확정한 사람
+                        paid_amount          INT                 NOT NULL DEFAULT 0,  -- 실제 누적 수납액. final_amount 미만이면 PARTIAL
+                        payment_method       payment_method,
+                        cash_receipt_status  cash_receipt_status NOT NULL DEFAULT 'NOT_ISSUED',
+                        receipt_number       VARCHAR(100),        -- 카드 승인번호 / 현금영수증 승인번호
+                        refund_amount        INT                 NOT NULL DEFAULT 0,  -- 누적 환불액 (부분 환불 지원)
+                        refunded_at          TIMESTAMPTZ,
+                        created_at           TIMESTAMPTZ         NOT NULL DEFAULT NOW(),
+                        updated_at           TIMESTAMPTZ         NOT NULL DEFAULT NOW(),
                         CONSTRAINT chk_amount CHECK (final_amount >= 0)
 );
 
 COMMENT ON TABLE  orders              IS '결제 주문. 여러 수강권을 묶어 한 번에 결제';
 COMMENT ON COLUMN orders.created_by   IS '스태프가 상담 후 대신 등록 시 해당 스태프 ID';
 COMMENT ON COLUMN orders.processed_by IS '결제를 실제로 처리한 관리자/스태프 (createdBy와 다를 수 있음)';
-
--- 참고: 이 아래 orders 관련 컬럼 정의는 최초 설계 당시 것으로, 이후 추가된 paid_amount/payment_method/
--- cash_receipt_status/receipt_number/refund_amount/refunded_at 컬럼과 PARTIAL 상태값이 반영되지
--- 않았다 (Order.java, OrderStatus.java 참고). db/schema.sql 전체 재동기화는 별도 작업으로 남겨둔다.
+COMMENT ON COLUMN orders.paid_amount  IS '부분납 지원 — final_amount보다 적으면 상태는 PARTIAL';
 
 
 -- 주문 항목 (수강권 × 수량)
+CREATE TYPE tax_type AS ENUM ('TAXABLE', 'EXEMPT');
+
 CREATE TABLE order_items (
                              id              UUID        PRIMARY KEY DEFAULT uuid_generate_v4(),
                              order_id        UUID        NOT NULL REFERENCES orders(id) ON DELETE CASCADE,
                              pass_id         UUID        NOT NULL REFERENCES passes(id),
                              quantity        SMALLINT    NOT NULL DEFAULT 1 CHECK (quantity >= 1),
                              unit_price      INT         NOT NULL,    -- 주문 시점 가격 스냅샷
-                             line_total      INT         NOT NULL     -- quantity × unit_price (할인 전)
+                             line_total      INT         NOT NULL,    -- quantity × unit_price (할인 전)
+                             program_id      UUID,                   -- 수강과목/반 참조용 (FK 아님, Program 재사용)
+                             enroll_start    DATE,
+                             enroll_end      DATE,
+                             tax_type        tax_type    NOT NULL DEFAULT 'EXEMPT'  -- 학원 교습비는 통상 면세
 );
 
 COMMENT ON TABLE order_items IS '주문 내 수강권 항목. 다중 수강권 지원';
@@ -309,6 +315,22 @@ CREATE TABLE user_passes (
 
 COMMENT ON TABLE  user_passes              IS '사용자가 실제 보유한 수강권 인스턴스';
 COMMENT ON COLUMN user_passes.sessions_total IS 'NULL이면 기간 내 무제한 (MONTHLY 타입)';
+
+
+-- 고정 로스터 (PRIVATE, 또는 GROUP+FIXED 슬롯 전용) — 등록해두면 매주 신청 없이 Lesson 생성 시
+-- reservations가 이 사람 몫으로 자동 생성된다. GROUP+APPLICATION(신청형) 슬롯은 이 테이블을 쓰지 않는다.
+-- user_passes를 참조해서 passes/user_passes 섹션 뒤로 옮겨 왔다 (slots 섹션에 있으면 아직 안 만들어진
+-- 테이블을 참조하게 돼 실제 DB 적용 시 "relation does not exist"로 실패한다).
+CREATE TABLE slot_members (
+                               id              UUID        PRIMARY KEY DEFAULT uuid_generate_v4(),
+                               slot_id         UUID        NOT NULL REFERENCES slots(id),
+                               user_id         UUID        NOT NULL REFERENCES users(id),
+                               user_pass_id    UUID        NOT NULL REFERENCES user_passes(id),
+                               is_active       BOOLEAN     NOT NULL DEFAULT TRUE,
+                               created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+COMMENT ON TABLE slot_members IS '개인 또는 고정형 그룹 슬롯의 고정 배정 로스터. 멤버는 이후에도 추가/제외될 수 있음';
 
 
 -- ============================================================
@@ -535,7 +557,7 @@ CREATE TABLE calendar_events (
 );
 
 COMMENT ON TABLE  calendar_events            IS '캘린더 이벤트. platform_id가 NULL이면 전 플랫폼 공통';
-COMMENT ON COLUMN calendar_events.event_type IS 'HQ_NOTICE는 오너만 생성 가능 (앱 레이어 검증)';
+COMMENT ON COLUMN calendar_events.type IS 'HQ_NOTICE는 오너만 생성 가능 (앱 레이어 검증)';
 
 
 -- ============================================================
@@ -549,10 +571,10 @@ CREATE TABLE facilities (
                             name            VARCHAR(200) NOT NULL,
                             description     TEXT,
                             floor           VARCHAR(50),  -- 자유 입력 층 표기 (예: "1층", "지하1층")
-                            capacity        SMALLINT    NOT NULL DEFAULT 1 CHECK (capacity >= 1),  -- 동시 이용 가능 인원
+                            capacity        INT         NOT NULL DEFAULT 1 CHECK (capacity >= 1),  -- 동시 이용 가능 인원
                             is_active       BOOLEAN     NOT NULL DEFAULT TRUE,
-                            pos_x           SMALLINT,  -- 배치도 상 위치 (0~100 백분율). NULL이면 아직 배치되지 않음
-                            pos_y           SMALLINT,
+                            pos_x           INT,  -- 배치도 상 위치 (0~100 백분율). NULL이면 아직 배치되지 않음
+                            pos_y           INT,
                             open_time       TIME,  -- 예약 가능 시작 시각. 둘 다 NULL이면 시간 제한 없음
                             close_time      TIME,
                             created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),

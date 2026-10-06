@@ -2,11 +2,11 @@ package com.hub.reservehub.domain.facility;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.Table;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.Id;
-import jakarta.persistence.Lob;
 import java.time.Instant;
 import java.util.UUID;
 import org.springframework.lang.Nullable;
@@ -16,6 +16,7 @@ import org.springframework.lang.Nullable;
  * 변경(보수 중/완료 처리)할 수 있다.
  */
 @Entity
+@Table(name = "facility_issues")
 public class FacilityIssue {
 
     @Id
@@ -31,7 +32,6 @@ public class FacilityIssue {
     @Column(nullable = false)
     private UUID reportedBy;
 
-    @Lob
     @Column(nullable = false)
     private String description;
 

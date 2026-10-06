@@ -2,6 +2,7 @@ package com.hub.reservehub.domain.approval;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.Table;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
@@ -15,6 +16,7 @@ import org.springframework.lang.Nullable;
  * 불변 처리 이력. 생성 후 절대 수정·삭제하지 않는다.
  */
 @Entity
+@Table(name = "action_logs")
 public class ActionLog {
 
     @Id

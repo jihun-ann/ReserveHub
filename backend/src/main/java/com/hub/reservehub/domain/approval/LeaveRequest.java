@@ -3,6 +3,7 @@ package com.hub.reservehub.domain.approval;
 import com.hub.reservehub.common.audit.BaseEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.Table;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
@@ -17,6 +18,7 @@ import org.springframework.lang.Nullable;
  * 매니저 또는 오너가 승인/반려한다.
  */
 @Entity
+@Table(name = "leave_requests")
 public class LeaveRequest extends BaseEntity {
 
     @Id

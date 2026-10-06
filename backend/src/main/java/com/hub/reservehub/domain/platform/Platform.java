@@ -3,6 +3,7 @@ package com.hub.reservehub.domain.platform;
 import com.hub.reservehub.common.audit.BaseEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.Table;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
@@ -13,6 +14,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import org.springframework.lang.Nullable;
 
 @Entity
+@Table(name = "platforms")
 public class Platform extends BaseEntity {
 
     // 캘린더/사이드바에서 플랫폼을 색으로 구분하므로, 생성 순서대로 이 팔레트를 한 바퀴씩 돌며
