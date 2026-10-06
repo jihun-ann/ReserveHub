@@ -3,7 +3,7 @@ import { openModal, closeModal } from "../default.js";
 import {
 	listFacilities, listFacilityBookingsForPlatform, cancelFacilityBooking,
 	listFacilityIssues, reportFacilityIssue, markFacilityIssueInProgress, resolveFacilityIssue,
-	getUser, FACILITY_ISSUE_STATUS_LABEL
+	getUser, FACILITY_ISSUE_STATUS_LABEL, getMyManagerTier, meetsManagerTier
 } from "../../api/common.js";
 
 const ISSUE_STATUS_CLS = { OPEN: "bs-pending", IN_PROGRESS: "bs-soon", RESOLVED: "bs-active" };
@@ -19,6 +19,10 @@ export default function ManagerFacilityView({ platformId }) {
 	const [issues, setIssues] = useState([]);
 	const [usersById, setUsersById] = useState({});
 	const [loading, setLoading] = useState(true);
+	// 시설 예약 취소(타인)/이슈 처리는 M등급 이상 매니저만 — 백엔드 FacilityService가 실제로 검증하고,
+	// 여기선 등급 미달 매니저에게 눌러도 막힐 버튼을 아예 안 보여주기 위한 용도.
+	const [managerTier, setManagerTier] = useState(null);
+	const canManageFacility = meetsManagerTier(managerTier, "MEDIUM");
 
 	const [issueFacilityId, setIssueFacilityId] = useState(null);
 	const [issueDescription, setIssueDescription] = useState("");
@@ -34,14 +38,16 @@ export default function ManagerFacilityView({ platformId }) {
 			return;
 		}
 		setLoading(true);
-		const [facilityList, bookingList, issueList] = await Promise.all([
+		const [facilityList, bookingList, issueList, tier] = await Promise.all([
 			listFacilities(platformId),
 			listFacilityBookingsForPlatform(platformId, date),
-			listFacilityIssues(platformId)
+			listFacilityIssues(platformId),
+			getMyManagerTier(platformId).catch(() => null)
 		]);
 		setFacilities(facilityList);
 		setBookings(bookingList.filter((b) => b.status === "CONFIRMED"));
 		setIssues(issueList);
+		setManagerTier(tier);
 
 		const userIds = [...new Set([...bookingList.map((b) => b.userId), ...issueList.map((i) => i.reportedBy)])];
 		const users = await Promise.all(userIds.map((id) => getUser(id).catch(() => null)));
@@ -127,7 +133,7 @@ export default function ManagerFacilityView({ platformId }) {
 											<td style={{ fontFamily: "'DM Mono',monospace" }}>{b.startTime?.slice(0, 5)}-{b.endTime?.slice(0, 5)}</td>
 											<td>{user?.name || user?.email || "-"}</td>
 											<td style={{ color: "var(--text-sub)" }}>{b.purpose || "-"}</td>
-											<td><button className="btn btn-ghost btn-sm" onClick={() => cancel(b.id)}>예약 취소</button></td>
+											<td>{canManageFacility && <button className="btn btn-ghost btn-sm" onClick={() => cancel(b.id)}>예약 취소</button>}</td>
 										</tr>
 									);
 								})
@@ -166,10 +172,10 @@ export default function ManagerFacilityView({ platformId }) {
 										<span className={`badge ${ISSUE_STATUS_CLS[issue.status]}`} style={{ fontSize: "10px" }}>
 											{FACILITY_ISSUE_STATUS_LABEL[issue.status] || issue.status}
 										</span>
-										{issue.status === "OPEN" && (
+										{canManageFacility && issue.status === "OPEN" && (
 											<button className="btn btn-ghost btn-sm" onClick={() => setInProgress(issue.id)}>보수 중으로 변경</button>
 										)}
-										{issue.status !== "RESOLVED" && (
+										{canManageFacility && issue.status !== "RESOLVED" && (
 											<button className="btn btn-ghost btn-sm" onClick={() => resolve(issue.id)}>보수 완료 처리</button>
 										)}
 									</div>

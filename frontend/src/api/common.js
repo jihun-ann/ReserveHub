@@ -1,4 +1,4 @@
-import { apiGet, apiPost, apiPatch, apiDelete, apiPostForm, API_BASE_URL, getAccessToken } from "./http.js";
+import { apiGet, apiPost, apiPatch, apiDelete, apiPostForm, API_BASE_URL, getAccessToken, getCurrentUser } from "./http.js";
 
 export const BUSINESS_TYPES = [
 	{ value: "PILATES", label: "필라테스" },
@@ -39,6 +39,24 @@ export const removeStaff = (platformId, userId) =>
 
 // 매니저 권한 등급(L/M/H) — HIGH 등급 매니저 또는 오너만 변경 가능.
 export const MANAGER_TIER_LABEL = { LOW: "L (제한)", MEDIUM: "M (일반)", HIGH: "H (전체)" };
+const MANAGER_TIER_ORDER = { LOW: 0, MEDIUM: 1, HIGH: 2 };
+
+// tier가 minTier 이상인지 — 오너 화면처럼 등급이 아예 없는 경우는 항상 통과시키지 않고(null=미배정),
+// 호출부가 "매니저 전용 화면에 들어왔다 = MANAGER 배정이 있다"를 전제로 쓴다.
+export function meetsManagerTier(tier, minTier) {
+	return tier != null && MANAGER_TIER_ORDER[tier] >= MANAGER_TIER_ORDER[minTier];
+}
+
+// 현재 로그인한 사용자가 이 플랫폼에서 가진 매니저 등급 — MANAGER로 배정돼 있지 않으면 null.
+// 백엔드가 실제 권한을 다시 검증하므로(PlatformAccessGuard.verifyManagerTier), 이건 버튼 노출을 위한
+// UX 용도일 뿐 보안 경계가 아니다.
+export async function getMyManagerTier(platformId) {
+	const me = getCurrentUser();
+	if (!me) return null;
+	const staff = await listStaff(platformId);
+	const mine = staff.find((s) => s.userId === me.id && s.staffRole === "MANAGER");
+	return mine?.managerTier ?? null;
+}
 
 export const updateManagerTier = (platformId, userId, managerTier) =>
 	apiPatch(`/api/v1/platforms/${platformId}/staff/${userId}/manager-tier`, { managerTier });

@@ -1,7 +1,7 @@
 package com.hub.reservehub.domain.approval;
 
+import com.hub.reservehub.domain.platform.ManagerTier;
 import com.hub.reservehub.domain.platform.PlatformAccessGuard;
-import com.hub.reservehub.domain.platform.StaffRole;
 import com.hub.reservehub.security.AuthenticatedUser;
 import java.time.LocalDate;
 import java.util.List;
@@ -49,7 +49,7 @@ public class FinancialRequestService {
     @Transactional
     public FinancialRequest approve(UUID requestId, AuthenticatedUser actor, @Nullable String memo) {
         FinancialRequest request = findRequest(requestId);
-        platformAccessGuard.verifyRole(request.getPlatformId(), actor, StaffRole.MANAGER);
+        platformAccessGuard.verifyManagerTier(request.getPlatformId(), actor, ManagerTier.HIGH); // 재무요청 승인/반려: 임원급 매니저 전용
         request.approve(memo);
         actionLogRepository.save(ActionLog.of(request.getPlatformId(), actor.getId(), ActionTarget.FINANCIAL_REQUEST, request.getId(), "APPROVE", memo));
         return request;
@@ -58,7 +58,7 @@ public class FinancialRequestService {
     @Transactional
     public FinancialRequest reject(UUID requestId, AuthenticatedUser actor, @Nullable String memo) {
         FinancialRequest request = findRequest(requestId);
-        platformAccessGuard.verifyRole(request.getPlatformId(), actor, StaffRole.MANAGER);
+        platformAccessGuard.verifyManagerTier(request.getPlatformId(), actor, ManagerTier.HIGH); // 재무요청 승인/반려: 임원급 매니저 전용
         request.reject(memo);
         actionLogRepository.save(ActionLog.of(request.getPlatformId(), actor.getId(), ActionTarget.FINANCIAL_REQUEST, request.getId(), "REJECT", memo));
         return request;

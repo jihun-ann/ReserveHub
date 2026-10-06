@@ -6,7 +6,7 @@ import com.hub.reservehub.domain.approval.ActionTarget;
 import com.hub.reservehub.domain.pass.Pass;
 import com.hub.reservehub.domain.pass.PassRepository;
 import com.hub.reservehub.domain.platform.PlatformAccessGuard;
-import com.hub.reservehub.domain.platform.StaffRole;
+import com.hub.reservehub.domain.platform.ManagerTier;
 import com.hub.reservehub.security.AuthenticatedUser;
 import java.time.LocalDate;
 import java.time.LocalTime;
@@ -57,7 +57,7 @@ public class ProgramService {
             UUID platformId, AuthenticatedUser actor, UUID passId, ProgramType type, @Nullable EnrollmentMode enrollmentMode,
             short capacity, short durationMin, @Nullable String description
     ) {
-        platformAccessGuard.verifyRole(platformId, actor, StaffRole.MANAGER);
+        platformAccessGuard.verifyManagerTier(platformId, actor, ManagerTier.MEDIUM); // 프로그램 운영: 중간 등급 이상 매니저
         if (type == ProgramType.GROUP && enrollmentMode == null) {
             throw new IllegalArgumentException("enrollmentMode is required for GROUP programs (FIXED or APPLICATION)");
         }
@@ -79,7 +79,7 @@ public class ProgramService {
             short capacity, short durationMin, @Nullable String description
     ) {
         Program program = findProgram(programId);
-        platformAccessGuard.verifyRole(program.getPlatformId(), actor, StaffRole.MANAGER);
+        platformAccessGuard.verifyManagerTier(program.getPlatformId(), actor, ManagerTier.MEDIUM); // 프로그램 운영: 중간 등급 이상 매니저
         if (type == ProgramType.GROUP && enrollmentMode == null) {
             throw new IllegalArgumentException("enrollmentMode is required for GROUP programs (FIXED or APPLICATION)");
         }
@@ -111,7 +111,7 @@ public class ProgramService {
     @Transactional
     public void deactivate(UUID programId, AuthenticatedUser actor) {
         Program program = findProgram(programId);
-        platformAccessGuard.verifyRole(program.getPlatformId(), actor, StaffRole.MANAGER);
+        platformAccessGuard.verifyManagerTier(program.getPlatformId(), actor, ManagerTier.MEDIUM); // 프로그램 운영: 중간 등급 이상 매니저
         program.deactivate();
         actionLogRepository.save(ActionLog.of(program.getPlatformId(), actor.getId(), ActionTarget.PROGRAM_CHANGE, program.getId(), "DEACTIVATE", null));
     }
@@ -122,7 +122,7 @@ public class ProgramService {
             LocalTime startTime, LocalTime endTime, LocalDate validFrom, @Nullable LocalDate validUntil
     ) {
         Program program = findProgram(programId);
-        platformAccessGuard.verifyRole(program.getPlatformId(), actor, StaffRole.MANAGER);
+        platformAccessGuard.verifyManagerTier(program.getPlatformId(), actor, ManagerTier.MEDIUM); // 프로그램 운영: 중간 등급 이상 매니저
         Slot slot = slotRepository.save(new Slot(programId, name, instructorId, dayOfWeek, startTime, endTime, validFrom, validUntil));
         actionLogRepository.save(ActionLog.of(program.getPlatformId(), actor.getId(), ActionTarget.PROGRAM_CHANGE, slot.getId(), "ADD_SLOT", null));
         return slot;
@@ -136,7 +136,7 @@ public class ProgramService {
     @Transactional
     public void deactivateSlot(UUID programId, UUID slotId, AuthenticatedUser actor) {
         Program program = findProgram(programId);
-        platformAccessGuard.verifyRole(program.getPlatformId(), actor, StaffRole.MANAGER);
+        platformAccessGuard.verifyManagerTier(program.getPlatformId(), actor, ManagerTier.MEDIUM); // 프로그램 운영: 중간 등급 이상 매니저
         Slot slot = slotRepository.findById(slotId)
                 .orElseThrow(() -> new IllegalArgumentException("Slot not found"));
         slot.deactivate();
@@ -162,7 +162,7 @@ public class ProgramService {
     // 중복 등록할 수 없다.
     public SlotMember addSlotMember(UUID programId, UUID slotId, AuthenticatedUser actor, UUID userId, UUID userPassId) {
         Program program = findProgram(programId);
-        platformAccessGuard.verifyRole(program.getPlatformId(), actor, StaffRole.MANAGER);
+        platformAccessGuard.verifyManagerTier(program.getPlatformId(), actor, ManagerTier.MEDIUM); // 프로그램 운영: 중간 등급 이상 매니저
         if (!program.isFixedRoster()) {
             throw new IllegalStateException("Application-mode GROUP programs use weekly reservations, not a fixed roster");
         }
@@ -187,7 +187,7 @@ public class ProgramService {
     @Transactional
     public void removeSlotMember(UUID programId, UUID slotId, UUID memberId, AuthenticatedUser actor) {
         Program program = findProgram(programId);
-        platformAccessGuard.verifyRole(program.getPlatformId(), actor, StaffRole.MANAGER);
+        platformAccessGuard.verifyManagerTier(program.getPlatformId(), actor, ManagerTier.MEDIUM); // 프로그램 운영: 중간 등급 이상 매니저
         findSlot(slotId, programId);
         SlotMember member = slotMemberRepository.findById(memberId)
                 .orElseThrow(() -> new IllegalArgumentException("Slot member not found"));

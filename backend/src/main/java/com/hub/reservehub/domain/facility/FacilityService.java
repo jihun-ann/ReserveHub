@@ -4,7 +4,7 @@ import com.hub.reservehub.domain.approval.ActionLog;
 import com.hub.reservehub.domain.approval.ActionLogRepository;
 import com.hub.reservehub.domain.approval.ActionTarget;
 import com.hub.reservehub.domain.platform.PlatformAccessGuard;
-import com.hub.reservehub.domain.platform.StaffRole;
+import com.hub.reservehub.domain.platform.ManagerTier;
 import com.hub.reservehub.security.AuthenticatedUser;
 import java.time.LocalDate;
 import java.time.LocalTime;
@@ -142,7 +142,7 @@ public class FacilityService {
         FacilityBooking booking = facilityBookingRepository.findById(bookingId)
                 .orElseThrow(() -> new IllegalArgumentException("Booking not found"));
         if (!booking.getUserId().equals(actor.getId())) {
-            platformAccessGuard.verifyRole(booking.getPlatformId(), actor, StaffRole.MANAGER);
+            platformAccessGuard.verifyManagerTier(booking.getPlatformId(), actor, ManagerTier.MEDIUM); // 시설 예약 취소(타인): 중간 등급 이상 매니저
         }
         booking.cancel();
         return booking;
@@ -166,7 +166,7 @@ public class FacilityService {
     @Transactional
     public FacilityIssue markIssueInProgress(UUID issueId, AuthenticatedUser actor) {
         FacilityIssue issue = findIssue(issueId);
-        platformAccessGuard.verifyRole(issue.getPlatformId(), actor, StaffRole.MANAGER);
+        platformAccessGuard.verifyManagerTier(issue.getPlatformId(), actor, ManagerTier.MEDIUM); // 시설 이슈 처리: 중간 등급 이상 매니저
         issue.markInProgress();
         actionLogRepository.save(ActionLog.of(issue.getPlatformId(), actor.getId(), ActionTarget.FACILITY_CHANGE, issue.getId(), "IN_PROGRESS", null));
         return issue;
@@ -175,7 +175,7 @@ public class FacilityService {
     @Transactional
     public FacilityIssue resolveIssue(UUID issueId, AuthenticatedUser actor, @Nullable String resolutionMemo) {
         FacilityIssue issue = findIssue(issueId);
-        platformAccessGuard.verifyRole(issue.getPlatformId(), actor, StaffRole.MANAGER);
+        platformAccessGuard.verifyManagerTier(issue.getPlatformId(), actor, ManagerTier.MEDIUM); // 시설 이슈 처리: 중간 등급 이상 매니저
         issue.resolve(actor.getId(), resolutionMemo);
         actionLogRepository.save(ActionLog.of(issue.getPlatformId(), actor.getId(), ActionTarget.FACILITY_CHANGE, issue.getId(), "RESOLVE", resolutionMemo));
         return issue;

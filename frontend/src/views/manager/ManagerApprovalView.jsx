@@ -13,7 +13,7 @@ import {
 	rejectFinancialRequest,
 	FINANCIAL_REQUEST_TYPE_LABEL,
 	getUser,
-	listStaff
+	getMyManagerTier
 } from "../../api/common.js";
 import { getCurrentUser } from "../../api/http.js";
 import { openModal, closeModal } from "../default.js";
@@ -44,10 +44,7 @@ export default function ManagerApprovalView({ platformId }) {
 
 	useEffect(() => {
 		if (!platformId || !myId) return;
-		listStaff(platformId).then((staff) => {
-			const mine = staff.find((s) => s.userId === myId && s.staffRole === "MANAGER");
-			setMyTier(mine?.managerTier || null);
-		}).catch(() => setMyTier(null));
+		getMyManagerTier(platformId).then(setMyTier).catch(() => setMyTier(null));
 	}, [platformId, myId]);
 
 	const [leaveStart, setLeaveStart] = useState("");
@@ -167,7 +164,9 @@ export default function ManagerApprovalView({ platformId }) {
 		const isLeave = r.kind === "LEAVE";
 		const onDecide = isFinancial ? decideFinancial : isLeave ? decideLeave : decide;
 		const isMine = r.requestedBy === myId;
-		const tierBlocked = isLeave && myTier !== "HIGH";
+		// 휴가 승인/반려(LeaveRequestService)와 재무 일정 승인/반려(FinancialRequestService)는
+		// 백엔드가 HIGH 등급 매니저만 허용한다 — 일정 변경(SCHEDULE)은 등급 무관.
+		const tierBlocked = (isLeave || isFinancial) && myTier !== "HIGH";
 
 		return (
 			<div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
@@ -255,7 +254,9 @@ export default function ManagerApprovalView({ platformId }) {
 					isMine ? (
 						<div style={{ fontSize: "12px", color: "var(--text-dim)" }}>본인이 제출한 요청은 직접 승인/반려할 수 없습니다. 다른 매니저나 오너가 처리해야 합니다.</div>
 					) : tierBlocked ? (
-						<div style={{ fontSize: "12px", color: "var(--text-dim)" }}>휴가 승인/반려는 H 등급 매니저만 처리할 수 있습니다.</div>
+						<div style={{ fontSize: "12px", color: "var(--text-dim)" }}>
+							{isFinancial ? "재무 일정" : "휴가"} 승인/반려는 H 등급 매니저만 처리할 수 있습니다.
+						</div>
 					) : (
 						<div>
 							<div style={{ fontSize: "10px", color: "var(--text-dim)", letterSpacing: "1px", marginBottom: "5px" }}>처리 메모</div>
