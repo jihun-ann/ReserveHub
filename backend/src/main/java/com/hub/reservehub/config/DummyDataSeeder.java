@@ -49,13 +49,18 @@ import java.time.LocalTime;
 import java.util.List;
 import java.util.UUID;
 import org.springframework.boot.CommandLineRunner;
+import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
 
 /**
  * Seeds one test account per role plus a platform linking them, so the frontend can be
  * exercised end-to-end against the local H2 datasource configured in application.properties.
+ *
+ * postgres 프로필(실제 DB)에서는 돌지 않는다 — 매 기동마다 무조건 재삽입이라 영구 DB에서는 재시작할
+ * 때마다 중복 키 충돌로 깨진다. 실 DB엔 OwnerSeeder가 대신 최소 계정만 한 번 심는다.
  */
 @Component
+@Profile("!postgres")
 public class DummyDataSeeder implements CommandLineRunner {
 
     private static final String PASSWORD = "test";
