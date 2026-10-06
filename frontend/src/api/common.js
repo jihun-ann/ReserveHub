@@ -1,11 +1,10 @@
 import { apiGet, apiPost, apiPatch, apiDelete, apiPostForm, API_BASE_URL, getAccessToken, getCurrentUser } from "./http.js";
 
 export const BUSINESS_TYPES = [
-	{ value: "PILATES", label: "필라테스" },
-	{ value: "YOGA", label: "요가" },
-	{ value: "MUSIC", label: "음악" },
-	{ value: "FITNESS", label: "헬스" },
-	{ value: "DANCE", label: "댄스" },
+	{ value: "FITNESS", label: "운동/피트니스" },
+	{ value: "ARTS", label: "예체능" },
+	{ value: "EDUCATION", label: "교육/학원" },
+	{ value: "BEAUTY", label: "뷰티/웰니스" },
 	{ value: "OTHER", label: "기타" }
 ];
 

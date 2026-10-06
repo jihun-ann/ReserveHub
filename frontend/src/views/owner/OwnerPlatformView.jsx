@@ -49,7 +49,7 @@ const TARGET_LABEL = {
 
 const NOT_CONNECTED_TABS = { members: true, billing: true, stats: true };
 
-const EMPTY_FORM = { name: "", businessType: "PILATES", phone: "", address: "", description: "" };
+const EMPTY_FORM = { name: "", businessType: "FITNESS", phone: "", address: "", description: "" };
 const EMPTY_TAX_FORM = { username: "", email: "", password: "", name: "", phone: "" };
 
 export default function OwnerPlatformView({ platforms, currentPlatformId, onSelectPlatform, onPlatformsChanged }) {

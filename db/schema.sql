@@ -53,7 +53,7 @@ COMMENT ON COLUMN users.bank_name    IS '정산 계좌 은행명 — 세무사 �
 -- ============================================================
 
 CREATE TYPE platform_status AS ENUM ('ACTIVE', 'INACTIVE', 'SUSPENDED');
-CREATE TYPE business_type   AS ENUM ('PILATES', 'YOGA', 'MUSIC', 'FITNESS', 'DANCE', 'OTHER');
+CREATE TYPE business_type   AS ENUM ('FITNESS', 'ARTS', 'EDUCATION', 'BEAUTY', 'OTHER');
 
 CREATE TABLE platforms (
                            id              UUID            PRIMARY KEY DEFAULT uuid_generate_v4(),
