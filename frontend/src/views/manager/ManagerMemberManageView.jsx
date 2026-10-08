@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { openModal, closeModal } from "../default.js";
 import {
 	listMembers, listMemberMemos, createMemberMemo, deleteMemberMemo, listPasses, enrollMember,
-	listPrograms, registerMemberPayment, updateMemberGuardian,
+	listPrograms, registerMemberPayment, updateMemberGuardian, listJoinRequests, approveJoinRequest, rejectJoinRequest,
 	PAYMENT_METHOD_LABEL, CASH_RECEIPT_STATUS_LABEL, TAX_TYPE_LABEL
 } from "../../api/common.js";
 
@@ -68,6 +68,8 @@ function deriveStatus(expiresAt) {
 
 export default function ManagerMemberManageView({ platformId }) {
 	const [members, setMembers] = useState([]);
+	const [joinRequests, setJoinRequests] = useState([]); // 가입 신청(대기/승인) — 권한이 없으면 빈 목록
+	const [joinNotice, setJoinNotice] = useState("");
 	const [loading, setLoading] = useState(true);
 	const [search, setSearch] = useState("");
 	const [statusFilter, setStatusFilter] = useState("all");
@@ -110,9 +112,11 @@ export default function ManagerMemberManageView({ platformId }) {
 			return;
 		}
 		setLoading(true);
-		const [memberList, passList, programList] = await Promise.all([
-			listMembers(platformId), listPasses(platformId), listPrograms(platformId)
+		const [memberList, passList, programList, joinList] = await Promise.all([
+			listMembers(platformId), listPasses(platformId), listPrograms(platformId),
+			listJoinRequests(platformId).catch(() => [])
 		]);
+		setJoinRequests(joinList);
 		setMembers(memberList);
 		setPasses(passList);
 		setPrograms(programList);
@@ -164,6 +168,65 @@ export default function ManagerMemberManageView({ platformId }) {
 		} finally {
 			setEnrolling(false);
 		}
+	}
+
+	// 가입 신청 승인 → 바로 수강권/프로그램 등록(결제 등록 창)으로 이어진다. 창을 닫아도 '수강권 등록 대기'로 남는다.
+	async function approveRequest(r) {
+		try {
+			await approveJoinRequest(r.id, null);
+			await refresh();
+			setJoinNotice(`${r.userName}님의 가입을 승인했습니다. 수강권을 등록해 주세요.`);
+			openPayModal({ userId: r.userId, name: r.userName });
+		} catch (err) {
+			alert(err.message || "승인에 실패했습니다.");
+		}
+	}
+
+	async function rejectRequest(r) {
+		const memo = window.prompt(`${r.userName}님의 가입을 반려합니다. 사유를 입력하세요 (선택)`, "");
+		if (memo === null) return;
+		try {
+			await rejectJoinRequest(r.id, memo.trim() || null);
+			await refresh();
+			setJoinNotice(`${r.userName}님의 가입 신청을 반려했습니다.`);
+		} catch (err) {
+			alert(err.message || "반려에 실패했습니다.");
+		}
+	}
+
+	function joinRequestsUi() {
+		const memberIds = new Set(members.map((m) => m.userId));
+		const pending = joinRequests.filter((r) => r.status === "PENDING");
+		const waiting = joinRequests.filter((r) => r.status === "APPROVED" && !memberIds.has(r.userId));
+		if (pending.length === 0 && waiting.length === 0 && !joinNotice) return null;
+		const rowStyle = { display: "flex", alignItems: "center", gap: "12px", padding: "12px 16px", borderTop: "1px solid var(--border)", flexWrap: "wrap" };
+		return (
+			<div className="card" style={{ padding: 0, overflow: "hidden", marginBottom: "16px" }}>
+				<div style={{ padding: "12px 16px", fontSize: "14px", fontWeight: 700, display: "flex", gap: "10px", alignItems: "center" }}>
+					가입 신청 <span style={{ fontSize: "12px", color: "var(--text-dim)", fontWeight: 400 }}>대기 {pending.length} · 수강권 등록 대기 {waiting.length}</span>
+					{joinNotice && <span style={{ marginLeft: "auto", fontSize: "12px", color: "var(--green)", fontWeight: 400 }}>{joinNotice}</span>}
+				</div>
+				{pending.map((r) => (
+					<div key={r.id} style={rowStyle}>
+						<div style={{ flex: 1, minWidth: "200px" }}>
+							<div style={{ fontWeight: 600 }}>{r.userName} <span style={{ fontWeight: 400, fontSize: "12px", color: "var(--text-dim)" }}>{r.userEmail}{r.userPhone ? ` · ${r.userPhone}` : ""}</span></div>
+							{r.message && <div style={{ fontSize: "12px", color: "var(--text-sub)", marginTop: "2px" }}>신청 메모: {r.message}</div>}
+						</div>
+						<button className="btn btn-primary btn-sm" onClick={() => approveRequest(r)}>승인</button>
+						<button className="btn btn-sm btn-danger" onClick={() => rejectRequest(r)}>반려</button>
+					</div>
+				))}
+				{waiting.map((r) => (
+					<div key={r.id} style={rowStyle}>
+						<div style={{ flex: 1, minWidth: "200px" }}>
+							<div style={{ fontWeight: 600 }}>{r.userName} <span style={{ fontWeight: 400, fontSize: "12px", color: "var(--text-dim)" }}>{r.userEmail}</span></div>
+							<div style={{ fontSize: "12px", color: "var(--text-sub)", marginTop: "2px" }}>승인됨 · 수강권 등록 대기</div>
+						</div>
+						<button className="btn btn-primary btn-sm" onClick={() => openPayModal({ userId: r.userId, name: r.userName })}>수강권 등록</button>
+					</div>
+				))}
+			</div>
+		);
 	}
 
 	function openPayModal(member) {
@@ -274,6 +337,8 @@ export default function ManagerMemberManageView({ platformId }) {
 					+ 회원 등록
 				</button>
 			</div>
+
+			{joinRequestsUi()}
 
 			<div className="card" style={{ padding: "0", overflow: "hidden", marginBottom: "16px" }}>
 				<div style={{ overflowX: "auto" }}>

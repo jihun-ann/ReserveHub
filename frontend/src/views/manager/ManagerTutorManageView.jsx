@@ -1,23 +1,20 @@
 import { useState, useEffect, useCallback } from "react";
 import { openModal, closeModal } from "../default.js";
-import { listStaff, removeStaff, getUser, enrollTutor } from "../../api/common.js";
-import { getCurrentUser } from "../../api/http.js";
+import { listStaff, removeStaff, getUser, createStaffInvitation, listStaffInvitations, cancelStaffInvitation, getMyPermissions } from "../../api/common.js";
 
 export default function ManagerTutorManageView({ platformId }) {
 	const [tutors, setTutors] = useState([]);
 	const [loading, setLoading] = useState(true);
 	const [search, setSearch] = useState("");
-	const [newName, setNewName] = useState("");
-	const [newPhone, setNewPhone] = useState("");
-	const [newEmail, setNewEmail] = useState("");
-	const [newPassword, setNewPassword] = useState("");
+	const [inviteMethod, setInviteMethod] = useState("email");
+	const [inviteValue, setInviteValue] = useState("");
+	const [invitations, setInvitations] = useState([]);
+	const [createdLink, setCreatedLink] = useState("");
 	const [enrolling, setEnrolling] = useState(false);
 	const [enrollError, setEnrollError] = useState("");
 	const [expandedId, setExpandedId] = useState(null);
-	const [myTier, setMyTier] = useState(null);
-	const myId = getCurrentUser()?.id;
-	// 강사 등록/배정 해제는 M 등급 이상만 — L 등급 매니저는 조회만 가능하다.
-	const canManageTutors = myTier === "MEDIUM" || myTier === "HIGH";
+	// 강사 초대/삭제는 '강사 초대 / 삭제'(TUTOR_MANAGE) 권한이 있는 그룹만 — 없으면 조회만 가능하다.
+	const [canManageTutors, setCanManageTutors] = useState(false);
 
 	const refresh = useCallback(async () => {
 		if (!platformId) {
@@ -27,8 +24,8 @@ export default function ManagerTutorManageView({ platformId }) {
 		}
 		setLoading(true);
 		const allStaff = await listStaff(platformId, true);
-		const mine = allStaff.find((s) => s.userId === myId && s.staffRole === "MANAGER");
-		setMyTier(mine?.managerTier || null);
+		const canInvite = (await getMyPermissions(platformId).catch(() => [])).includes("TUTOR_MANAGE");
+		setCanManageTutors(canInvite);
 		const staff = allStaff.filter((s) => s.staffRole === "TUTOR");
 		const withDetail = await Promise.all(
 			staff.map(async (s) => {
@@ -37,30 +34,41 @@ export default function ManagerTutorManageView({ platformId }) {
 			})
 		);
 		setTutors(withDetail);
+		setInvitations(canInvite ? (await listStaffInvitations(platformId).catch(() => [])).filter((i) => i.staffRole === "TUTOR") : []);
 		setLoading(false);
-	}, [platformId, myId]);
+	}, [platformId]);
 
 	useEffect(() => {
 		refresh();
 	}, [refresh]);
 
-	async function submitEnroll() {
-		if (!newName.trim() || !newEmail.trim() || !newPassword.trim()) return;
+	// 강사 추가는 초대 링크 방식 — 이메일 또는 연락처로 초대하고, 상대가 링크로 로그인해 수락해야 배정된다.
+	async function submitInvite() {
+		if (!inviteValue.trim()) {
+			setEnrollError(`${inviteMethod === "email" ? "이메일" : "연락처"}를 입력하세요.`);
+			return;
+		}
 		setEnrolling(true);
 		setEnrollError("");
 		try {
-			await enrollTutor(platformId, newEmail.trim(), newPassword.trim(), newName.trim(), newPhone.trim() || null);
-			setNewName("");
-			setNewPhone("");
-			setNewEmail("");
-			setNewPassword("");
-			closeModal("addInstructorModal");
+			const inv = await createStaffInvitation(platformId, { staffRole: "TUTOR", [inviteMethod]: inviteValue.trim() });
+			setCreatedLink(`${window.location.origin}/invite/${inv.token}`);
+			setInviteValue("");
 			await refresh();
 		} catch (err) {
-			setEnrollError(err.message || "강사 등록에 실패했습니다.");
+			setEnrollError(err.message || "강사 초대에 실패했습니다.");
 		} finally {
 			setEnrolling(false);
 		}
+	}
+
+	async function cancelInvite(id) {
+		await cancelStaffInvitation(id);
+		await refresh();
+	}
+
+	function copyLink(link) {
+		navigator.clipboard.writeText(link).catch(() => window.prompt("초대 링크를 복사하세요", link));
 	}
 
 	async function remove(userId) {
@@ -76,7 +84,7 @@ export default function ManagerTutorManageView({ platformId }) {
 			<div className="page-header">
 				<div className="page-label">INSTRUCTORS</div>
 				<div className="page-title">강사 관리</div>
-				<div className="page-subtitle">소속 강사를 등록하고 관리하세요</div>
+				<div className="page-subtitle">소속 강사를 초대하고 관리하세요</div>
 			</div>
 
 			<div style={{ display: "flex", gap: "8px", marginBottom: "16px", flexWrap: "wrap", alignItems: "center" }}>
@@ -98,14 +106,14 @@ export default function ManagerTutorManageView({ platformId }) {
 					}}
 				/>
 				{canManageTutors && (
-					<button className="btn btn-primary btn-sm" onClick={() => openModal("addInstructorModal")}>
-						+ 강사 등록
+					<button className="btn btn-primary btn-sm" onClick={() => { setCreatedLink(""); openModal("addInstructorModal"); }}>
+						+ 강사 초대
 					</button>
 				)}
 			</div>
 
-			{!canManageTutors && myTier && (
-				<div style={{ fontSize: "12px", color: "var(--text-dim)", marginBottom: "16px" }}>L 등급 매니저는 강사 목록 조회만 가능합니다. 등록/배정 해제는 M 등급 이상만 처리할 수 있습니다.</div>
+			{!canManageTutors && (
+				<div style={{ fontSize: "12px", color: "var(--text-dim)", marginBottom: "16px" }}>강사 목록 조회만 가능합니다. 초대/삭제는 '강사 초대 / 삭제' 권한이 있는 그룹만 처리할 수 있습니다.</div>
 			)}
 
 			<div className="card" style={{ padding: "0", overflow: "hidden" }}>
@@ -172,34 +180,58 @@ export default function ManagerTutorManageView({ platformId }) {
 			</div>
 		</div>
 
+		{invitations.length > 0 && (
+			<div className="card" style={{ margin: "16px 0", padding: "12px 16px" }}>
+				<div style={{ fontSize: "12px", fontWeight: 700, marginBottom: "8px" }}>수락 대기 중인 초대</div>
+				{invitations.map((i) => (
+					<div key={i.id} style={{ display: "flex", alignItems: "center", gap: "8px", padding: "4px 0", fontSize: "13px" }}>
+						<span style={{ flex: 1 }}>{[i.email, i.phone].filter(Boolean).join(" / ")}</span>
+						<button className="btn btn-ghost btn-sm" onClick={() => copyLink(`${window.location.origin}/invite/${i.token}`)}>링크 복사</button>
+						<button className="btn btn-ghost btn-sm" onClick={() => cancelInvite(i.id)}>취소</button>
+					</div>
+				))}
+			</div>
+		)}
+
 		<div className="modal-overlay" id="addInstructorModal">
 			<div className="modal-box">
 				<div className="modal-header">
-					<div className="modal-title">강사 등록</div>
+					<div className="modal-title">강사 초대</div>
 					<button className="modal-close" onClick={() => closeModal("addInstructorModal")}>✕</button>
 				</div>
 				<div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-					<div className="form-field">
-						<label>이름</label>
-						<input type="text" value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="강사 이름" />
+					<div style={{ display: "flex", gap: "6px" }}>
+						{[["email", "이메일"], ["phone", "연락처"]].map(([m, label]) => (
+							<button
+								key={m} type="button"
+								className={`btn btn-sm ${inviteMethod === m ? "btn-primary" : "btn-ghost"}`}
+								onClick={() => { setInviteMethod(m); setInviteValue(""); setCreatedLink(""); }}
+							>{label}</button>
+						))}
 					</div>
 					<div className="form-field">
-						<label>연락처</label>
-						<input type="tel" value={newPhone} onChange={(e) => setNewPhone(e.target.value)} placeholder="010-0000-0000" />
+						<label>{inviteMethod === "email" ? "이메일" : "연락처"}</label>
+						<input
+							type={inviteMethod === "email" ? "email" : "tel"}
+							value={inviteValue}
+							onChange={(e) => setInviteValue(e.target.value)}
+							placeholder={inviteMethod === "email" ? "tutor@example.com" : "010-0000-0000"}
+						/>
 					</div>
-					<div className="form-field">
-						<label>이메일</label>
-						<input type="email" value={newEmail} onChange={(e) => setNewEmail(e.target.value)} placeholder="tutor@example.com" />
+					<div style={{ fontSize: "11px", color: "var(--text-dim)" }}>
+						선택한 이메일 또는 연락처로 초대합니다. 발급된 링크를 직접 전달하세요 — 상대가 가입/로그인한 계정의 이메일 또는 연락처가 일치해야 수락할 수 있습니다. (7일간 유효)
 					</div>
-					<div className="form-field">
-						<label>초기 비밀번호</label>
-						<input type="text" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} placeholder="강사에게 안내할 비밀번호" />
-					</div>
+					{createdLink && (
+						<div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+							<input readOnly value={createdLink} style={{ flex: 1, fontSize: "12px" }} onFocus={(e) => e.target.select()} />
+							<button className="btn btn-ghost btn-sm" onClick={() => copyLink(createdLink)}>복사</button>
+						</div>
+					)}
 					{enrollError && <div style={{ color: "var(--red)", fontSize: "12px" }}>{enrollError}</div>}
 					<div style={{ display: "flex", justifyContent: "flex-end", gap: "8px", marginTop: "8px" }}>
 						<button className="btn btn-ghost" onClick={() => closeModal("addInstructorModal")}>취소</button>
-						<button className="btn btn-primary" disabled={enrolling} onClick={submitEnroll}>
-							{enrolling ? "등록 중..." : "저장"}
+						<button className="btn btn-primary" disabled={enrolling} onClick={submitInvite}>
+							{enrolling ? "발급 중..." : "초대 링크 만들기"}
 						</button>
 					</div>
 				</div>

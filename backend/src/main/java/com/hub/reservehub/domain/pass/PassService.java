@@ -1,5 +1,6 @@
 package com.hub.reservehub.domain.pass;
 
+import com.hub.reservehub.domain.approval.LogMemo;
 import com.hub.reservehub.domain.approval.ActionLog;
 import com.hub.reservehub.domain.approval.ActionLogRepository;
 import com.hub.reservehub.domain.approval.ActionTarget;
@@ -32,7 +33,8 @@ public class PassService {
     ) {
         platformAccessGuard.verifyRole(platformId, actor, StaffRole.MANAGER);
         Pass pass = passRepository.save(new Pass(platformId, name, type, price, sessionCount, validDays));
-        actionLogRepository.save(ActionLog.of(platformId, actor.getId(), ActionTarget.PASS_CHANGE, pass.getId(), "CREATE", null));
+        actionLogRepository.save(ActionLog.of(platformId, actor.getId(), ActionTarget.PASS_CHANGE, pass.getId(), "CREATE",
+                "수강권 등록: '" + name + "' (" + type + ", " + LogMemo.won(price) + (sessionCount != null ? ", " + sessionCount + "회" : "") + ", 유효 " + validDays + "일)"));
         return pass;
     }
 
@@ -55,8 +57,16 @@ public class PassService {
     ) {
         Pass pass = findPass(passId);
         platformAccessGuard.verifyRole(pass.getPlatformId(), actor, StaffRole.MANAGER);
+        String changes = LogMemo.changes(
+                LogMemo.change("이름", pass.getName(), name),
+                LogMemo.change("유형", pass.getType(), type),
+                LogMemo.change("가격", LogMemo.won(pass.getPrice()), LogMemo.won(price)),
+                LogMemo.change("횟수", pass.getSessionCount(), sessionCount),
+                LogMemo.change("유효일", pass.getValidDays(), validDays)
+        );
         pass.update(name, type, price, sessionCount, validDays);
-        actionLogRepository.save(ActionLog.of(pass.getPlatformId(), actor.getId(), ActionTarget.PASS_CHANGE, pass.getId(), "UPDATE", null));
+        actionLogRepository.save(ActionLog.of(pass.getPlatformId(), actor.getId(), ActionTarget.PASS_CHANGE, pass.getId(), "UPDATE",
+                "수강권 수정: '" + pass.getName() + "' — " + changes));
         return pass;
     }
 
@@ -65,7 +75,8 @@ public class PassService {
         Pass pass = findPass(passId);
         platformAccessGuard.verifyRole(pass.getPlatformId(), actor, StaffRole.MANAGER);
         pass.deactivate();
-        actionLogRepository.save(ActionLog.of(pass.getPlatformId(), actor.getId(), ActionTarget.PASS_CHANGE, pass.getId(), "DEACTIVATE", null));
+        actionLogRepository.save(ActionLog.of(pass.getPlatformId(), actor.getId(), ActionTarget.PASS_CHANGE, pass.getId(), "DEACTIVATE",
+                "수강권 비활성화: '" + pass.getName() + "'"));
     }
 
     private Pass findPass(UUID passId) {

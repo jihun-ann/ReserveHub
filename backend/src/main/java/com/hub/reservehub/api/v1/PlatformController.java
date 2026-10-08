@@ -86,16 +86,6 @@ public class PlatformController {
         return ResponseEntity.status(HttpStatus.CREATED).body(PlatformStaffResponse.from(staff));
     }
 
-    @PatchMapping("/{id}/staff/{userId}/manager-tier")
-    // 매니저 권한 등급 변경("권한 변경") — 서비스에서 HIGH 등급 매니저 또는 오너만 통과시킨다.
-    public PlatformStaffResponse updateManagerTier(
-            @PathVariable UUID id, @PathVariable UUID userId, @Valid @RequestBody UpdateManagerTierRequest request
-    ) {
-        return PlatformStaffResponse.from(
-                platformService.updateManagerTier(id, currentAuthenticatedUser.get(), userId, request.managerTier())
-        );
-    }
-
     @DeleteMapping("/{id}/staff/{userId}")
     public ResponseEntity<Void> removeStaff(@PathVariable UUID id, @PathVariable UUID userId) {
         platformService.removeStaff(id, currentAuthenticatedUser.get(), userId);
@@ -154,9 +144,6 @@ public class PlatformController {
     public record AssignStaffRequest(@NotNull UUID userId, @NotNull StaffRole staffRole, ManagerTier managerTier) {
     }
 
-    public record UpdateManagerTierRequest(@NotNull ManagerTier managerTier) {
-    }
-
     public record UpdateIncomeTypeRequest(@NotNull IncomeType incomeType) {
     }
 
@@ -164,13 +151,13 @@ public class PlatformController {
     }
 
     public record PlatformResponse(
-            UUID id, String name, BusinessType businessType, String phone, String address,
-            String description, String emoji, String colorHex, String status, List<String> roles
+            UUID id, String code, String name, BusinessType businessType, String phone, String address,
+            String description, String colorHex, String status, List<String> roles
     ) {
         public static PlatformResponse from(Platform platform, List<String> roles) {
             return new PlatformResponse(
-                    platform.getId(), platform.getName(), platform.getBusinessType(), platform.getPhone(),
-                    platform.getAddress(), platform.getDescription(), platform.getEmoji(),
+                    platform.getId(), platform.getCode(), platform.getName(), platform.getBusinessType(), platform.getPhone(),
+                    platform.getAddress(), platform.getDescription(),
                     platform.getColorHex(), platform.getStatus().name(), roles
             );
         }
@@ -178,12 +165,12 @@ public class PlatformController {
 
     public record PlatformStaffResponse(
             UUID id, UUID platformId, UUID userId, StaffRole staffRole, boolean isActive,
-            IncomeType incomeType, Integer sessionRate, ManagerTier managerTier
+            IncomeType incomeType, Integer sessionRate, ManagerTier managerTier, UUID managerGroupId
     ) {
         public static PlatformStaffResponse from(PlatformStaff staff) {
             return new PlatformStaffResponse(
                     staff.getId(), staff.getPlatformId(), staff.getUserId(), staff.getStaffRole(),
-                    staff.isActive(), staff.getIncomeType(), staff.getSessionRate(), staff.getManagerTier()
+                    staff.isActive(), staff.getIncomeType(), staff.getSessionRate(), staff.getManagerTier(), staff.getManagerGroupId()
             );
         }
     }

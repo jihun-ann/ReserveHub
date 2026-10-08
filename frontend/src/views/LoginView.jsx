@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { apiPost, setSession, loadCurrentUser } from "../api/http.js";
 
 export default function LoginView() {
@@ -94,6 +94,9 @@ export default function LoginView() {
 				>
 					{loading ? "로그인 중..." : "로그인"}
 				</button>
+				<div style={{ fontSize: "13px", color: "var(--text-sub)", textAlign: "center" }}>
+					계정이 없나요? <Link to="/register" style={{ color: "var(--accent)" }}>회원가입</Link>
+				</div>
 			</form>
 		</div>
 	);

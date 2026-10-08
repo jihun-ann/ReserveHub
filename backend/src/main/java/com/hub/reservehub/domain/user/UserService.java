@@ -1,5 +1,7 @@
 package com.hub.reservehub.domain.user;
 
+import org.springframework.lang.Nullable;
+import java.time.LocalDate;
 import java.util.UUID;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -35,7 +37,7 @@ public class UserService {
     // Fetches a user by email for login-related lookups.
     // 로그인 관련 조회를 위해 이메일 기준으로 사용자를 찾는다.
     public User getByEmail(String email) {
-        return userRepository.findByEmail(email)
+        return userRepository.findByEmailAndIsActiveTrue(email)
                 .orElseThrow(() -> new IllegalArgumentException("User not found"));
     }
 
@@ -43,7 +45,7 @@ public class UserService {
     // 이미 있는 이메일이면 역할이 맞는지 확인하고 그대로 반환하고, 없으면 새로 만든다 — 세무사처럼
     // 여러 플랫폼에 걸쳐 재사용되는 계정을 오너가 초대할 때마다 새로 만들지 않고 이어붙일 수 있게 한다.
     public User findOrCreateWithRole(String username, String email, String rawPassword, Role role, String name, String phone) {
-        return userRepository.findByEmail(email)
+        return userRepository.findByEmailAndIsActiveTrue(email)
                 .map(existing -> {
                     if (existing.getRole() != role) {
                         throw new IllegalStateException("이미 다른 역할로 등록된 이메일입니다.");
@@ -66,13 +68,29 @@ public class UserService {
     // 이메일도 이 화면에서 바꿀 수 있게 하되, 다른 계정이 이미 쓰는 이메일로는 바꿀 수 없게 막는다.
     public User updateProfile(UUID id, String name, String phone, String email) {
         User user = get(id);
-        userRepository.findByEmail(email)
+        userRepository.findByEmailAndIsActiveTrue(email)
                 .filter(existing -> !existing.getId().equals(id))
                 .ifPresent(existing -> {
                     throw new IllegalStateException("Email already exists");
                 });
         user.updateProfile(name, phone, email);
         return user;
+    }
+
+    // 생년월일과 보호자 정보 — 본인이 내 정보에서 직접 입력/수정한다(매니저가 입력하던 보호자 정보와 같은 필드).
+    @Transactional
+    public User updateDetails(UUID id, @Nullable LocalDate birthDate, @Nullable String guardianName, @Nullable String guardianPhone) {
+        if (birthDate != null && birthDate.isAfter(LocalDate.now())) {
+            throw new IllegalArgumentException("생년월일은 오늘 이후일 수 없습니다.");
+        }
+        User user = get(id);
+        user.changeBirthDate(birthDate);
+        user.updateGuardian(blankToNull(guardianName), blankToNull(guardianPhone));
+        return user;
+    }
+
+    private static String blankToNull(@Nullable String value) {
+        return value == null || value.isBlank() ? null : value.trim();
     }
 
     @Transactional

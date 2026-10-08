@@ -47,10 +47,14 @@ public class PlatformStaff {
     @Nullable
     private Integer sessionRate;
 
-    // 매니저 권한 등급 — MANAGER 역할에서만 의미를 가진다. TUTOR 배정에는 null.
+    // 예전 L/M/H 등급 — 더 이상 권한 검사에 쓰지 않는다(매니저 그룹의 권한으로 대체). 기존 데이터 보존용으로만 남겨둔다.
     @Nullable
     @Enumerated(EnumType.STRING)
     private ManagerTier managerTier;
+
+    // 매니저가 속한 그룹 — 이 그룹의 권한이 곧 매니저의 권한이다. 그룹이 없으면(null) 권한이 없다.
+    @Nullable
+    private UUID managerGroupId;
 
     protected PlatformStaff() {
         // JPA only.
@@ -125,11 +129,17 @@ public class PlatformStaff {
         return managerTier;
     }
 
-    public void changeManagerTier(ManagerTier managerTier) {
+    @Nullable
+    public UUID getManagerGroupId() {
+        return managerGroupId;
+    }
+
+    // 매니저를 그룹에 넣는다 — 권한은 그룹이 가진 ManagerPermission을 따른다.
+    public void assignGroup(ManagerGroup group) {
         if (staffRole != StaffRole.MANAGER) {
-            throw new IllegalStateException("Only a MANAGER assignment has a manager tier");
+            throw new IllegalStateException("Only a MANAGER assignment can belong to a manager group");
         }
-        this.managerTier = managerTier;
+        this.managerGroupId = group.getId();
     }
 
     // Soft-deletes the assignment instead of removing history (AGENT.md 4-4).

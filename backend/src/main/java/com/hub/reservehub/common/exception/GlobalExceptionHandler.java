@@ -1,5 +1,6 @@
 package com.hub.reservehub.common.exception;
 
+import org.springframework.security.authentication.DisabledException;
 import jakarta.validation.ConstraintViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -27,6 +28,12 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ApiError> handleBadCredentials(BadCredentialsException ex) {
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                 .body(ApiError.of("UNAUTHORIZED", "Invalid email or password"));
+    }
+
+    @ExceptionHandler(DisabledException.class)
+    public ResponseEntity<ApiError> handleDisabled(DisabledException ex) {
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                .body(ApiError.of("ACCOUNT_DISABLED", "비활성화된 계정입니다. 다시 사용하려면 운영자에게 문의하세요."));
     }
 
     @ExceptionHandler(PlatformAccessDeniedException.class)

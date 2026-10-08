@@ -60,7 +60,7 @@ import org.springframework.stereotype.Component;
  * 때마다 중복 키 충돌로 깨진다. 실 DB엔 OwnerSeeder가 대신 최소 계정만 한 번 심는다.
  */
 @Component
-@Profile("!postgres")
+@Profile("h2")
 public class DummyDataSeeder implements CommandLineRunner {
 
     private static final String PASSWORD = "test";

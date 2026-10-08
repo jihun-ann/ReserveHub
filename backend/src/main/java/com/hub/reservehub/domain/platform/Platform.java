@@ -30,6 +30,11 @@ public class Platform extends BaseEntity {
     @GeneratedValue
     private UUID id;
 
+    // 사용자가 쓰는 공개 ID — 숫자 0-9와 영문 대문자 A-Z 6자리. 가입 신청에서 플랫폼을 찾을 때 쓴다.
+    // (내부 기본키 id는 UUID 그대로 두고, 다른 테이블은 그걸 참조한다.)
+    @Column(nullable = false, unique = true, length = 6)
+    private String code;
+
     @Column(nullable = false)
     private String name;
 
@@ -47,9 +52,6 @@ public class Platform extends BaseEntity {
     private String description;
 
     @Column(nullable = false)
-    private String emoji = "🏢";
-
-    @Column(nullable = false)
     private String colorHex = "#7c6af7";
 
     @Enumerated(EnumType.STRING)
@@ -63,8 +65,9 @@ public class Platform extends BaseEntity {
         // JPA only.
     }
 
-    public Platform(String name, BusinessType businessType, @Nullable String phone,
+    public Platform(String code, String name, BusinessType businessType, @Nullable String phone,
                      @Nullable String address, @Nullable String description, UUID createdBy) {
+        this.code = code;
         this.name = name;
         this.businessType = businessType;
         this.phone = phone;
@@ -76,6 +79,10 @@ public class Platform extends BaseEntity {
 
     public UUID getId() {
         return id;
+    }
+
+    public String getCode() {
+        return code;
     }
 
     public String getName() {
@@ -99,10 +106,6 @@ public class Platform extends BaseEntity {
     @Nullable
     public String getDescription() {
         return description;
-    }
-
-    public String getEmoji() {
-        return emoji;
     }
 
     public String getColorHex() {

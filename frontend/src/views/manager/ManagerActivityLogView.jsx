@@ -1,18 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
-import { listActionLogs } from "../../api/common.js";
+import { listActionLogs, ACTION_TARGET_LABEL, ACTION_LABEL } from "../../api/common.js";
 import { formatDateTime } from "../../utils/formatDateTime.js";
-
-const TARGET_LABEL = {
-	SCHEDULE_REQUEST: "일정 변경 요청",
-	MEMBER_MEMO: "회원 메모",
-	STAFF_CHANGE: "스태프 변경",
-	PASS_REFUND: "수강권 환불",
-	PLATFORM_CHANGE: "플랫폼 상태",
-	PROGRAM_CHANGE: "프로그램 변경",
-	PASS_CHANGE: "수강권 변경",
-	DISCOUNT_CHANGE: "할인 정책 변경",
-	FINANCIAL_REQUEST: "재무 일정"
-};
 
 export default function ManagerActivityLogView({ platformId }) {
 	const [logs, setLogs] = useState([]);
@@ -54,7 +42,7 @@ export default function ManagerActivityLogView({ platformId }) {
 				<select value={targetFilter} onChange={(e) => setTargetFilter(e.target.value)} style={selectStyle}>
 					<option value="ALL">전체 항목</option>
 					{targets.map((t) => (
-						<option key={t} value={t}>{TARGET_LABEL[t] || t}</option>
+						<option key={t} value={t}>{ACTION_TARGET_LABEL[t] || t}</option>
 					))}
 				</select>
 			</div>
@@ -75,9 +63,9 @@ export default function ManagerActivityLogView({ platformId }) {
 									<tr key={l.id}>
 										<td style={{ fontFamily: "'DM Mono',monospace", fontSize: "12px" }}>{formatDateTime(l.createdAt)}</td>
 										<td>{l.actorName || "-"}</td>
-										<td>{TARGET_LABEL[l.targetType] || l.targetType}</td>
-										<td>{l.action}</td>
-										<td style={{ color: "var(--text-sub)" }}>{l.memo || "-"}</td>
+										<td>{ACTION_TARGET_LABEL[l.targetType] || l.targetType}</td>
+										<td>{ACTION_LABEL[l.action] || l.action}</td>
+										<td style={{ color: "var(--text-sub)", minWidth: "260px", whiteSpace: "pre-wrap" }}>{l.memo || "-"}</td>
 									</tr>
 								))
 							)}

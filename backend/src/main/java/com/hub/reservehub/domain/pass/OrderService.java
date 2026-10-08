@@ -1,12 +1,13 @@
 package com.hub.reservehub.domain.pass;
 
+import com.hub.reservehub.domain.approval.LogMemo;
 import com.hub.reservehub.domain.approval.ActionLog;
 import com.hub.reservehub.domain.approval.ActionLogRepository;
 import com.hub.reservehub.domain.approval.ActionTarget;
 import com.hub.reservehub.domain.outbox.OutboxEvent;
 import com.hub.reservehub.domain.outbox.OutboxEventRepository;
 import com.hub.reservehub.domain.platform.PlatformAccessGuard;
-import com.hub.reservehub.domain.platform.ManagerTier;
+import com.hub.reservehub.domain.platform.ManagerPermission;
 import com.hub.reservehub.security.AuthenticatedUser;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -225,7 +226,7 @@ public class OrderService {
     // 정지하지 않는다 — 전액이 환불됐을 때만 이용 권한을 회수한다.
     public Order refund(UUID orderId, AuthenticatedUser actor, @Nullable Integer amount, @Nullable String memo) {
         Order order = findOrder(orderId);
-        platformAccessGuard.verifyManagerTier(order.getPlatformId(), actor, ManagerTier.HIGH); // 환불: 임원급 매니저 전용
+        platformAccessGuard.verifyManagerPermission(order.getPlatformId(), actor, ManagerPermission.REFUND); // 환불: 임원급 매니저 전용
         int refundAmount = amount != null ? amount : order.getFinalAmount() - order.getRefundAmount();
         order.refund(refundAmount);
 
@@ -240,7 +241,9 @@ public class OrderService {
         }
 
         actionLogRepository.save(ActionLog.of(
-                order.getPlatformId(), actor.getId(), ActionTarget.PASS_REFUND, order.getId(), "REFUND", memo
+                order.getPlatformId(), actor.getId(), ActionTarget.PASS_REFUND, order.getId(), "REFUND",
+                LogMemo.with("환불: 결제 " + LogMemo.won(order.getFinalAmount()) + " 중 " + LogMemo.won(refundAmount) + " 환불 ("
+                        + (order.getStatus() == OrderStatus.REFUNDED ? "전액 환불, 이용권 정지" : "부분 환불") + ")", memo)
         ));
         outboxEventRepository.save(OutboxEvent.of(
                 "ORDER", order.getId(), "order.refunded", "reservehub.order",

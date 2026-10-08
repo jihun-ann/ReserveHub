@@ -1,4 +1,4 @@
-import { businessTypeLabel } from "../../api/common.js";
+import { businessTypeLabel, businessTypeEmoji } from "../../api/common.js";
 
 export default function OwnerMypageView({ user, platforms }) {
 	const activeCount = platforms.filter((p) => p.status === "ACTIVE").length;
@@ -39,7 +39,7 @@ export default function OwnerMypageView({ user, platforms }) {
 				)}
 				{platforms.map((p) => (
 					<div className="platform-item" key={p.id}>
-						<div className="plat-emoji">{p.emoji}</div>
+						<div className="plat-emoji">{businessTypeEmoji(p.businessType)}</div>
 						<div className="plat-detail">
 							<div className="plat-name">{p.name}</div>
 							<span className="plat-tag">{businessTypeLabel(p.businessType)}</span>

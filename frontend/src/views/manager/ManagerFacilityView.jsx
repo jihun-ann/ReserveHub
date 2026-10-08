@@ -3,7 +3,7 @@ import { openModal, closeModal } from "../default.js";
 import {
 	listFacilities, listFacilityBookingsForPlatform, cancelFacilityBooking,
 	listFacilityIssues, reportFacilityIssue, markFacilityIssueInProgress, resolveFacilityIssue,
-	getUser, FACILITY_ISSUE_STATUS_LABEL, getMyManagerTier, meetsManagerTier
+	getUser, FACILITY_ISSUE_STATUS_LABEL, getMyPermissions
 } from "../../api/common.js";
 
 const ISSUE_STATUS_CLS = { OPEN: "bs-pending", IN_PROGRESS: "bs-soon", RESOLVED: "bs-active" };
@@ -21,8 +21,8 @@ export default function ManagerFacilityView({ platformId }) {
 	const [loading, setLoading] = useState(true);
 	// 시설 예약 취소(타인)/이슈 처리는 M등급 이상 매니저만 — 백엔드 FacilityService가 실제로 검증하고,
 	// 여기선 등급 미달 매니저에게 눌러도 막힐 버튼을 아예 안 보여주기 위한 용도.
-	const [managerTier, setManagerTier] = useState(null);
-	const canManageFacility = meetsManagerTier(managerTier, "MEDIUM");
+	const [permissions, setPermissions] = useState([]);
+	const canManageFacility = permissions.includes("FACILITY_MANAGE");
 
 	const [issueFacilityId, setIssueFacilityId] = useState(null);
 	const [issueDescription, setIssueDescription] = useState("");
@@ -38,16 +38,16 @@ export default function ManagerFacilityView({ platformId }) {
 			return;
 		}
 		setLoading(true);
-		const [facilityList, bookingList, issueList, tier] = await Promise.all([
+		const [facilityList, bookingList, issueList, perms] = await Promise.all([
 			listFacilities(platformId),
 			listFacilityBookingsForPlatform(platformId, date),
 			listFacilityIssues(platformId),
-			getMyManagerTier(platformId).catch(() => null)
+			getMyPermissions(platformId).catch(() => [])
 		]);
 		setFacilities(facilityList);
 		setBookings(bookingList.filter((b) => b.status === "CONFIRMED"));
 		setIssues(issueList);
-		setManagerTier(tier);
+		setPermissions(perms);
 
 		const userIds = [...new Set([...bookingList.map((b) => b.userId), ...issueList.map((i) => i.reportedBy)])];
 		const users = await Promise.all(userIds.map((id) => getUser(id).catch(() => null)));

@@ -92,7 +92,8 @@ public class ScheduleChangeRequestService {
         platformAccessGuard.verifyRole(request.getPlatformId(), actor, StaffRole.MANAGER);
         request.approve(actor.getId(), memo);
 
-        actionLogRepository.save(ActionLog.of(request.getPlatformId(), actor.getId(), ActionTarget.SCHEDULE_REQUEST, request.getId(), "APPROVE", memo));
+        actionLogRepository.save(ActionLog.of(request.getPlatformId(), actor.getId(), ActionTarget.SCHEDULE_REQUEST, request.getId(), "APPROVE",
+                LogMemo.with("일정 변경 승인: " + request.getOriginalDate() + " → " + request.getRequestedDate(), memo)));
         outboxEventRepository.save(OutboxEvent.of(
                 "SCHEDULE_REQUEST", request.getId(), "schedule_request.approved", "reservehub.schedule",
                 Map.of("requestId", request.getId().toString())
@@ -107,7 +108,8 @@ public class ScheduleChangeRequestService {
         platformAccessGuard.verifyRole(request.getPlatformId(), actor, StaffRole.MANAGER);
         request.reject(actor.getId(), memo);
 
-        actionLogRepository.save(ActionLog.of(request.getPlatformId(), actor.getId(), ActionTarget.SCHEDULE_REQUEST, request.getId(), "REJECT", memo));
+        actionLogRepository.save(ActionLog.of(request.getPlatformId(), actor.getId(), ActionTarget.SCHEDULE_REQUEST, request.getId(), "REJECT",
+                LogMemo.with("일정 변경 반려: " + request.getOriginalDate() + " → " + request.getRequestedDate(), memo)));
         outboxEventRepository.save(OutboxEvent.of(
                 "SCHEDULE_REQUEST", request.getId(), "schedule_request.rejected", "reservehub.schedule",
                 Map.of("requestId", request.getId().toString())

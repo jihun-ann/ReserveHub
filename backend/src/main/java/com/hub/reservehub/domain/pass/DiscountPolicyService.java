@@ -1,9 +1,10 @@
 package com.hub.reservehub.domain.pass;
 
+import com.hub.reservehub.domain.approval.LogMemo;
 import com.hub.reservehub.domain.approval.ActionLog;
 import com.hub.reservehub.domain.approval.ActionLogRepository;
 import com.hub.reservehub.domain.approval.ActionTarget;
-import com.hub.reservehub.domain.platform.ManagerTier;
+import com.hub.reservehub.domain.platform.ManagerPermission;
 import com.hub.reservehub.domain.platform.PlatformAccessGuard;
 import com.hub.reservehub.security.AuthenticatedUser;
 import java.math.BigDecimal;
@@ -35,11 +36,13 @@ public class DiscountPolicyService {
             UUID platformId, AuthenticatedUser actor, String name, DiscountType type, BigDecimal rate,
             @Nullable Integer conditionValue, @Nullable String couponCode, @Nullable Instant expiresAt, @Nullable String memo
     ) {
-        platformAccessGuard.verifyManagerTier(platformId, actor, ManagerTier.HIGH); // 할인정책: 임원급 매니저 전용
+        platformAccessGuard.verifyManagerPermission(platformId, actor, ManagerPermission.DISCOUNT_POLICY); // 할인정책: 임원급 매니저 전용
         DiscountPolicy policy = discountPolicyRepository.save(
                 new DiscountPolicy(platformId, name, type, rate, conditionValue, couponCode, expiresAt, memo, actor.getId())
         );
-        actionLogRepository.save(ActionLog.of(platformId, actor.getId(), ActionTarget.DISCOUNT_CHANGE, policy.getId(), "CREATE", null));
+        actionLogRepository.save(ActionLog.of(platformId, actor.getId(), ActionTarget.DISCOUNT_CHANGE, policy.getId(), "CREATE",
+                "할인정책 등록: '" + name + "' (" + type + " " + rate + (conditionValue != null ? ", 조건 " + conditionValue : "")
+                        + (couponCode != null && !couponCode.isBlank() ? ", 쿠폰 " + couponCode : "") + ")"));
         return policy;
     }
 
@@ -47,7 +50,7 @@ public class DiscountPolicyService {
     // Staff-only management view (not shown to customers) — coupon codes shouldn't be publicly listable.
     // 스태프 전용 관리 화면 (고객에게 노출 안 함) — 쿠폰 코드가 공개 목록에 나오면 안 되기 때문.
     public List<DiscountPolicy> list(UUID platformId, AuthenticatedUser actor) {
-        platformAccessGuard.verifyManagerTier(platformId, actor, ManagerTier.HIGH); // 할인정책: 임원급 매니저 전용
+        platformAccessGuard.verifyManagerPermission(platformId, actor, ManagerPermission.DISCOUNT_POLICY); // 할인정책: 임원급 매니저 전용
         return discountPolicyRepository.findByPlatformIdAndIsActiveTrue(platformId);
     }
 
@@ -56,18 +59,26 @@ public class DiscountPolicyService {
             UUID policyId, AuthenticatedUser actor, String name, DiscountType type, BigDecimal rate, @Nullable Integer conditionValue
     ) {
         DiscountPolicy policy = findPolicy(policyId);
-        platformAccessGuard.verifyManagerTier(policy.getPlatformId(), actor, ManagerTier.HIGH); // 할인정책: 임원급 매니저 전용
+        platformAccessGuard.verifyManagerPermission(policy.getPlatformId(), actor, ManagerPermission.DISCOUNT_POLICY); // 할인정책: 임원급 매니저 전용
+        String changes = LogMemo.changes(
+                LogMemo.change("이름", policy.getName(), name),
+                LogMemo.change("유형", policy.getType(), type),
+                LogMemo.change("할인값", policy.getRate(), rate),
+                LogMemo.change("조건값", policy.getConditionValue(), conditionValue)
+        );
         policy.update(name, type, rate, conditionValue);
-        actionLogRepository.save(ActionLog.of(policy.getPlatformId(), actor.getId(), ActionTarget.DISCOUNT_CHANGE, policy.getId(), "UPDATE", null));
+        actionLogRepository.save(ActionLog.of(policy.getPlatformId(), actor.getId(), ActionTarget.DISCOUNT_CHANGE, policy.getId(), "UPDATE",
+                "할인정책 수정: '" + policy.getName() + "' — " + changes));
         return policy;
     }
 
     @Transactional
     public void deactivate(UUID policyId, AuthenticatedUser actor) {
         DiscountPolicy policy = findPolicy(policyId);
-        platformAccessGuard.verifyManagerTier(policy.getPlatformId(), actor, ManagerTier.HIGH); // 할인정책: 임원급 매니저 전용
+        platformAccessGuard.verifyManagerPermission(policy.getPlatformId(), actor, ManagerPermission.DISCOUNT_POLICY); // 할인정책: 임원급 매니저 전용
         policy.deactivate();
-        actionLogRepository.save(ActionLog.of(policy.getPlatformId(), actor.getId(), ActionTarget.DISCOUNT_CHANGE, policy.getId(), "DEACTIVATE", null));
+        actionLogRepository.save(ActionLog.of(policy.getPlatformId(), actor.getId(), ActionTarget.DISCOUNT_CHANGE, policy.getId(), "DEACTIVATE",
+                "할인정책 비활성화: '" + policy.getName() + "'"));
     }
 
     private DiscountPolicy findPolicy(UUID policyId) {

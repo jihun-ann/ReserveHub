@@ -1,5 +1,10 @@
 package com.hub.reservehub.api.v1;
 
+import java.time.LocalDate;
+import com.hub.reservehub.api.v1.auth.controller.AuthController.UserProfileResponse;
+import com.hub.reservehub.domain.user.VerificationChannel;
+import com.hub.reservehub.domain.user.ContactVerificationService;
+import com.hub.reservehub.domain.user.AccountService;
 import com.hub.reservehub.domain.user.Role;
 import com.hub.reservehub.domain.user.User;
 import com.hub.reservehub.domain.user.UserService;
@@ -30,8 +35,15 @@ public class UserController {
     private final UserService userService;
     private final PasswordEncoder passwordEncoder;
     private final CurrentAuthenticatedUser currentAuthenticatedUser;
+    private final AccountService accountService;
+    private final ContactVerificationService verificationService;
 
-    public UserController(UserService userService, PasswordEncoder passwordEncoder, CurrentAuthenticatedUser currentAuthenticatedUser) {
+    public UserController(
+            UserService userService, PasswordEncoder passwordEncoder, CurrentAuthenticatedUser currentAuthenticatedUser,
+            AccountService accountService, ContactVerificationService verificationService
+    ) {
+        this.accountService = accountService;
+        this.verificationService = verificationService;
         this.userService = userService;
         this.passwordEncoder = passwordEncoder;
         this.currentAuthenticatedUser = currentAuthenticatedUser;
@@ -65,6 +77,41 @@ public class UserController {
     }
 
     public record UpdateBankInfoRequest(String bankName, String bankAccountNumber, String bankAccountHolder) {
+    }
+
+    // 생년월일 + 보호자 정보 — 본인이 직접 입력한다.
+    @PatchMapping("/me/details")
+    public UserProfileResponse updateDetails(@Valid @RequestBody UpdateDetailsRequest request) {
+        return UserProfileResponse.from(userService.updateDetails(
+                currentAuthenticatedUser.get().getId(), request.birthDate(), request.guardianName(), request.guardianPhone()));
+    }
+
+    public record UpdateDetailsRequest(LocalDate birthDate, String guardianName, String guardianPhone) {
+    }
+
+    // 이메일/연락처 인증 — 코드를 요청하고(서버 로그/발송기로 전달), 받은 코드를 확인한다.
+    @PostMapping("/me/verifications/{channel}/request")
+    public ResponseEntity<Void> requestVerification(@PathVariable VerificationChannel channel) {
+        verificationService.request(currentAuthenticatedUser.get().getId(), channel);
+        return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping("/me/verifications/{channel}/confirm")
+    public UserProfileResponse confirmVerification(@PathVariable VerificationChannel channel, @Valid @RequestBody VerifyCodeRequest request) {
+        return UserProfileResponse.from(verificationService.confirm(currentAuthenticatedUser.get().getId(), channel, request.code()));
+    }
+
+    public record VerifyCodeRequest(@NotBlank String code) {
+    }
+
+    // 계정 탈퇴 = 비활성화. 삭제하지 않고 로그인만 막는다(비밀번호 확인 필요).
+    @PostMapping("/me/deactivate")
+    public ResponseEntity<Void> deactivate(@Valid @RequestBody DeactivateRequest request) {
+        accountService.deactivate(currentAuthenticatedUser.get().getId(), request.password());
+        return ResponseEntity.noContent().build();
+    }
+
+    public record DeactivateRequest(@NotBlank String password) {
     }
 
     @GetMapping("/{id}")

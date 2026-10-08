@@ -42,3 +42,6 @@ node_modules
 uploads/
 node/
 .frontend-gradle-plugin/
+
+### Kubernetes secrets (DB 접속 정보 등 — 커밋 금지) ###
+k8s/secret.yaml

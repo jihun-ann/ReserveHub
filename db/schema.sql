@@ -24,7 +24,7 @@ CREATE TYPE user_role AS ENUM (
 CREATE TABLE users (
                        id                    UUID        PRIMARY KEY DEFAULT uuid_generate_v4(),
                        username              VARCHAR(50)  NOT NULL UNIQUE,
-                       email                 VARCHAR(255) NOT NULL UNIQUE,
+                       email                 VARCHAR(255) NOT NULL,                -- 활성 계정끼리만 유일 (아래 uq_users_email_active)
                        password_hash         TEXT        NOT NULL,
                        name                  VARCHAR(100) NOT NULL,
                        phone                 VARCHAR(20),
@@ -35,6 +35,9 @@ CREATE TABLE users (
                        bank_account_holder   VARCHAR(100),
                        guardian_name         VARCHAR(100),  -- 수강생 계정의 보호자 정보. 매니저가 입력/수정
                        guardian_phone        VARCHAR(20),
+                       birth_date            DATE,          -- 생년월일 — 본인이 내 정보에서 입력
+                       email_verified_at     TIMESTAMPTZ,   -- 이메일 인증 시각. 이메일이 바뀌면 NULL로 초기화
+                       phone_verified_at     TIMESTAMPTZ,   -- 연락처 인증 시각. 연락처가 바뀌면 NULL로 초기화
                        is_active             BOOLEAN     NOT NULL DEFAULT TRUE,
                        last_login_at         TIMESTAMPTZ,
                        created_at            TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -44,6 +47,23 @@ CREATE TABLE users (
 COMMENT ON TABLE  users              IS '전체 사용자 계정. role 컬럼으로 역할을 구분';
 COMMENT ON COLUMN users.username     IS '로그인 아이디 — 이메일과 별개, 통상적인 아이디 형식';
 COMMENT ON COLUMN users.role         IS 'OWNER/MANAGER/TUTOR/USER/TAX_ACCOUNTANT';
+
+-- 이메일은 활성(is_active) 계정끼리만 유일하다 — 탈퇴(비활성화)한 계정의 이메일은 다시 가입에 쓸 수 있다.
+-- 아이디(username)는 비활성 계정까지 포함해 전체에서 유일하므로 탈퇴한 아이디는 재사용할 수 없다.
+CREATE UNIQUE INDEX uq_users_email_active ON users(email) WHERE is_active;
+
+-- 이메일/연락처 인증 코드 (코드는 해시로만 저장, 10분 유효, 5회 시도)
+CREATE TABLE contact_verifications (
+                       id            UUID         PRIMARY KEY DEFAULT uuid_generate_v4(),
+                       user_id       UUID         NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                       channel       VARCHAR(10)  NOT NULL,       -- EMAIL | PHONE
+                       target        VARCHAR(255) NOT NULL,       -- 코드를 보낸 시점의 이메일/연락처
+                       code_hash     VARCHAR(64)  NOT NULL,
+                       attempts      INT          NOT NULL DEFAULT 0,
+                       expires_at    TIMESTAMPTZ  NOT NULL,
+                       created_at    TIMESTAMPTZ  NOT NULL DEFAULT NOW()
+);
+CREATE INDEX idx_cv_user ON contact_verifications(user_id, channel);
 COMMENT ON COLUMN users.password_hash IS 'bcrypt hash (cost 12)';
 COMMENT ON COLUMN users.bank_name    IS '정산 계좌 은행명 — 세무사 조회용, 본인이 직접 등록';
 
@@ -57,12 +77,12 @@ CREATE TYPE business_type   AS ENUM ('FITNESS', 'ARTS', 'EDUCATION', 'BEAUTY', '
 
 CREATE TABLE platforms (
                            id              UUID            PRIMARY KEY DEFAULT uuid_generate_v4(),
+                           code            VARCHAR(6)      NOT NULL UNIQUE CHECK (code ~ '^[0-9A-Z]{6}$'),  -- 공개 ID: 숫자+영문 대문자 6자리
                            name            VARCHAR(200)    NOT NULL,
                            business_type   business_type   NOT NULL,
                            phone           VARCHAR(20),
                            address         TEXT,
                            description     TEXT,
-                           emoji           VARCHAR(10)     DEFAULT '🏢',
                            color_hex       VARCHAR(7)      DEFAULT '#7c6af7',
                            status          platform_status NOT NULL DEFAULT 'ACTIVE',
                            created_by      UUID            NOT NULL REFERENCES users(id),
@@ -83,6 +103,21 @@ CREATE TYPE manager_tier AS ENUM ('LOW', 'MEDIUM', 'HIGH');
 -- 원천징수 계산용 소득 구분 — 강사/매니저/세무사 공통으로 쓰인다.
 CREATE TYPE income_type AS ENUM ('EMPLOYMENT', 'BUSINESS', 'OTHER', 'DAILY');
 
+-- 플랫폼별 매니저 그룹 — 이름(일반/관리자/임원 등)과, 그 그룹이 쓸 수 있는 메뉴/기능 권한 목록.
+CREATE TABLE manager_groups (
+                                id            UUID          PRIMARY KEY DEFAULT uuid_generate_v4(),
+                                platform_id   UUID          NOT NULL REFERENCES platforms(id) ON DELETE CASCADE,
+                                name          VARCHAR(50)   NOT NULL,
+                                created_at    TIMESTAMPTZ   NOT NULL DEFAULT NOW(),
+                                UNIQUE (platform_id, name)
+);
+
+CREATE TABLE manager_group_permissions (
+                                group_id    UUID         NOT NULL REFERENCES manager_groups(id) ON DELETE CASCADE,
+                                permission  VARCHAR(40)  NOT NULL,        -- ManagerPermission enum 이름 (MENU_*, FACILITY_MANAGE ...)
+                                PRIMARY KEY (group_id, permission)
+);
+
 CREATE TABLE platform_staff (
                                 id              UUID          PRIMARY KEY DEFAULT uuid_generate_v4(),
                                 platform_id     UUID          NOT NULL REFERENCES platforms(id) ON DELETE CASCADE,
@@ -92,6 +127,7 @@ CREATE TABLE platform_staff (
                                 joined_at       TIMESTAMPTZ   NOT NULL DEFAULT NOW(),
                                 left_at         TIMESTAMPTZ,                         -- 퇴사/해제 시각
                                 manager_tier    manager_tier,                        -- MANAGER 역할에서만 의미 있음. TUTOR는 NULL
+                                manager_group_id UUID         REFERENCES manager_groups(id),       -- MANAGER가 속한 그룹. 이 그룹의 권한이 곧 매니저의 권한 (manager_tier는 예전 값, 미사용)
                                 income_type     income_type,                         -- 원천징수용 소득 구분. 배정 시점엔 미정일 수 있음
                                 session_rate    INT,                                 -- 강사 회당 강사료. TUTOR 역할에서만 의미 있음
                                 UNIQUE (platform_id, user_id, staff_role)
@@ -101,6 +137,47 @@ COMMENT ON TABLE  platform_staff              IS '플랫폼-스태프 매핑. �
 COMMENT ON COLUMN platform_staff.left_at      IS 'NULL이면 재직 중. Soft delete 방식으로 이력 보존';
 COMMENT ON COLUMN platform_staff.manager_tier IS 'MANAGER 권한 등급(LOW/MEDIUM/HIGH). 새로 배정된 매니저는 LOW로 시작';
 COMMENT ON COLUMN platform_staff.session_rate IS '강사 정산용 회당 강사료 — TUTOR 역할에서만 의미를 가짐';
+
+
+-- 강사/매니저 초대 — 링크(token)로 들어온 사용자가 이메일/연락처 일치를 확인받고 수락하면 platform_staff로 배정된다.
+CREATE TYPE invitation_status AS ENUM ('PENDING', 'ACCEPTED', 'CANCELLED');
+
+CREATE TABLE staff_invitations (
+                                   id              UUID               PRIMARY KEY DEFAULT uuid_generate_v4(),
+                                   platform_id     UUID               NOT NULL REFERENCES platforms(id) ON DELETE CASCADE,
+                                   staff_role      staff_role         NOT NULL,
+                                   manager_tier    manager_tier,                        -- MANAGER 초대에서만 의미 있음
+                                   email           VARCHAR(255),                        -- email/phone 중 최소 하나
+                                   phone           VARCHAR(30),                         -- 숫자만 저장
+                                   token           VARCHAR(64)        NOT NULL UNIQUE,
+                                   status          invitation_status  NOT NULL DEFAULT 'PENDING',
+                                   expires_at      TIMESTAMPTZ        NOT NULL,
+                                   created_by      UUID               NOT NULL REFERENCES users(id),
+                                   created_at      TIMESTAMPTZ        NOT NULL DEFAULT NOW(),
+                                   CHECK (email IS NOT NULL OR phone IS NOT NULL)
+);
+
+CREATE INDEX idx_sinv_platform ON staff_invitations(platform_id, status);
+
+-- 회원이 플랫폼에 보낸 가입 신청 — 센터가 승인/반려하고, 승인 뒤에 수강권/프로그램을 등록한다.
+CREATE TYPE join_request_status AS ENUM ('PENDING', 'APPROVED', 'REJECTED', 'CANCELLED');
+
+CREATE TABLE platform_join_requests (
+                                        id             UUID                 PRIMARY KEY DEFAULT uuid_generate_v4(),
+                                        platform_id    UUID                 NOT NULL REFERENCES platforms(id) ON DELETE CASCADE,
+                                        user_id        UUID                 NOT NULL REFERENCES users(id)     ON DELETE CASCADE,
+                                        status         join_request_status  NOT NULL DEFAULT 'PENDING',
+                                        message        TEXT,
+                                        decided_by     UUID                 REFERENCES users(id),
+                                        decision_memo  TEXT,
+                                        created_at     TIMESTAMPTZ          NOT NULL DEFAULT NOW(),
+                                        decided_at     TIMESTAMPTZ
+);
+
+-- 같은 플랫폼에 대기 중인 신청은 사용자당 하나만
+CREATE UNIQUE INDEX uq_join_request_pending ON platform_join_requests(platform_id, user_id) WHERE status = 'PENDING';
+CREATE INDEX idx_join_request_platform ON platform_join_requests(platform_id, status);
+CREATE INDEX idx_join_request_user ON platform_join_requests(user_id);
 
 
 -- 플랫폼 ↔ 세무사 — platform_staff와 별개 테이블. 스태프가 아니라 오너가 초대한 읽기 전용
@@ -490,7 +567,8 @@ CREATE TYPE action_target AS ENUM (
     'DISCOUNT_CHANGE',    -- 할인 정책 등록·중단
     'FINANCIAL_REQUEST',  -- 세무사가 등록한 재무 일정 승인/반려
     'FACILITY_CHANGE',    -- 시설물 등록/예약/고장신고/보수처리
-    'LEAVE_REQUEST'       -- 휴가 요청 승인/반려
+    'LEAVE_REQUEST',      -- 휴가 요청 승인/반려
+    'JOIN_REQUEST'        -- 회원 가입 신청/승인/반려
 );
 
 CREATE TABLE action_logs (

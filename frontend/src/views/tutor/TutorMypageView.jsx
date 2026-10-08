@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { openModal, closeModal } from "../default.js";
 import { getCurrentUser, displayName, changePassword, updateProfile, updateBankInfo } from "../../api/http.js";
-import { listPlatforms, listMyLessons, listMyScheduleRequests } from "../../api/common.js";
+import { listPlatforms, listMyLessons, listMyScheduleRequests, businessTypeEmoji } from "../../api/common.js";
 
 function pad(n) {
 	return String(n).padStart(2, "0");
@@ -166,7 +166,7 @@ export default function TutorMypageView() {
 				) : (
 					platforms.map((p) => (
 						<div className="platform-item" key={p.id}>
-							<div className="plat-emoji" style={{ background: "rgba(var(--tutor-rgb),0.1)" }}>{p.emoji}</div>
+							<div className="plat-emoji" style={{ background: "rgba(var(--tutor-rgb),0.1)" }}>{businessTypeEmoji(p.businessType)}</div>
 							<div className="plat-detail">
 								<div className="plat-name">{p.name}</div>
 								<span className="plat-tag" style={{ background: "rgba(var(--tutor-rgb),0.15)", color: "var(--tutor)" }}>

@@ -19,16 +19,18 @@ public class AuthenticatedUser implements UserDetails {
     private final String username;
     private final String passwordHash;
     private final Role role;
+    private final boolean enabled;
 
-    private AuthenticatedUser(UUID id, String username, String passwordHash, Role role) {
+    private AuthenticatedUser(UUID id, String username, String passwordHash, Role role, boolean enabled) {
         this.id = id;
         this.username = username;
         this.passwordHash = passwordHash;
         this.role = role;
+        this.enabled = enabled;
     }
 
     public static AuthenticatedUser from(User user) {
-        return new AuthenticatedUser(user.getId(), user.getUsername(), user.getPasswordHash(), user.getRole());
+        return new AuthenticatedUser(user.getId(), user.getUsername(), user.getPasswordHash(), user.getRole(), user.isActive());
     }
 
     // Exposes the application-specific identifier for downstream business logic.
@@ -58,5 +60,11 @@ public class AuthenticatedUser implements UserDetails {
     @Override
     public String getUsername() {
         return username;
+    }
+
+    @Override
+    // 비활성화(탈퇴)한 계정은 로그인할 수 없고, 이미 발급된 토큰으로도 요청할 수 없다.
+    public boolean isEnabled() {
+        return enabled;
     }
 }

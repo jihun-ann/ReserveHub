@@ -1,6 +1,6 @@
 import { useState } from "react";
 import {
-	approveScheduleRequest, rejectScheduleRequest, approveLeaveRequest, rejectLeaveRequest, hexAlpha, businessTypeLabel
+	approveScheduleRequest, rejectScheduleRequest, approveLeaveRequest, rejectLeaveRequest, hexAlpha, businessTypeLabel, businessTypeEmoji
 } from "../../api/common.js";
 
 export default function OwnerDashboardView({ platforms, requests, onDecided, onNavigate }) {
@@ -106,7 +106,7 @@ export default function OwnerDashboardView({ platforms, requests, onDecided, onN
 										)}
 										<div style={{ marginTop: "4px" }}>
 											<span className="plat-chip" style={{ background: hexAlpha(r.platform.colorHex, 0.12), color: r.platform.colorHex, borderColor: hexAlpha(r.platform.colorHex, 0.3) }}>
-												{r.platform.emoji} {r.platform.name}
+												{businessTypeEmoji(r.platform.businessType)} {r.platform.name}
 											</span>
 										</div>
 									</div>

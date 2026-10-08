@@ -3,7 +3,9 @@ package com.hub.reservehub.domain.platform;
 import com.hub.reservehub.common.exception.PlatformAccessDeniedException;
 import com.hub.reservehub.security.AuthenticatedUser;
 import java.util.Arrays;
+import java.util.EnumSet;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import org.springframework.stereotype.Component;
 
@@ -23,14 +25,16 @@ public class PlatformAccessGuard {
     private final PlatformRepository platformRepository;
     private final PlatformStaffRepository platformStaffRepository;
     private final PlatformTaxAccountantRepository platformTaxAccountantRepository;
+    private final ManagerGroupRepository managerGroupRepository;
 
     public PlatformAccessGuard(
             PlatformRepository platformRepository, PlatformStaffRepository platformStaffRepository,
-            PlatformTaxAccountantRepository platformTaxAccountantRepository
+            PlatformTaxAccountantRepository platformTaxAccountantRepository, ManagerGroupRepository managerGroupRepository
     ) {
         this.platformRepository = platformRepository;
         this.platformStaffRepository = platformStaffRepository;
         this.platformTaxAccountantRepository = platformTaxAccountantRepository;
+        this.managerGroupRepository = managerGroupRepository;
     }
 
     // Owner of the platform OR an active staff member (any role) may access it.
@@ -61,17 +65,24 @@ public class PlatformAccessGuard {
         }
     }
 
-    // 매니저 등급(L/M/H) 기반 검증 — 오너는 항상 통과하고, 그 외에는 이 플랫폼의 활성 MANAGER 배정 중
-    // 하나라도 minTier 이상이어야 한다. 이 기능이 생기기 전에 배정된(등급 미지정, null) 매니저는 기존
-    // 동작이 갑자기 제한되지 않도록 HIGH로 간주한다(하위호환 목적의 fail-open).
-    public void verifyManagerTier(UUID platformId, AuthenticatedUser user, ManagerTier minTier) {
+    // 이 사용자가 이 플랫폼에서 가진 매니저 권한 — 오너는 전부, 그 외에는 이 플랫폼의 활성 MANAGER 배정이
+    // 속한 그룹들의 권한 합집합이다. 그룹이 없는 매니저는 권한이 없다.
+    public Set<ManagerPermission> permissionsOf(UUID platformId, AuthenticatedUser user) {
         if (platformRepository.existsByIdAndCreatedBy(platformId, user.getId())) {
-            return;
+            return EnumSet.allOf(ManagerPermission.class);
         }
-        boolean hasTier = platformStaffRepository.findByPlatformIdAndUserId(platformId, user.getId()).stream()
-                .filter(staff -> staff.isActive() && staff.getStaffRole() == StaffRole.MANAGER)
-                .anyMatch(staff -> (staff.getManagerTier() != null ? staff.getManagerTier() : ManagerTier.HIGH).ordinal() >= minTier.ordinal());
-        if (!hasTier) {
+        Set<ManagerPermission> result = EnumSet.noneOf(ManagerPermission.class);
+        platformStaffRepository.findByPlatformIdAndUserId(platformId, user.getId()).stream()
+                .filter(staff -> staff.isActive() && staff.getStaffRole() == StaffRole.MANAGER && staff.getManagerGroupId() != null)
+                .forEach(staff -> managerGroupRepository.findById(staff.getManagerGroupId())
+                        .ifPresent(group -> result.addAll(group.getPermissions())));
+        return result;
+    }
+
+    // 매니저 권한 기반 검증 — 주어진 권한 중 하나라도 가지고 있어야 통과한다(오너는 항상 통과).
+    public void verifyManagerPermission(UUID platformId, AuthenticatedUser user, ManagerPermission... anyOf) {
+        Set<ManagerPermission> have = permissionsOf(platformId, user);
+        if (Arrays.stream(anyOf).noneMatch(have::contains)) {
             throw new PlatformAccessDeniedException(platformId);
         }
     }

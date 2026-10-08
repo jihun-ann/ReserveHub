@@ -27,7 +27,8 @@ public class MemberMemoService {
     public MemberMemo create(UUID platformId, AuthenticatedUser actor, UUID targetUserId, String content) {
         platformAccessGuard.verify(platformId, actor);
         MemberMemo memo = memberMemoRepository.save(new MemberMemo(platformId, targetUserId, actor.getId(), content));
-        actionLogRepository.save(ActionLog.of(platformId, actor.getId(), ActionTarget.MEMBER_MEMO, memo.getId(), "CREATE", null));
+        actionLogRepository.save(ActionLog.of(platformId, actor.getId(), ActionTarget.MEMBER_MEMO, memo.getId(), "CREATE",
+                "회원 메모 작성: \"" + LogMemo.clip(content, 100) + "\""));
         return memo;
     }
 

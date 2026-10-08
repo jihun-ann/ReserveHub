@@ -1,5 +1,9 @@
 package com.hub.reservehub.domain.platform;
 
+import java.security.SecureRandom;
+import java.util.stream.Collectors;
+import com.hub.reservehub.domain.user.UserService;
+import com.hub.reservehub.domain.approval.LogMemo;
 import com.hub.reservehub.domain.approval.ActionLog;
 import com.hub.reservehub.domain.approval.ActionLogRepository;
 import com.hub.reservehub.domain.approval.ActionTarget;
@@ -23,6 +27,8 @@ public class PlatformService {
     private final UserPassRepository userPassRepository;
     private final PlatformAccessGuard platformAccessGuard;
     private final ActionLogRepository actionLogRepository;
+    private final ManagerGroupService managerGroupService;
+    private final UserService userService;
 
     public PlatformService(
             PlatformRepository platformRepository,
@@ -30,7 +36,9 @@ public class PlatformService {
             PlatformTaxAccountantRepository platformTaxAccountantRepository,
             UserPassRepository userPassRepository,
             PlatformAccessGuard platformAccessGuard,
-            ActionLogRepository actionLogRepository
+            ActionLogRepository actionLogRepository,
+            ManagerGroupService managerGroupService,
+            UserService userService
     ) {
         this.platformRepository = platformRepository;
         this.platformStaffRepository = platformStaffRepository;
@@ -38,6 +46,24 @@ public class PlatformService {
         this.userPassRepository = userPassRepository;
         this.platformAccessGuard = platformAccessGuard;
         this.actionLogRepository = actionLogRepository;
+        this.managerGroupService = managerGroupService;
+        this.userService = userService;
+    }
+
+    private static final String CODE_CHARS = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+    private static final SecureRandom CODE_RANDOM = new SecureRandom();
+
+    // 공개 ID: 0-9, A-Z 6자리(36^6 ≈ 21억 가지). 겹치면 다시 뽑는다 — DB 유니크 제약이 최종 방어선이다.
+    private String newPlatformCode() {
+        String code;
+        do {
+            StringBuilder sb = new StringBuilder(6);
+            for (int i = 0; i < 6; i++) {
+                sb.append(CODE_CHARS.charAt(CODE_RANDOM.nextInt(CODE_CHARS.length())));
+            }
+            code = sb.toString();
+        } while (platformRepository.existsByCode(code));
+        return code;
     }
 
     @Transactional
@@ -47,7 +73,9 @@ public class PlatformService {
             AuthenticatedUser owner, String name, BusinessType businessType,
             @Nullable String phone, @Nullable String address, @Nullable String description
     ) {
-        return platformRepository.save(new Platform(name, businessType, phone, address, description, owner.getId()));
+        Platform platform = platformRepository.save(new Platform(newPlatformCode(), name, businessType, phone, address, description, owner.getId()));
+        managerGroupService.seedDefaults(platform.getId());
+        return platform;
     }
 
     @Transactional(readOnly = true)
@@ -111,8 +139,19 @@ public class PlatformService {
     public PlatformStaff assignStaff(
             UUID platformId, AuthenticatedUser actor, UUID targetUserId, StaffRole staffRole, @Nullable ManagerTier initialManagerTier
     ) {
-        platformAccessGuard.verifyManagerTier(platformId, actor, staffRole == StaffRole.MANAGER ? ManagerTier.HIGH : ManagerTier.MEDIUM);
+        platformAccessGuard.verifyManagerPermission(platformId, actor, staffRole == StaffRole.MANAGER ? ManagerPermission.MANAGER_MANAGE : ManagerPermission.TUTOR_MANAGE);
+        return createAssignment(platformId, actor.getId(), targetUserId, staffRole, initialManagerTier);
+    }
 
+    // 등급 검증은 호출자 몫 — 초대 수락처럼 "배정하는 사람"이 이미 초대 시점에 검증된 경우에 쓴다.
+    // StaffInvitationService와 같은 패키지에서만 호출한다.
+    PlatformStaff createAssignment(
+            UUID platformId, UUID actorId, UUID targetUserId, StaffRole staffRole, @Nullable ManagerTier initialManagerTier
+    ) {
+        if (platformStaffRepository.findByPlatformIdAndUserId(platformId, targetUserId).stream()
+                .anyMatch(s -> s.isActive() && s.getStaffRole() == staffRole)) {
+            throw new IllegalStateException("이미 이 플랫폼에 배정된 역할입니다.");
+        }
         if (staffRole == StaffRole.MANAGER
                 && platformStaffRepository.existsByUserIdAndStaffRoleAndIsActiveTrue(targetUserId, StaffRole.MANAGER)) {
             throw new IllegalStateException("이미 다른 플랫폼의 MANAGER로 배정된 사용자입니다.");
@@ -124,7 +163,8 @@ public class PlatformService {
                         : new PlatformStaff(platformId, targetUserId, staffRole)
         );
         actionLogRepository.save(ActionLog.of(
-                platformId, actor.getId(), ActionTarget.STAFF_CHANGE, staff.getId(), "ASSIGN_" + staffRole.name(), null
+                platformId, actorId, ActionTarget.STAFF_CHANGE, staff.getId(), "ASSIGN_" + staffRole.name(),
+                "직원 배정: " + LogMemo.who(userService.get(targetUserId)) + " → " + (staffRole == StaffRole.MANAGER ? "매니저" : "강사")
         ));
         return staff;
     }
@@ -143,23 +183,12 @@ public class PlatformService {
             throw new IllegalArgumentException("Staff assignment not found");
         }
         boolean removesManager = staffList.stream().anyMatch(s -> s.getStaffRole() == StaffRole.MANAGER);
-        platformAccessGuard.verifyManagerTier(platformId, actor, removesManager ? ManagerTier.HIGH : ManagerTier.MEDIUM);
+        platformAccessGuard.verifyManagerPermission(platformId, actor, removesManager ? ManagerPermission.MANAGER_MANAGE : ManagerPermission.TUTOR_MANAGE);
 
         staffList.forEach(PlatformStaff::leave);
-        actionLogRepository.save(ActionLog.of(platformId, actor.getId(), ActionTarget.STAFF_CHANGE, targetUserId, "REMOVE", null));
-    }
-
-    @Transactional
-    // 매니저 권한 등급 변경("권한 변경") — HIGH 등급 매니저 또는 오너만 가능.
-    public PlatformStaff updateManagerTier(UUID platformId, AuthenticatedUser actor, UUID targetUserId, ManagerTier newTier) {
-        platformAccessGuard.verifyManagerTier(platformId, actor, ManagerTier.HIGH);
-        PlatformStaff staff = platformStaffRepository.findByPlatformIdAndUserId(platformId, targetUserId).stream()
-                .filter(s -> s.isActive() && s.getStaffRole() == StaffRole.MANAGER)
-                .findFirst()
-                .orElseThrow(() -> new IllegalArgumentException("이 사용자는 이 플랫폼의 매니저가 아닙니다."));
-        staff.changeManagerTier(newTier);
-        actionLogRepository.save(ActionLog.of(platformId, actor.getId(), ActionTarget.STAFF_CHANGE, staff.getId(), "CHANGE_MANAGER_TIER", newTier.name()));
-        return staff;
+        actionLogRepository.save(ActionLog.of(platformId, actor.getId(), ActionTarget.STAFF_CHANGE, targetUserId, "REMOVE",
+                "직원 삭제: " + LogMemo.who(userService.get(targetUserId)) + " (해제된 역할: "
+                        + staffList.stream().map(st -> st.getStaffRole() == StaffRole.MANAGER ? "매니저" : "강사").distinct().collect(Collectors.joining(", ")) + ")"));
     }
 
     @Transactional(readOnly = true)
@@ -182,7 +211,10 @@ public class PlatformService {
         if (staffList.isEmpty()) {
             throw new IllegalArgumentException("Staff assignment not found");
         }
+        IncomeType before = staffList.get(0).getIncomeType();
         staffList.forEach(staff -> staff.changeIncomeType(incomeType));
+        actionLogRepository.save(ActionLog.of(platformId, actor.getId(), ActionTarget.STAFF_CHANGE, targetUserId, "UPDATE_INCOME_TYPE",
+                "소득유형 변경: " + LogMemo.who(userService.get(targetUserId)) + " — " + LogMemo.changes(LogMemo.change("소득유형", before, incomeType))));
         return staffList;
     }
 
@@ -195,7 +227,11 @@ public class PlatformService {
                 .filter(s -> s.isActive() && s.getStaffRole() == StaffRole.TUTOR)
                 .findFirst()
                 .orElseThrow(() -> new IllegalArgumentException("이 사용자는 이 플랫폼의 강사가 아닙니다."));
+        Integer before = staff.getSessionRate();
         staff.changeSessionRate(sessionRate);
+        actionLogRepository.save(ActionLog.of(platformId, actor.getId(), ActionTarget.STAFF_CHANGE, targetUserId, "UPDATE_SESSION_RATE",
+                "강사료 변경: " + LogMemo.who(userService.get(targetUserId)) + " — 회당 "
+                        + (before == null ? "미설정" : LogMemo.won(before)) + " → " + LogMemo.won(sessionRate)));
         return staff;
     }
 
@@ -212,7 +248,8 @@ public class PlatformService {
             platform.activate();
         }
         actionLogRepository.save(ActionLog.of(
-                platformId, owner.getId(), ActionTarget.PLATFORM_CHANGE, platformId, suspended ? "SUSPEND" : "ACTIVATE", null
+                platformId, owner.getId(), ActionTarget.PLATFORM_CHANGE, platformId, suspended ? "SUSPEND" : "ACTIVATE",
+                (suspended ? "플랫폼 운영 정지: '" : "플랫폼 정지 해제: '") + platform.getName() + "'"
         ));
         return platform;
     }

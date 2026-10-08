@@ -13,7 +13,7 @@ import {
 	rejectFinancialRequest,
 	FINANCIAL_REQUEST_TYPE_LABEL,
 	getUser,
-	getMyManagerTier
+	getMyPermissions
 } from "../../api/common.js";
 import { getCurrentUser } from "../../api/http.js";
 import { openModal, closeModal } from "../default.js";
@@ -39,12 +39,12 @@ export default function ManagerApprovalView({ platformId }) {
 	const [expandedId, setExpandedId] = useState(null);
 	const [openThreadId, setOpenThreadId] = useState(null);
 	const [userNames, setUserNames] = useState({});
-	const [myTier, setMyTier] = useState(null);
+	const [myPermissions, setMyPermissions] = useState([]);
 	const myId = getCurrentUser()?.id;
 
 	useEffect(() => {
 		if (!platformId || !myId) return;
-		getMyManagerTier(platformId).then(setMyTier).catch(() => setMyTier(null));
+		getMyPermissions(platformId).then(setMyPermissions).catch(() => setMyPermissions([]));
 	}, [platformId, myId]);
 
 	const [leaveStart, setLeaveStart] = useState("");
@@ -166,7 +166,7 @@ export default function ManagerApprovalView({ platformId }) {
 		const isMine = r.requestedBy === myId;
 		// 휴가 승인/반려(LeaveRequestService)와 재무 일정 승인/반려(FinancialRequestService)는
 		// 백엔드가 HIGH 등급 매니저만 허용한다 — 일정 변경(SCHEDULE)은 등급 무관.
-		const tierBlocked = (isLeave || isFinancial) && myTier !== "HIGH";
+		const tierBlocked = (isLeave && !myPermissions.includes("LEAVE_APPROVE")) || (isFinancial && !myPermissions.includes("FINANCIAL_APPROVE"));
 
 		return (
 			<div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>

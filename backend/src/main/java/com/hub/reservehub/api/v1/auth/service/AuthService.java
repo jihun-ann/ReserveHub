@@ -49,7 +49,7 @@ public class AuthService {
         if (userRepository.findByUsername(username).isPresent()) {
             throw new IllegalStateException("Username already exists");
         }
-        if (userRepository.findByEmail(email).isPresent()) {
+        if (userRepository.findByEmailAndIsActiveTrue(email).isPresent()) {
             throw new IllegalStateException("Email already exists");
         }
 

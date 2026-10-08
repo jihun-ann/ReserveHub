@@ -1,4 +1,4 @@
-import { apiGet, apiPost, apiPatch, apiDelete, apiPostForm, API_BASE_URL, getAccessToken, getCurrentUser } from "./http.js";
+import { apiGet, apiPost, apiPatch, apiDelete, apiPostForm, API_BASE_URL, getAccessToken } from "./http.js";
 
 export const BUSINESS_TYPES = [
 	{ value: "FITNESS", label: "운동/피트니스" },
@@ -7,6 +7,12 @@ export const BUSINESS_TYPES = [
 	{ value: "BEAUTY", label: "뷰티/웰니스" },
 	{ value: "OTHER", label: "기타" }
 ];
+
+const BUSINESS_TYPE_EMOJI = { FITNESS: "🏋️", ARTS: "🎨", EDUCATION: "📚", BEAUTY: "💆", OTHER: "🏢" };
+
+export function businessTypeEmoji(value) {
+	return BUSINESS_TYPE_EMOJI[value] || "🏢";
+}
 
 export function businessTypeLabel(value) {
 	return BUSINESS_TYPES.find((t) => t.value === value)?.label || value;
@@ -36,29 +42,58 @@ export const assignStaff = (platformId, userId, staffRole, managerTier) =>
 export const removeStaff = (platformId, userId) =>
 	apiDelete(`/api/v1/platforms/${platformId}/staff/${userId}`);
 
-// 매니저 권한 등급(L/M/H) — HIGH 등급 매니저 또는 오너만 변경 가능.
-export const MANAGER_TIER_LABEL = { LOW: "L (제한)", MEDIUM: "M (일반)", HIGH: "H (전체)" };
-const MANAGER_TIER_ORDER = { LOW: 0, MEDIUM: 1, HIGH: 2 };
+// 매니저 그룹에 줄 수 있는 메뉴/기능 권한 — 백엔드 ManagerPermission과 같은 이름이다.
+// kind "menu"는 매니저 사이드바 메뉴(menuId) 노출, "feature"는 해당 기능 실행 권한이다.
+export const MANAGER_PERMISSIONS = [
+	{ key: "MENU_APPROVAL", label: "승인 관리", kind: "menu", menuId: "approval" },
+	{ key: "MENU_MEMBERS", label: "회원 관리", kind: "menu", menuId: "members" },
+	{ key: "MENU_TUTOR", label: "강사 관리", kind: "menu", menuId: "tutor" },
+	{ key: "MENU_LESSON", label: "수업 관리", kind: "menu", menuId: "lessonManage" },
+	{ key: "MENU_FACILITY_STATUS", label: "시설물 현황", kind: "menu", menuId: "facilityStatus" },
+	{ key: "MENU_PAYMENT", label: "수강권 / 결제", kind: "menu", menuId: "payment" },
+	{ key: "MENU_PAYMENT_HISTORY", label: "결제 이력", kind: "menu", menuId: "paymentHistory" },
+	{ key: "MENU_CALC", label: "상담 계산툴", kind: "menu", menuId: "calc" },
+	{ key: "MENU_HISTORY", label: "수업 이력", kind: "menu", menuId: "history" },
+	{ key: "MENU_ACTIVITY_LOG", label: "활동 이력", kind: "menu", menuId: "activityLog" },
+	{ key: "FACILITY_MANAGE", label: "시설 예약 취소 / 시설 이슈 처리", kind: "feature" },
+	{ key: "PROGRAM_MANAGE", label: "프로그램 운영", kind: "feature" },
+	{ key: "TUTOR_MANAGE", label: "강사 초대 / 삭제", kind: "feature" },
+	{ key: "MANAGER_MANAGE", label: "매니저 초대 / 삭제, 그룹 관리", kind: "feature", menuId: "managerManage" },
+	{ key: "FINANCIAL_APPROVE", label: "재무요청 승인 / 반려", kind: "feature" },
+	{ key: "LEAVE_APPROVE", label: "휴가요청 승인 / 반려", kind: "feature" },
+	{ key: "DISCOUNT_POLICY", label: "할인정책 관리", kind: "feature" },
+	{ key: "REFUND", label: "환불", kind: "feature" },
+	{ key: "JOIN_REQUEST_MANAGE", label: "가입 신청 처리", kind: "feature" }
+];
 
-// tier가 minTier 이상인지 — 오너 화면처럼 등급이 아예 없는 경우는 항상 통과시키지 않고(null=미배정),
-// 호출부가 "매니저 전용 화면에 들어왔다 = MANAGER 배정이 있다"를 전제로 쓴다.
-export function meetsManagerTier(tier, minTier) {
-	return tier != null && MANAGER_TIER_ORDER[tier] >= MANAGER_TIER_ORDER[minTier];
-}
+// 현재 로그인한 사용자가 이 플랫폼에서 가진 매니저 권한 목록(오너는 전부). 백엔드가 실제 권한을 다시
+// 검증하므로(PlatformAccessGuard.verifyManagerPermission), 이건 메뉴/버튼 노출을 위한 UX 용도일 뿐 보안 경계가 아니다.
+export const getMyPermissions = (platformId) => apiGet(`/api/v1/platforms/${platformId}/my-permissions`);
 
-// 현재 로그인한 사용자가 이 플랫폼에서 가진 매니저 등급 — MANAGER로 배정돼 있지 않으면 null.
-// 백엔드가 실제 권한을 다시 검증하므로(PlatformAccessGuard.verifyManagerTier), 이건 버튼 노출을 위한
-// UX 용도일 뿐 보안 경계가 아니다.
-export async function getMyManagerTier(platformId) {
-	const me = getCurrentUser();
-	if (!me) return null;
-	const staff = await listStaff(platformId);
-	const mine = staff.find((s) => s.userId === me.id && s.staffRole === "MANAGER");
-	return mine?.managerTier ?? null;
-}
+// 플랫폼별 매니저 그룹 — 이름 + 권한 목록(permissions). 매니저는 그룹에 속하고, 그룹의 권한을 갖는다.
+export const listManagerGroups = (platformId) => apiGet(`/api/v1/platforms/${platformId}/manager-groups`);
+export const createManagerGroup = (platformId, name, permissions) =>
+	apiPost(`/api/v1/platforms/${platformId}/manager-groups`, { name, permissions });
+export const updateManagerGroup = (groupId, name, permissions) =>
+	apiPatch(`/api/v1/manager-groups/${groupId}`, { name, permissions });
+export const deleteManagerGroup = (groupId) => apiDelete(`/api/v1/manager-groups/${groupId}`);
+export const assignManagerGroup = (platformId, userId, groupId) =>
+	apiPatch(`/api/v1/platforms/${platformId}/staff/${userId}/manager-group`, { groupId });
 
-export const updateManagerTier = (platformId, userId, managerTier) =>
-	apiPatch(`/api/v1/platforms/${platformId}/staff/${userId}/manager-tier`, { managerTier });
+// 회원 가입 신청 — 회원이 플랫폼을 이름/ID로 찾아 신청하고, 센터가 승인/반려한 뒤 수강권을 등록한다.
+export const searchPlatforms = (q) => apiGet(`/api/v1/platforms/search?q=${encodeURIComponent(q)}`);
+export const applyJoinRequest = (platformId, message) => apiPost(`/api/v1/platforms/${platformId}/join-requests`, { message });
+export const listMyJoinRequests = () => apiGet("/api/v1/join-requests/mine");
+export const cancelJoinRequest = (id) => apiPost(`/api/v1/join-requests/${id}/cancel`, {});
+export const listJoinRequests = (platformId) => apiGet(`/api/v1/platforms/${platformId}/join-requests`);
+export const approveJoinRequest = (id, memo) => apiPost(`/api/v1/join-requests/${id}/approve`, { memo });
+export const rejectJoinRequest = (id, memo) => apiPost(`/api/v1/join-requests/${id}/reject`, { memo });
+
+// 내 정보 — 생년월일/보호자, 이메일·연락처 인증, 계정 탈퇴(비활성화).
+export const updateMyDetails = (payload) => apiPatch("/api/v1/users/me/details", payload);
+export const requestContactVerification = (channel) => apiPost(`/api/v1/users/me/verifications/${channel}/request`, {});
+export const confirmContactVerification = (channel, code) => apiPost(`/api/v1/users/me/verifications/${channel}/confirm`, { code });
+export const deactivateMyAccount = (password) => apiPost("/api/v1/users/me/deactivate", { password });
 
 // 세무사 — 스태프가 아니라 오너가 초대한 별도의 재무 데이터 접근 권한.
 export const listTaxAccountants = (platformId) => apiGet(`/api/v1/platforms/${platformId}/tax-accountants`);
@@ -121,6 +156,34 @@ export async function openFinancialRequestAttachment(requestId, commentId) {
 }
 
 export const listActionLogs = (platformId) => apiGet(`/api/v1/platforms/${platformId}/action-logs`);
+
+// 활동 이력 화면에서 항목(targetType)과 작업(action) 코드를 한글로 보여주기 위한 이름표.
+export const ACTION_TARGET_LABEL = {
+	SCHEDULE_REQUEST: "일정 변경 요청",
+	MEMBER_MEMO: "회원 메모",
+	STAFF_CHANGE: "스태프 변경",
+	PASS_REFUND: "수강권 환불",
+	PLATFORM_CHANGE: "플랫폼 상태",
+	PROGRAM_CHANGE: "프로그램 변경",
+	PASS_CHANGE: "수강권 변경",
+	DISCOUNT_CHANGE: "할인 정책 변경",
+	FINANCIAL_REQUEST: "재무 일정",
+	FACILITY_CHANGE: "시설 변경",
+	LEAVE_REQUEST: "휴가 요청",
+	JOIN_REQUEST: "가입 신청"
+};
+
+export const ACTION_LABEL = {
+	CREATE: "등록", UPDATE: "수정", DEACTIVATE: "비활성화", APPROVE: "승인", REJECT: "반려", COMMENT: "댓글",
+	BOOK: "예약", REPORT_ISSUE: "고장 신고", IN_PROGRESS: "처리 시작", RESOLVE: "해결",
+	ADD_SLOT: "슬롯 추가", DEACTIVATE_SLOT: "슬롯 비활성화", ADD_SLOT_MEMBER: "명단 추가", REMOVE_SLOT_MEMBER: "명단 제외",
+	REFUND: "환불", SUSPEND: "운영 정지", ACTIVATE: "정지 해제",
+	ASSIGN_TUTOR: "강사 배정", ASSIGN_MANAGER: "매니저 배정", REMOVE: "직원 삭제",
+	INVITE_TUTOR: "강사 초대", INVITE_MANAGER: "매니저 초대", INVITE_CANCEL: "초대 취소", INVITE_ACCEPT: "초대 수락",
+	UPDATE_INCOME_TYPE: "소득유형 변경", UPDATE_SESSION_RATE: "강사료 변경",
+	JOIN_APPLY: "가입 신청", JOIN_CANCEL: "신청 취소", JOIN_APPROVE: "가입 승인", JOIN_REJECT: "가입 반려",
+	CREATE_MANAGER_GROUP: "그룹 생성", UPDATE_MANAGER_GROUP: "그룹 수정", DELETE_MANAGER_GROUP: "그룹 삭제", CHANGE_MANAGER_GROUP: "그룹 변경"
+};
 
 export const getUser = (id) => apiGet(`/api/v1/users/${id}`);
 
@@ -379,3 +442,16 @@ export async function enrollTutor(platformId, email, password, name, phone) {
 	await assignStaff(platformId, user.id, "TUTOR");
 	return user;
 }
+
+// 강사/매니저 초대 — 링크(token)를 발급하고, 초대받은 사람이 로그인 후 이메일/연락처 일치를 확인받아 수락한다.
+export const createStaffInvitation = (platformId, payload) =>
+	apiPost(`/api/v1/platforms/${platformId}/staff-invitations`, payload);
+
+export const listStaffInvitations = (platformId) =>
+	apiGet(`/api/v1/platforms/${platformId}/staff-invitations`);
+
+export const cancelStaffInvitation = (id) => apiPost(`/api/v1/staff-invitations/${id}/cancel`, {});
+
+export const previewStaffInvitation = (token) => apiGet(`/api/v1/staff-invitations/token/${token}`);
+
+export const acceptStaffInvitation = (token) => apiPost(`/api/v1/staff-invitations/token/${token}/accept`, {});

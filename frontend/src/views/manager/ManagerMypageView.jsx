@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { openModal, closeModal } from "../default.js";
 import { getCurrentUser, displayName, changePassword, updateProfile, updateBankInfo } from "../../api/http.js";
-import { listMembers, listStaff } from "../../api/common.js";
+import { listMembers, listStaff, businessTypeEmoji } from "../../api/common.js";
 
 export default function ManagerMypageView({ platformId, currentPlatform }) {
 	const user = getCurrentUser();
@@ -145,7 +145,7 @@ export default function ManagerMypageView({ platformId, currentPlatform }) {
 				) : (
 					<div style={{ display: "flex", alignItems: "center", gap: "12px", padding: "14px 0" }}>
 						<div style={{ width: "38px", height: "38px", borderRadius: "10px", background: "rgba(var(--manager-rgb),.12)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "18px", flexShrink: "0" }}>
-							{currentPlatform.emoji}
+							{businessTypeEmoji(currentPlatform.businessType)}
 						</div>
 						<div style={{ flex: "1" }}>
 							<div style={{ fontSize: "14px", fontWeight: "600" }}>{currentPlatform.name}</div>

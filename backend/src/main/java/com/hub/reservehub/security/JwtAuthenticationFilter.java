@@ -50,6 +50,11 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 String token = header.substring(BEARER_PREFIX.length());
                 String username = jwtTokenProvider.extractUsername(token);
                 UserDetails userDetails = authenticatedUserService.loadUserByUsername(username);
+                if (!userDetails.isEnabled()) {
+                    // 비활성화된 계정의 토큰은 만료 전이어도 미인증으로 처리한다.
+                    filterChain.doFilter(request, response);
+                    return;
+                }
 
                 UsernamePasswordAuthenticationToken authentication =
                         new UsernamePasswordAuthenticationToken(

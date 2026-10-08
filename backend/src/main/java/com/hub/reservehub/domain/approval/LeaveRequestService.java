@@ -1,6 +1,6 @@
 package com.hub.reservehub.domain.approval;
 
-import com.hub.reservehub.domain.platform.ManagerTier;
+import com.hub.reservehub.domain.platform.ManagerPermission;
 import com.hub.reservehub.domain.platform.PlatformAccessGuard;
 import com.hub.reservehub.domain.platform.StaffRole;
 import com.hub.reservehub.security.AuthenticatedUser;
@@ -37,7 +37,8 @@ public class LeaveRequestService {
             throw new IllegalArgumentException("endDate must not be before startDate");
         }
         LeaveRequest request = leaveRequestRepository.save(new LeaveRequest(platformId, actor.getId(), startDate, endDate, reason));
-        actionLogRepository.save(ActionLog.of(platformId, actor.getId(), ActionTarget.LEAVE_REQUEST, request.getId(), "CREATE", null));
+        actionLogRepository.save(ActionLog.of(platformId, actor.getId(), ActionTarget.LEAVE_REQUEST, request.getId(), "CREATE",
+                "휴가 신청: " + startDate + " ~ " + endDate + (reason == null || reason.isBlank() ? "" : " (사유: " + LogMemo.clip(reason, 100) + ")")));
         return request;
     }
 
@@ -56,20 +57,22 @@ public class LeaveRequestService {
     // 휴가 승인/반려는 HIGH 등급 매니저(또는 오너)만 — L/M 등급 매니저는 조회만 가능하다.
     public LeaveRequest approve(UUID requestId, AuthenticatedUser actor, @Nullable String memo) {
         LeaveRequest request = findRequest(requestId);
-        platformAccessGuard.verifyManagerTier(request.getPlatformId(), actor, ManagerTier.HIGH);
+        platformAccessGuard.verifyManagerPermission(request.getPlatformId(), actor, ManagerPermission.LEAVE_APPROVE);
         rejectSelfDecision(request, actor);
         request.approve(actor.getId(), memo);
-        actionLogRepository.save(ActionLog.of(request.getPlatformId(), actor.getId(), ActionTarget.LEAVE_REQUEST, request.getId(), "APPROVE", memo));
+        actionLogRepository.save(ActionLog.of(request.getPlatformId(), actor.getId(), ActionTarget.LEAVE_REQUEST, request.getId(), "APPROVE",
+                LogMemo.with("휴가 승인: " + request.getStartDate() + " ~ " + request.getEndDate(), memo)));
         return request;
     }
 
     @Transactional
     public LeaveRequest reject(UUID requestId, AuthenticatedUser actor, @Nullable String memo) {
         LeaveRequest request = findRequest(requestId);
-        platformAccessGuard.verifyManagerTier(request.getPlatformId(), actor, ManagerTier.HIGH);
+        platformAccessGuard.verifyManagerPermission(request.getPlatformId(), actor, ManagerPermission.LEAVE_APPROVE);
         rejectSelfDecision(request, actor);
         request.reject(actor.getId(), memo);
-        actionLogRepository.save(ActionLog.of(request.getPlatformId(), actor.getId(), ActionTarget.LEAVE_REQUEST, request.getId(), "REJECT", memo));
+        actionLogRepository.save(ActionLog.of(request.getPlatformId(), actor.getId(), ActionTarget.LEAVE_REQUEST, request.getId(), "REJECT",
+                LogMemo.with("휴가 반려: " + request.getStartDate() + " ~ " + request.getEndDate(), memo)));
         return request;
     }
 

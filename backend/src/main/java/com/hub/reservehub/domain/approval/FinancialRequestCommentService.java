@@ -60,7 +60,9 @@ public class FinancialRequestCommentService {
                 : new FinancialRequestComment(requestId, actor.getId(), content);
         comment = commentRepository.save(comment);
 
-        actionLogRepository.save(ActionLog.of(request.getPlatformId(), actor.getId(), ActionTarget.FINANCIAL_REQUEST, requestId, "COMMENT", null));
+        actionLogRepository.save(ActionLog.of(request.getPlatformId(), actor.getId(), ActionTarget.FINANCIAL_REQUEST, requestId, "COMMENT",
+                "재무 일정 '" + request.getTitle() + "'에 댓글 작성" + (file != null && !file.isEmpty() ? " (첨부파일 포함)" : "")
+                        + (content == null || content.isBlank() ? "" : ": \"" + LogMemo.clip(content, 80) + "\"")));
         User author = userRepository.findById(actor.getId())
                 .orElseThrow(() -> new IllegalStateException("Authenticated user not found: " + actor.getId()));
         return new CommentView(comment, author);

@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom";
 import {
 	LayoutDashboard, CheckSquare, Users, GraduationCap, Pin, Warehouse, ClipboardCheck,
 	CreditCard, Receipt, Calculator, ClipboardList, History, CalendarClock, Wrench, Target,
-	Wallet, CalendarDays, Calendar, User, Building2, Moon, Sun, Bell, LogOut
+	Wallet, CalendarDays, Calendar, User, Building2, Moon, Sun, Bell, LogOut, UserCog, Search
 } from "lucide-react";
 import { closeSidebar, toggleCollapse, openSidebar } from "./default.js";
 import { getTheme, toggleTheme } from "../theme.js";
@@ -14,12 +14,15 @@ import "./owner/OwnerView.css";
 import "./user/UserView.css";
 import "./taxaccountant/TaxAccountantView.css";
 import { getCurrentUser, loadCurrentUser, clearSession, displayName } from "../api/http.js";
-import { listPlatforms, listAllScheduleRequests, listAllLeaveRequests } from "../api/common.js";
+import { listPlatforms, listAllScheduleRequests, listAllLeaveRequests, getMyPermissions, MANAGER_PERMISSIONS } from "../api/common.js";
 
 import ManagerDashBoardView from "./manager/ManagerDashBoardView.jsx";
 import ManagerApprovalView from "./manager/ManagerApprovalView.jsx";
 import ManagerMemberManageView from "./manager/ManagerMemberManageView.jsx";
 import ManagerTutorManageView from "./manager/ManagerTutorManageView.jsx";
+import ManagerManagerManageView from "./manager/ManagerManagerManageView.jsx";
+import UserJoinPlatformView from "./user/UserJoinPlatformView.jsx";
+import AccountMypageView from "./AccountMypageView.jsx";
 import ManagerPaymentView from "./manager/ManagerPaymentView.jsx";
 import ManagerPaymentHistoryView from "./manager/ManagerPaymentHistoryView.jsx";
 import ManagerLessonManageView from "./manager/ManagerLessonManageView.jsx";
@@ -41,7 +44,6 @@ import OwnerMypageView from "./owner/OwnerMypageView.jsx";
 
 import UserCalendarView from "./user/UserCalendarView.jsx";
 import UserReservationView from "./user/UserReservationView.jsx";
-import UserMypageView from "./user/UserMypageView.jsx";
 
 import TaxAccountantRevenueView from "./taxaccountant/TaxAccountantRevenueView.jsx";
 import TaxAccountantStaffView from "./taxaccountant/TaxAccountantStaffView.jsx";
@@ -79,6 +81,12 @@ const DEFAULT_CONTEXT = {
 	TAX_ACCOUNTANT: "revenue"
 };
 
+// 소속 플랫폼이 하나도 없는 계정의 기본 메뉴 — 플랫폼을 찾아 가입을 신청하고, 내 정보를 관리한다.
+const NO_PLATFORM_MENU = [
+	{ id: "join", label: "플랫폼 찾기", icon: Search },
+	{ id: "mypage", label: "내 정보", icon: User }
+];
+
 const COMMON_MENU = [
 	{ id: "calendar", label: "캘린더", icon: Calendar },
 	{ id: "mypage", label: "내 정보", icon: User }
@@ -102,6 +110,7 @@ const ROLE_MENU = {
 		{ id: "approval", label: "승인 관리", icon: CheckSquare },
 		{ id: "members", label: "회원 관리", icon: Users },
 		{ id: "tutor", label: "강사 관리", icon: GraduationCap },
+		{ id: "managerManage", label: "매니저 관리", icon: UserCog },
 		{ id: "lessonManage", label: "수업 관리", icon: Pin },
 		{ id: "facilityStatus", label: "시설물 현황", icon: Warehouse },
 		{ id: "payment", label: "수강권 / 결제", icon: CreditCard },
@@ -118,7 +127,8 @@ const ROLE_MENU = {
 	],
 	USER: [
 		{ id: "reservation", label: "수업 예약", icon: Target },
-		{ id: "facility", label: "시설물 예약", icon: Warehouse }
+		{ id: "facility", label: "시설물 예약", icon: Warehouse },
+		{ id: "join", label: "플랫폼 찾기", icon: Search }
 	],
 	TAX_ACCOUNTANT: [
 		{ id: "revenue", label: "매출 집계", icon: Wallet },
@@ -253,6 +263,15 @@ export default function AppShell() {
 	}, [refreshPlatforms]);
 
 	const currentPlatform = platforms.find((p) => p.id === currentPlatformId) || null;
+
+	// 이 플랫폼에서 내가 가진 매니저 권한 — 매니저 메뉴 노출에 쓴다(null=아직 불러오는 중).
+	const [permissions, setPermissions] = useState(null);
+	useEffect(() => {
+		setPermissions(null);
+		if (!currentPlatformId || !currentPlatform?.roles.includes("MANAGER")) return;
+		getMyPermissions(currentPlatformId).then(setPermissions).catch(() => setPermissions([]));
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [currentPlatformId]);
 	const ownerPlatforms = platforms.filter((p) => p.roles.includes("OWNER"));
 
 	const refreshOwnerRequests = useCallback(async () => {
@@ -347,19 +366,29 @@ export default function AppShell() {
 		: activeRole
 			? [activeRole]
 			: [];
-	const menuSections = sectionRoles.map((role) => {
+	// 매니저 메뉴 중 MENU_* 권한이 걸린 항목은 그 권한이 있어야 보인다(권한을 불러오기 전엔 숨긴다).
+	const menuPermissionOf = (itemId) => MANAGER_PERMISSIONS.find((p) => p.menuId === itemId)?.key;
+	const canSeeMenu = (role, item) => {
+		const needed = role === "MANAGER" ? menuPermissionOf(item.id) : null;
+		return !needed || (permissions || []).includes(needed);
+	};
+	const noPlatform = !loading && platforms.length === 0;
+	// 플랫폼이 없을 땐 '내 정보' 외에는 모두 플랫폼 찾기가 기본 화면이다.
+	const shownContext = noPlatform && currentContext !== "mypage" ? "join" : currentContext;
+	const menuSections = noPlatform ? [{ role: "USER", items: NO_PLATFORM_MENU }] : sectionRoles.map((role) => {
 		const commonMenu = NO_CALENDAR_ROLES.includes(role)
 			? COMMON_MENU.filter((m) => m.id !== "calendar")
 			: COMMON_MENU;
 		return {
 			role,
-			items: SHARED_BOTTOM_ROLES.includes(role) ? ROLE_MENU[role] || [] : [...(ROLE_MENU[role] || []), ...commonMenu]
+			items: (SHARED_BOTTOM_ROLES.includes(role) ? ROLE_MENU[role] || [] : [...(ROLE_MENU[role] || []), ...commonMenu])
+				.filter((item) => canSeeMenu(role, item))
 		};
 	});
 	const showSharedMenu = sectionRoles.some((role) => SHARED_BOTTOM_ROLES.includes(role));
-	const activeSection = menuSections.find((s) => s.role === activeRole);
+	const activeSection = menuSections.find((s) => s.role === (noPlatform ? "USER" : activeRole));
 	const topbarTitle =
-		activeSection?.items.find((m) => m.id === currentContext)?.label ||
+		activeSection?.items.find((m) => m.id === shownContext)?.label ||
 		(showSharedMenu ? COMMON_MENU.find((m) => m.id === currentContext)?.label : undefined) ||
 		"";
 	const pendingOwnerCount = ownerRequests.filter((r) => r.status === "PENDING").length;
@@ -480,8 +509,8 @@ export default function AppShell() {
 							{section.items.map((m) => (
 								<button
 									key={`${section.role}-${m.id}`}
-									className={`nav-item ${activeRole === section.role && currentContext === m.id ? "active" : ""}`}
-									onClick={() => selectMenuItem(section.role, m.id)}
+									className={`nav-item ${(noPlatform || activeRole === section.role) && shownContext === m.id ? "active" : ""}`}
+									onClick={() => (noPlatform ? setCurrentContext(m.id) : selectMenuItem(section.role, m.id))}
 								>
 									<span className="nav-icon"><m.icon size={17} strokeWidth={1.75} /></span>
 									<span className="nav-label">{m.label}</span>
@@ -554,6 +583,11 @@ export default function AppShell() {
 					불러오는 중...
 				</div>
 			);
+		// 플랫폼 찾기는 플랫폼/역할과 무관하다. 소속 플랫폼이 없으면 이 화면과 내 정보만 쓴다.
+		if (noPlatform) {
+			return shownContext === "mypage" ? <AccountMypageView key={user?.email || "account"} user={user} onDeactivated={handleLogout} /> : <UserJoinPlatformView />;
+		}
+		if (currentContext === "join") return <UserJoinPlatformView />;
 		if (!activeRole)
 			return (
 				<div style={{ padding: "40px", textAlign: "center", color: "var(--text-dim)" }}>
@@ -588,7 +622,7 @@ export default function AppShell() {
 				case "TAX_ACCOUNTANT":
 					return <TaxAccountantMypageView />;
 				default:
-					return <UserMypageView />;
+					return <AccountMypageView key={user?.email || "account"} user={user} onDeactivated={handleLogout} />;
 			}
 		}
 
@@ -624,7 +658,10 @@ export default function AppShell() {
 		}
 
 		if (activeRole === "MANAGER") {
-			switch (currentContext) {
+			// 권한이 없는 메뉴(저장된 이전 위치 등)는 대시보드로 대체한다.
+			const needed = MANAGER_PERMISSIONS.find((p) => p.menuId === currentContext)?.key;
+			const context = needed && !(permissions || []).includes(needed) ? "dashboard" : currentContext;
+			switch (context) {
 				case "dashboard":
 					return (
 						<ManagerDashBoardView
@@ -639,6 +676,8 @@ export default function AppShell() {
 					return <ManagerMemberManageView platformId={currentPlatformId} />;
 				case "tutor":
 					return <ManagerTutorManageView platformId={currentPlatformId} />;
+				case "managerManage":
+					return <ManagerManagerManageView platformId={currentPlatformId} />;
 				case "payment":
 					return <ManagerPaymentView platformId={currentPlatformId} />;
 				case "paymentHistory":

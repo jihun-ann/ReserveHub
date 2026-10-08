@@ -1,6 +1,6 @@
 package com.hub.reservehub.domain.approval;
 
-import com.hub.reservehub.domain.platform.ManagerTier;
+import com.hub.reservehub.domain.platform.ManagerPermission;
 import com.hub.reservehub.domain.platform.PlatformAccessGuard;
 import com.hub.reservehub.security.AuthenticatedUser;
 import java.time.LocalDate;
@@ -49,18 +49,20 @@ public class FinancialRequestService {
     @Transactional
     public FinancialRequest approve(UUID requestId, AuthenticatedUser actor, @Nullable String memo) {
         FinancialRequest request = findRequest(requestId);
-        platformAccessGuard.verifyManagerTier(request.getPlatformId(), actor, ManagerTier.HIGH); // 재무요청 승인/반려: 임원급 매니저 전용
+        platformAccessGuard.verifyManagerPermission(request.getPlatformId(), actor, ManagerPermission.FINANCIAL_APPROVE); // 재무요청 승인/반려: 임원급 매니저 전용
         request.approve(memo);
-        actionLogRepository.save(ActionLog.of(request.getPlatformId(), actor.getId(), ActionTarget.FINANCIAL_REQUEST, request.getId(), "APPROVE", memo));
+        actionLogRepository.save(ActionLog.of(request.getPlatformId(), actor.getId(), ActionTarget.FINANCIAL_REQUEST, request.getId(), "APPROVE",
+                LogMemo.with("재무 일정 승인: '" + request.getTitle() + "' (" + request.getEventDate() + ")", memo)));
         return request;
     }
 
     @Transactional
     public FinancialRequest reject(UUID requestId, AuthenticatedUser actor, @Nullable String memo) {
         FinancialRequest request = findRequest(requestId);
-        platformAccessGuard.verifyManagerTier(request.getPlatformId(), actor, ManagerTier.HIGH); // 재무요청 승인/반려: 임원급 매니저 전용
+        platformAccessGuard.verifyManagerPermission(request.getPlatformId(), actor, ManagerPermission.FINANCIAL_APPROVE); // 재무요청 승인/반려: 임원급 매니저 전용
         request.reject(memo);
-        actionLogRepository.save(ActionLog.of(request.getPlatformId(), actor.getId(), ActionTarget.FINANCIAL_REQUEST, request.getId(), "REJECT", memo));
+        actionLogRepository.save(ActionLog.of(request.getPlatformId(), actor.getId(), ActionTarget.FINANCIAL_REQUEST, request.getId(), "REJECT",
+                LogMemo.with("재무 일정 반려: '" + request.getTitle() + "' (" + request.getEventDate() + ")", memo)));
         return request;
     }
 
