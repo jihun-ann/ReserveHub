@@ -19,7 +19,7 @@ spec:
         - name: ghcr-secret
       containers:
         - name: reservehub
-          image: ghcr.io/jihun-ann/reservehub:30ecbdaffe53f518fa2ef489231c0e3b1af267f7
+          image: ghcr.io/jihun-ann/reservehub:eff6fd607f0cacf1a5c457a2c598c8173dc06a07
 
           ports:
             - containerPort: 8080
