@@ -87,6 +87,12 @@ public class PlatformAccessGuard {
         }
     }
 
+    // verifyManagerPermission의 boolean 버전 — 권한이 없을 때 막는 대신 다른 처리(예: 정보 가리기)를 하고 싶을 때 쓴다.
+    public boolean hasManagerPermission(UUID platformId, AuthenticatedUser user, ManagerPermission... anyOf) {
+        Set<ManagerPermission> have = permissionsOf(platformId, user);
+        return Arrays.stream(anyOf).anyMatch(have::contains);
+    }
+
     // 재무/정산 데이터(매출, 스태프 계좌정보) 전용 — 오너, 이 플랫폼의 MANAGER, 또는 오너가 초대한
     // 세무사(PlatformTaxAccountant, 스태프가 아니라 별도 부여)만 볼 수 있다.
     // Financial/payroll data only — the owner, this platform's MANAGER, or a tax accountant the owner

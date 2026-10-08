@@ -14,6 +14,9 @@ public interface PlatformStaffRepository extends JpaRepository<PlatformStaff, UU
 
     List<PlatformStaff> findByUserIdAndIsActiveTrue(UUID userId);
 
+    // 재직 여부와 무관한 전체 배정 이력 — 다른 사용자 조회 범위(UserDirectoryService)를 정할 때 쓴다.
+    List<PlatformStaff> findByUserId(UUID userId);
+
     boolean existsByPlatformIdAndUserIdAndIsActiveTrue(UUID platformId, UUID userId);
 
     boolean existsByUserIdAndStaffRoleAndIsActiveTrue(UUID userId, StaffRole staffRole);

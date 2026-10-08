@@ -49,8 +49,13 @@ public class AuthController {
     // Creates a new user account and immediately mints an access token for it (no separate login call needed).
     // 새 사용자 계정을 만들고 바로 액세스 토큰을 발급한다 (별도 로그인 호출 불필요).
     public ResponseEntity<TokenResponse> register(@Valid @RequestBody RegisterRequest request) {
+        // 공개 가입은 일반 회원(USER)만 만들 수 있다. 강사/매니저는 초대 링크로 합류하고(전역 역할이 아니라 플랫폼의
+        // 직원 배정으로 권한이 정해진다), 대표/세무사 계정은 운영자가 만든다 — 클라이언트가 보낸 role을 그대로 믿지 않는다.
+        if (request.role() != null && request.role() != Role.USER) {
+            throw new IllegalArgumentException("회원가입은 일반 회원으로만 할 수 있습니다. 강사/매니저는 초대 링크로, 대표 계정은 운영자에게 문의하세요.");
+        }
         User user = authService.register(
-                request.username(), request.email(), request.password(), request.role(), request.name(), request.phone()
+                request.username(), request.email(), request.password(), Role.USER, request.name(), request.phone()
         );
         String accessToken = jwtTokenProvider.createAccessToken(AuthenticatedUser.from(user));
         return ResponseEntity.status(HttpStatus.CREATED).body(new TokenResponse(accessToken));
@@ -80,7 +85,7 @@ public class AuthController {
             @NotBlank @Pattern(regexp = "^[a-zA-Z0-9_]{4,20}$", message = "아이디는 영문/숫자/밑줄 4~20자여야 합니다") String username,
             @Email @NotBlank String email,
             @NotBlank String password,
-            @NotNull Role role,
+            Role role, // 비워두거나 USER만 가능 — 다른 역할은 아래 register()에서 거절한다
             @NotBlank String name,
             String phone
     ) {

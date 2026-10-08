@@ -1,5 +1,7 @@
 package com.hub.reservehub.security;
 
+import java.util.Set;
+import java.util.EnumSet;
 import com.hub.reservehub.domain.user.Role;
 import com.hub.reservehub.domain.user.User;
 import java.util.Collection;
@@ -20,17 +22,25 @@ public class AuthenticatedUser implements UserDetails {
     private final String passwordHash;
     private final Role role;
     private final boolean enabled;
+    // 이 계정이 플랫폼에서 실제로 맡은 직원 역할(MANAGER/TUTOR) — 초대로 합류한 사람은 전역 role이 USER여도
+    // 이 역할로 컨트롤러의 hasAnyRole 검사를 통과한다. 어느 플랫폼에서 무엇을 할 수 있는지는 서비스의 PlatformAccessGuard가 따로 정한다.
+    private final Set<Role> platformRoles;
 
-    private AuthenticatedUser(UUID id, String username, String passwordHash, Role role, boolean enabled) {
+    private AuthenticatedUser(UUID id, String username, String passwordHash, Role role, boolean enabled, Set<Role> platformRoles) {
         this.id = id;
         this.username = username;
         this.passwordHash = passwordHash;
         this.role = role;
         this.enabled = enabled;
+        this.platformRoles = platformRoles;
     }
 
     public static AuthenticatedUser from(User user) {
-        return new AuthenticatedUser(user.getId(), user.getUsername(), user.getPasswordHash(), user.getRole(), user.isActive());
+        return from(user, EnumSet.noneOf(Role.class));
+    }
+
+    public static AuthenticatedUser from(User user, Set<Role> platformRoles) {
+        return new AuthenticatedUser(user.getId(), user.getUsername(), user.getPasswordHash(), user.getRole(), user.isActive(), platformRoles);
     }
 
     // Exposes the application-specific identifier for downstream business logic.
@@ -49,7 +59,9 @@ public class AuthenticatedUser implements UserDetails {
     // Maps the domain role to the Spring Security authority convention.
     // 도메인 역할을 Spring Security 권한 규칙에 맞는 형태로 변환한다.
     public Collection<? extends GrantedAuthority> getAuthorities() {
-        return List.of(new SimpleGrantedAuthority("ROLE_" + role.name()));
+        Set<Role> all = EnumSet.of(role);
+        all.addAll(platformRoles);
+        return all.stream().map(r -> (GrantedAuthority) new SimpleGrantedAuthority("ROLE_" + r.name())).toList();
     }
 
     @Override

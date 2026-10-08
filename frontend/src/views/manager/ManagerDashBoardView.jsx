@@ -15,8 +15,8 @@ export default function ManagerDashBoardView({ onNavigate, platformId, platformN
 		}
 		setLoading(true);
 		const [memberList, requestList] = await Promise.all([
-			listMembers(platformId),
-			listAllScheduleRequests([{ id: platformId }])
+			listMembers(platformId).catch(() => []),
+			listAllScheduleRequests([{ id: platformId }]).catch(() => [])
 		]);
 		setMembers(memberList);
 		setRequests(requestList);

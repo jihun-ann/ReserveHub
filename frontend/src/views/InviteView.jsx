@@ -75,7 +75,7 @@ export default function InviteView() {
 			// 가입 시 이메일/연락처는 초대받은 값으로 고정해서 보낸다 — 다른 값으로는 승인되지 않는다.
 			const result = mode === "login"
 				? await apiPost("/api/v1/auth/login", { username: form.username, password: form.password })
-				: await apiPost("/api/v1/auth/register", { ...form, role: invite.staffRole });
+				: await apiPost("/api/v1/auth/register", { ...form, role: "USER" });
 			setSession(result.accessToken);
 			setUser(await loadCurrentUser());
 		} catch (err) {

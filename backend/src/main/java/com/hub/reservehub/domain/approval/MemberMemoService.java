@@ -1,5 +1,6 @@
 package com.hub.reservehub.domain.approval;
 
+import com.hub.reservehub.domain.platform.ManagerPermission;
 import com.hub.reservehub.domain.platform.PlatformAccessGuard;
 import com.hub.reservehub.security.AuthenticatedUser;
 import java.util.List;
@@ -25,7 +26,7 @@ public class MemberMemoService {
 
     @Transactional
     public MemberMemo create(UUID platformId, AuthenticatedUser actor, UUID targetUserId, String content) {
-        platformAccessGuard.verify(platformId, actor);
+        platformAccessGuard.verifyManagerPermission(platformId, actor, ManagerPermission.MENU_MEMBERS);
         MemberMemo memo = memberMemoRepository.save(new MemberMemo(platformId, targetUserId, actor.getId(), content));
         actionLogRepository.save(ActionLog.of(platformId, actor.getId(), ActionTarget.MEMBER_MEMO, memo.getId(), "CREATE",
                 "회원 메모 작성: \"" + LogMemo.clip(content, 100) + "\""));
@@ -34,13 +35,13 @@ public class MemberMemoService {
 
     @Transactional(readOnly = true)
     public List<MemberMemo> list(UUID platformId, AuthenticatedUser actor, UUID targetUserId) {
-        platformAccessGuard.verify(platformId, actor);
+        platformAccessGuard.verifyManagerPermission(platformId, actor, ManagerPermission.MENU_MEMBERS);
         return memberMemoRepository.findByPlatformIdAndUserId(platformId, targetUserId);
     }
 
     @Transactional
     public void delete(UUID platformId, AuthenticatedUser actor, UUID memoId) {
-        platformAccessGuard.verify(platformId, actor);
+        platformAccessGuard.verifyManagerPermission(platformId, actor, ManagerPermission.MENU_MEMBERS);
         MemberMemo memo = memberMemoRepository.findById(memoId)
                 .orElseThrow(() -> new IllegalArgumentException("Memo not found"));
         if (!memo.getPlatformId().equals(platformId)) {

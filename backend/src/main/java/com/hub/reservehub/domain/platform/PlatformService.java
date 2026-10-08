@@ -204,7 +204,7 @@ public class PlatformService {
     // 한 사람이 이 플랫폼에서 여러 StaffRole(예: MANAGER+TUTOR)을 동시에 가질 수 있으므로 활성 배정
     // 전부에 동일하게 적용한다 — 소득유형은 역할이 아니라 사람에 딸린 정보이기 때문.
     public List<PlatformStaff> updateStaffIncomeType(UUID platformId, AuthenticatedUser actor, UUID targetUserId, IncomeType incomeType) {
-        platformAccessGuard.verifyRole(platformId, actor, StaffRole.MANAGER);
+        platformAccessGuard.verifyManagerPermission(platformId, actor, ManagerPermission.TUTOR_MANAGE);
         List<PlatformStaff> staffList = platformStaffRepository.findByPlatformIdAndUserId(platformId, targetUserId).stream()
                 .filter(PlatformStaff::isActive)
                 .toList();
@@ -222,7 +222,7 @@ public class PlatformService {
     // 회당 강사료 지정 — TUTOR 역할에만 의미가 있으므로 그 역할의 배정에만 적용한다(겸직이어도
     // MANAGER 몫 급여는 건드리지 않음). MANAGER 이상만 변경 가능.
     public PlatformStaff updateStaffSessionRate(UUID platformId, AuthenticatedUser actor, UUID targetUserId, int sessionRate) {
-        platformAccessGuard.verifyRole(platformId, actor, StaffRole.MANAGER);
+        platformAccessGuard.verifyManagerPermission(platformId, actor, ManagerPermission.TUTOR_MANAGE);
         PlatformStaff staff = platformStaffRepository.findByPlatformIdAndUserId(platformId, targetUserId).stream()
                 .filter(s -> s.isActive() && s.getStaffRole() == StaffRole.TUTOR)
                 .findFirst()

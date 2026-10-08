@@ -1,5 +1,9 @@
 package com.hub.reservehub.security;
 
+import java.util.Set;
+import java.util.EnumSet;
+import com.hub.reservehub.domain.user.Role;
+import com.hub.reservehub.domain.platform.PlatformStaffRepository;
 import com.hub.reservehub.domain.user.User;
 import com.hub.reservehub.domain.user.UserRepository;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -15,9 +19,11 @@ import org.springframework.stereotype.Service;
 public class AuthenticatedUserService implements UserDetailsService {
 
     private final UserRepository userRepository;
+    private final PlatformStaffRepository platformStaffRepository;
 
-    public AuthenticatedUserService(UserRepository userRepository) {
+    public AuthenticatedUserService(UserRepository userRepository, PlatformStaffRepository platformStaffRepository) {
         this.userRepository = userRepository;
+        this.platformStaffRepository = platformStaffRepository;
     }
 
     @Override
@@ -26,6 +32,10 @@ public class AuthenticatedUserService implements UserDetailsService {
     public UserDetails loadUserByUsername(String username) {
         User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new UsernameNotFoundException("User not found"));
-        return AuthenticatedUser.from(user);
+        // 초대로 직원이 된 계정도 전역 role이 USER일 수 있어서, 실제 직원 배정에서 역할을 읽어 권한에 더한다.
+        Set<Role> staffRoles = EnumSet.noneOf(Role.class);
+        platformStaffRepository.findByUserIdAndIsActiveTrue(user.getId())
+                .forEach(staff -> staffRoles.add(Role.valueOf(staff.getStaffRole().name())));
+        return AuthenticatedUser.from(user, staffRoles);
     }
 }

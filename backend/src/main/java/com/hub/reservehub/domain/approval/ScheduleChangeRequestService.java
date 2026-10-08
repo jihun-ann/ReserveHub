@@ -1,5 +1,6 @@
 package com.hub.reservehub.domain.approval;
 
+import com.hub.reservehub.domain.platform.ManagerPermission;
 import com.hub.reservehub.domain.outbox.OutboxEvent;
 import com.hub.reservehub.domain.outbox.OutboxEventRepository;
 import com.hub.reservehub.domain.platform.PlatformAccessGuard;
@@ -75,7 +76,7 @@ public class ScheduleChangeRequestService {
 
     @Transactional(readOnly = true)
     public List<ScheduleChangeRequest> list(UUID platformId, AuthenticatedUser actor, RequestStatus status) {
-        platformAccessGuard.verifyRole(platformId, actor, StaffRole.MANAGER);
+        platformAccessGuard.verifyManagerPermission(platformId, actor, ManagerPermission.MENU_APPROVAL);
         return requestRepository.findByPlatformIdAndStatus(platformId, status);
     }
 
@@ -89,7 +90,7 @@ public class ScheduleChangeRequestService {
     @Transactional
     public ScheduleChangeRequest approve(UUID requestId, AuthenticatedUser actor, @Nullable String memo) {
         ScheduleChangeRequest request = findRequest(requestId);
-        platformAccessGuard.verifyRole(request.getPlatformId(), actor, StaffRole.MANAGER);
+        platformAccessGuard.verifyManagerPermission(request.getPlatformId(), actor, ManagerPermission.MENU_APPROVAL);
         request.approve(actor.getId(), memo);
 
         actionLogRepository.save(ActionLog.of(request.getPlatformId(), actor.getId(), ActionTarget.SCHEDULE_REQUEST, request.getId(), "APPROVE",
@@ -105,7 +106,7 @@ public class ScheduleChangeRequestService {
     @Transactional
     public ScheduleChangeRequest reject(UUID requestId, AuthenticatedUser actor, @Nullable String memo) {
         ScheduleChangeRequest request = findRequest(requestId);
-        platformAccessGuard.verifyRole(request.getPlatformId(), actor, StaffRole.MANAGER);
+        platformAccessGuard.verifyManagerPermission(request.getPlatformId(), actor, ManagerPermission.MENU_APPROVAL);
         request.reject(actor.getId(), memo);
 
         actionLogRepository.save(ActionLog.of(request.getPlatformId(), actor.getId(), ActionTarget.SCHEDULE_REQUEST, request.getId(), "REJECT",

@@ -110,8 +110,8 @@ export default function TutorScheduleRequestView({ platformId }) {
 		if (!lesson) return;
 		const list = (await listReservationsForSlot(lesson.slotId, lesson.lessonDate)).filter((r) => r.status === "CONFIRMED");
 		setReservations(list);
-		const names = await Promise.all(list.map((r) => getUser(r.userId)));
-		setStudentNames(Object.fromEntries(list.map((r, i) => [r.userId, names[i].name])));
+		const names = await Promise.all(list.map((r) => getUser(r.userId).catch(() => null)));
+		setStudentNames(Object.fromEntries(list.map((r, i) => [r.userId, names[i]?.name])));
 	}
 
 	async function submit() {

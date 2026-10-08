@@ -38,7 +38,7 @@ export default function ManagerMypageView({ platformId, currentPlatform }) {
 			return;
 		}
 		setLoading(true);
-		const [members, staff] = await Promise.all([listMembers(platformId), listStaff(platformId)]);
+		const [members, staff] = await Promise.all([listMembers(platformId).catch(() => []), listStaff(platformId)]);
 		setMemberCount(new Set(members.map((m) => m.userId)).size);
 		setTutorCount(staff.filter((s) => s.staffRole === "TUTOR").length);
 		setLoading(false);

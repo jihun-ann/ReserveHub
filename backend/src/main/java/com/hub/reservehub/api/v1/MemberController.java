@@ -61,8 +61,9 @@ public class MemberController {
     ) {
         static MemberResponse from(MemberService.MemberPass mp) {
             return new MemberResponse(
-                    mp.user().getId(), mp.user().getEmail(), mp.user().getName(), mp.user().getPhone(),
-                    mp.user().getGuardianName(), mp.user().getGuardianPhone(),
+                    mp.user().getId(), mp.contactVisible() ? mp.user().getEmail() : null, mp.user().getName(),
+                    mp.contactVisible() ? mp.user().getPhone() : null,
+                    mp.contactVisible() ? mp.user().getGuardianName() : null, mp.contactVisible() ? mp.user().getGuardianPhone() : null,
                     mp.userPass().getId(), mp.pass().getName(), mp.userPass().getSessionsTotal(),
                     mp.userPass().getSessionsUsed(), mp.userPass().getStatus(),
                     mp.userPass().getStartedAt(), mp.userPass().getExpiresAt()

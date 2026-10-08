@@ -1,5 +1,7 @@
 package com.hub.reservehub.domain.pass;
 
+import com.hub.reservehub.domain.platform.StaffRole;
+import com.hub.reservehub.domain.platform.ManagerPermission;
 import com.hub.reservehub.domain.platform.PlatformAccessGuard;
 import com.hub.reservehub.domain.user.User;
 import com.hub.reservehub.domain.user.UserRepository;
@@ -38,7 +40,13 @@ public class MemberService {
 
     @Transactional(readOnly = true)
     public List<MemberPass> list(UUID platformId, AuthenticatedUser actor) {
-        platformAccessGuard.verify(platformId, actor);
+        // 회원 관리/결제/수업 화면을 쓰는 매니저(와 오너)는 연락처·보호자 정보까지 본다. 강사는 출석 확인에 필요한
+        // 이름과 수강권 상태만 보고, 연락처/보호자 정보는 가려서 받는다. 그 외는 접근할 수 없다.
+        boolean contactVisible = platformAccessGuard.hasManagerPermission(
+                platformId, actor, ManagerPermission.MENU_MEMBERS, ManagerPermission.MENU_PAYMENT, ManagerPermission.MENU_LESSON);
+        if (!contactVisible) {
+            platformAccessGuard.verifyRole(platformId, actor, StaffRole.TUTOR);
+        }
         List<UserPass> userPasses = userPassRepository.findByPlatformId(platformId);
 
         Map<UUID, Pass> passesById = passRepository.findAllById(userPasses.stream().map(UserPass::getPassId).distinct().toList())
@@ -47,7 +55,7 @@ public class MemberService {
                 .stream().collect(Collectors.toMap(User::getId, Function.identity()));
 
         return userPasses.stream()
-                .map(up -> new MemberPass(up, passesById.get(up.getPassId()), usersById.get(up.getUserId())))
+                .map(up -> new MemberPass(up, passesById.get(up.getPassId()), usersById.get(up.getUserId()), contactVisible))
                 .toList();
     }
 
@@ -55,7 +63,7 @@ public class MemberService {
     // 매니저가 학생(회원)의 보호자 정보를 입력/수정한다 — 계정 소유자의 마이페이지 프로필과 별개로,
     // 회원이 이 플랫폼의 수강생일 때만 매니저가 대신 관리하는 정보다.
     public User updateGuardian(UUID platformId, AuthenticatedUser actor, UUID targetUserId, String guardianName, String guardianPhone) {
-        platformAccessGuard.verify(platformId, actor);
+        platformAccessGuard.verifyManagerPermission(platformId, actor, ManagerPermission.MENU_MEMBERS);
         boolean isMember = userPassRepository.findByPlatformId(platformId).stream()
                 .anyMatch(up -> up.getUserId().equals(targetUserId));
         if (!isMember) {
@@ -67,6 +75,6 @@ public class MemberService {
         return user;
     }
 
-    public record MemberPass(UserPass userPass, Pass pass, User user) {
+    public record MemberPass(UserPass userPass, Pass pass, User user, boolean contactVisible) {
     }
 }

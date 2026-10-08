@@ -44,7 +44,7 @@ public class LeaveRequestService {
 
     @Transactional(readOnly = true)
     public List<LeaveRequest> list(UUID platformId, AuthenticatedUser actor, RequestStatus status) {
-        platformAccessGuard.verifyRole(platformId, actor, StaffRole.MANAGER);
+        platformAccessGuard.verifyManagerPermission(platformId, actor, ManagerPermission.MENU_APPROVAL);
         return leaveRequestRepository.findByPlatformIdAndStatus(platformId, status);
     }
 

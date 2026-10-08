@@ -1,5 +1,6 @@
 package com.hub.reservehub.domain.pass;
 
+import com.hub.reservehub.domain.platform.ManagerPermission;
 import com.hub.reservehub.domain.approval.LogMemo;
 import com.hub.reservehub.domain.approval.ActionLog;
 import com.hub.reservehub.domain.approval.ActionLogRepository;
@@ -31,7 +32,7 @@ public class PassService {
             UUID platformId, AuthenticatedUser actor, String name, PassType type,
             int price, @Nullable Short sessionCount, short validDays
     ) {
-        platformAccessGuard.verifyRole(platformId, actor, StaffRole.MANAGER);
+        platformAccessGuard.verifyManagerPermission(platformId, actor, ManagerPermission.MENU_PAYMENT);
         Pass pass = passRepository.save(new Pass(platformId, name, type, price, sessionCount, validDays));
         actionLogRepository.save(ActionLog.of(platformId, actor.getId(), ActionTarget.PASS_CHANGE, pass.getId(), "CREATE",
                 "수강권 등록: '" + name + "' (" + type + ", " + LogMemo.won(price) + (sessionCount != null ? ", " + sessionCount + "회" : "") + ", 유효 " + validDays + "일)"));
@@ -56,7 +57,7 @@ public class PassService {
             int price, @Nullable Short sessionCount, short validDays
     ) {
         Pass pass = findPass(passId);
-        platformAccessGuard.verifyRole(pass.getPlatformId(), actor, StaffRole.MANAGER);
+        platformAccessGuard.verifyManagerPermission(pass.getPlatformId(), actor, ManagerPermission.MENU_PAYMENT);
         String changes = LogMemo.changes(
                 LogMemo.change("이름", pass.getName(), name),
                 LogMemo.change("유형", pass.getType(), type),
@@ -73,7 +74,7 @@ public class PassService {
     @Transactional
     public void deactivate(UUID passId, AuthenticatedUser actor) {
         Pass pass = findPass(passId);
-        platformAccessGuard.verifyRole(pass.getPlatformId(), actor, StaffRole.MANAGER);
+        platformAccessGuard.verifyManagerPermission(pass.getPlatformId(), actor, ManagerPermission.MENU_PAYMENT);
         pass.deactivate();
         actionLogRepository.save(ActionLog.of(pass.getPlatformId(), actor.getId(), ActionTarget.PASS_CHANGE, pass.getId(), "DEACTIVATE",
                 "수강권 비활성화: '" + pass.getName() + "'"));

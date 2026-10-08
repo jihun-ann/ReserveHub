@@ -38,7 +38,7 @@ export default function ManagerPaymentHistoryView({ platformId }) {
 
 		// 구매자(userId)와 결제 처리자(processedBy) 둘 다 같은 사용자 조회 API로 이름을 가져온다.
 		const userIds = [...new Set(orderList.flatMap((o) => [o.userId, o.processedBy]).filter(Boolean))];
-		const users = await Promise.all(userIds.map((id) => getUser(id)));
+		const users = await Promise.all(userIds.map((id) => getUser(id).catch(() => null)));
 		setUsersById(Object.fromEntries(userIds.map((id, i) => [id, users[i]])));
 
 		setLoading(false);

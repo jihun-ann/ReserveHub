@@ -1,5 +1,7 @@
 package com.hub.reservehub.domain.user;
 
+import org.springframework.security.access.AccessDeniedException;
+import com.hub.reservehub.domain.platform.StaffRole;
 import com.hub.reservehub.domain.platform.JoinRequest;
 import com.hub.reservehub.domain.platform.JoinRequestRepository;
 import com.hub.reservehub.domain.platform.JoinRequestStatus;
@@ -33,6 +35,21 @@ public class AccountService {
         this.platformRepository = platformRepository;
         this.staffRepository = staffRepository;
         this.joinRequestRepository = joinRequestRepository;
+    }
+
+    // 다른 사람 대신 계정을 만들어 주는 기능(현장 회원 등록 등)은 플랫폼 운영진만 쓸 수 있고, 만들 수 있는 역할은
+    // 회원(USER)과 강사(TUTOR)뿐이다. 대표/매니저/세무사 계정은 이 경로로 만들 수 없다.
+    @Transactional(readOnly = true)
+    public void verifyCanProvisionAccount(UUID actorId, Role role) {
+        if (role != Role.USER && role != Role.TUTOR) {
+            throw new AccessDeniedException("이 역할의 계정은 직접 만들 수 없습니다.");
+        }
+        boolean isOwner = !platformRepository.findByCreatedBy(actorId).isEmpty();
+        boolean isManager = staffRepository.findByUserIdAndIsActiveTrue(actorId).stream()
+                .anyMatch(s -> s.getStaffRole() == StaffRole.MANAGER);
+        if (!isOwner && !isManager) {
+            throw new AccessDeniedException("계정을 만들 권한이 없습니다.");
+        }
     }
 
     @Transactional

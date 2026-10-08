@@ -75,7 +75,7 @@ public class OrderService {
         }
         boolean selfCheckout = buyerUserId.equals(actor.getId());
         if (!selfCheckout) {
-            platformAccessGuard.verify(platformId, actor);
+            platformAccessGuard.verifyManagerPermission(platformId, actor, ManagerPermission.MENU_PAYMENT);
         }
 
         record ResolvedItem(Pass pass, short quantity, int lineTotal, PassSelection selection) {
@@ -167,7 +167,8 @@ public class OrderService {
     // 결제를 확정하고 구매 수량만큼 UserPass 인스턴스를 발급한다.
     public Order pay(UUID orderId, AuthenticatedUser actor, PaymentMethod paymentMethod, CashReceiptStatus cashReceiptStatus, @Nullable String receiptNumber) {
         Order order = findOrder(orderId);
-        verifyBuyerOrStaff(order, actor);
+        // 결제 확정은 구매자 본인이 할 수 없다 — 실제 결제 연동(PG) 전에는 직원이 입금/카드 결제를 확인하고 처리한다.
+        platformAccessGuard.verifyManagerPermission(order.getPlatformId(), actor, ManagerPermission.MENU_PAYMENT);
         order.pay(paymentMethod, cashReceiptStatus, receiptNumber, actor.getId());
         issuePassesAndEmitPaidEvent(order);
         return order;
@@ -181,7 +182,7 @@ public class OrderService {
             PaymentMethod paymentMethod, CashReceiptStatus cashReceiptStatus, @Nullable String receiptNumber
     ) {
         Order order = findOrder(orderId);
-        verifyBuyerOrStaff(order, actor);
+        platformAccessGuard.verifyManagerPermission(order.getPlatformId(), actor, ManagerPermission.MENU_PAYMENT);
         order.partialPay(amount, paymentMethod, cashReceiptStatus, receiptNumber, actor.getId());
         if (order.getStatus() == OrderStatus.PAID) {
             issuePassesAndEmitPaidEvent(order);

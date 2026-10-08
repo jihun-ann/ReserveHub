@@ -1,5 +1,6 @@
 package com.hub.reservehub.domain.approval;
 
+import com.hub.reservehub.domain.platform.ManagerPermission;
 import com.hub.reservehub.domain.platform.PlatformAccessGuard;
 import com.hub.reservehub.domain.platform.StaffRole;
 import com.hub.reservehub.domain.user.User;
@@ -32,7 +33,7 @@ public class ActionLogService {
 
     @Transactional(readOnly = true)
     public List<Entry> list(UUID platformId, AuthenticatedUser actor) {
-        platformAccessGuard.verifyRole(platformId, actor, StaffRole.MANAGER);
+        platformAccessGuard.verifyManagerPermission(platformId, actor, ManagerPermission.MENU_ACTIVITY_LOG);
         List<ActionLog> logs = actionLogRepository.findByPlatformIdOrderByCreatedAtDesc(platformId);
         Map<UUID, User> actorsById = userRepository.findAllById(logs.stream().map(ActionLog::getActorId).distinct().toList())
                 .stream().collect(Collectors.toMap(User::getId, Function.identity()));

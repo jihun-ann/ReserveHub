@@ -1,5 +1,6 @@
 package com.hub.reservehub.api.v1;
 
+import com.hub.reservehub.domain.user.UserDirectoryService;
 import java.time.LocalDate;
 import com.hub.reservehub.api.v1.auth.controller.AuthController.UserProfileResponse;
 import com.hub.reservehub.domain.user.VerificationChannel;
@@ -37,11 +38,13 @@ public class UserController {
     private final CurrentAuthenticatedUser currentAuthenticatedUser;
     private final AccountService accountService;
     private final ContactVerificationService verificationService;
+    private final UserDirectoryService userDirectoryService;
 
     public UserController(
             UserService userService, PasswordEncoder passwordEncoder, CurrentAuthenticatedUser currentAuthenticatedUser,
-            AccountService accountService, ContactVerificationService verificationService
+            AccountService accountService, ContactVerificationService verificationService, UserDirectoryService userDirectoryService
     ) {
+        this.userDirectoryService = userDirectoryService;
         this.accountService = accountService;
         this.verificationService = verificationService;
         this.userService = userService;
@@ -117,15 +120,18 @@ public class UserController {
     @GetMapping("/{id}")
     // Returns a single user by id for protected internal lookups.
     // 보호된 내부 조회 용도로 id 기준 사용자 한 명을 반환한다.
+    // 본인은 전체 정보, 다른 사람은 내가 오너/직원인 플랫폼과 연결된 경우에만 — 그것도 정산 계좌/보호자 정보는 뺀 공개용만.
     public UserResponse getUser(@PathVariable UUID id) {
-        User user = userService.get(id);
-        return UserResponse.from(user);
+        UUID actorId = currentAuthenticatedUser.get().getId();
+        User user = userDirectoryService.getVisible(id, actorId);
+        return user.getId().equals(actorId) ? UserResponse.from(user) : UserResponse.publicView(user);
     }
 
     @PostMapping
     // Creates a user with a hashed password when management APIs provision accounts directly.
     // 관리 API가 계정을 직접 생성할 때 비밀번호를 해시해서 사용자를 만든다.
     public ResponseEntity<UserResponse> createUser(@Valid @RequestBody CreateUserRequest request) {
+        accountService.verifyCanProvisionAccount(currentAuthenticatedUser.get().getId(), request.role());
         User user = userService.create(
                 request.username(),
                 request.email(),
@@ -152,6 +158,14 @@ public class UserController {
             String bankName, String bankAccountNumber, String bankAccountHolder,
             String guardianName, String guardianPhone
     ) {
+
+        // 다른 사람에게 보여줄 때 — 정산 계좌와 보호자 정보는 제외한다.
+        public static UserResponse publicView(User user) {
+            return new UserResponse(
+                    user.getId(), user.getUsername(), user.getEmail(), user.getRole(), user.getName(), user.getPhone(),
+                    null, null, null, null, null
+            );
+        }
 
         public static UserResponse from(User user) {
             return new UserResponse(
