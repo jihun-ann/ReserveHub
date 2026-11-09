@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { listAllScheduleRequests, listMembers } from "../../api/common.js";
+import MyTasksCard from "../../components/MyTasksCard.jsx";
 
 export default function ManagerDashBoardView({ onNavigate, platformId, platformName }) {
 	const [members, setMembers] = useState([]);
@@ -58,27 +59,7 @@ export default function ManagerDashBoardView({ onNavigate, platformId, platformN
 			</div>
 
 			<div className="dash-grid">
-				<div className="card">
-					<div className="card-title">처리 대기 업무</div>
-					{loading ? (
-						<div style={{ padding: "16px 0", color: "var(--text-dim)", fontSize: "13px" }}>불러오는 중</div>
-					) : pending.length === 0 ? (
-						<div style={{ padding: "16px 0", color: "var(--text-dim)", fontSize: "13px" }}>처리 대기 중인 요청이 없습니다</div>
-					) : (
-						pending.slice(0, 5).map((r) => (
-							<div key={r.id} className="pending-item">
-								<div className="pending-dot" style={{ background: "var(--accent3)" }}></div>
-								<div className="pending-body">
-									<div className="pending-title">{r.reason || "일정 변경 요청"}</div>
-									<div className="pending-meta">기존 {r.originalDate} → 희망 {r.requestedDate}</div>
-								</div>
-								<button className="btn btn-ghost btn-sm" onClick={() => onNavigate("approval")}>
-									처리
-								</button>
-							</div>
-						))
-					)}
-				</div>
+				<MyTasksCard platformId={platformId} canApprove onOpenApproval={() => onNavigate("approval")} />
 			</div>
 		</div>
 	);

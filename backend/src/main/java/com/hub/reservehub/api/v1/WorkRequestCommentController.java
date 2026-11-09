@@ -1,8 +1,8 @@
 package com.hub.reservehub.api.v1;
 
-import com.hub.reservehub.domain.approval.FinancialRequestComment;
-import com.hub.reservehub.domain.approval.FinancialRequestCommentService;
-import com.hub.reservehub.domain.approval.FinancialRequestCommentService.CommentView;
+import com.hub.reservehub.domain.approval.WorkRequestComment;
+import com.hub.reservehub.domain.approval.WorkRequestCommentService;
+import com.hub.reservehub.domain.approval.WorkRequestCommentService.CommentView;
 import com.hub.reservehub.domain.user.Role;
 import com.hub.reservehub.security.CurrentAuthenticatedUser;
 import java.io.IOException;
@@ -29,17 +29,17 @@ import org.springframework.web.multipart.MultipartFile;
 @RestController
 @Validated
 @PreAuthorize("hasAnyRole('OWNER', 'MANAGER', 'TAX_ACCOUNTANT')")
-public class FinancialRequestCommentController {
+public class WorkRequestCommentController {
 
-    private final FinancialRequestCommentService commentService;
+    private final WorkRequestCommentService commentService;
     private final CurrentAuthenticatedUser currentAuthenticatedUser;
 
-    public FinancialRequestCommentController(FinancialRequestCommentService commentService, CurrentAuthenticatedUser currentAuthenticatedUser) {
+    public WorkRequestCommentController(WorkRequestCommentService commentService, CurrentAuthenticatedUser currentAuthenticatedUser) {
         this.commentService = commentService;
         this.currentAuthenticatedUser = currentAuthenticatedUser;
     }
 
-    @PostMapping("/api/v1/financial-requests/{id}/comments")
+    @PostMapping("/api/v1/work-requests/{id}/comments")
     public ResponseEntity<CommentResponse> create(
             @PathVariable UUID id,
             @RequestParam(required = false) String content,
@@ -49,16 +49,16 @@ public class FinancialRequestCommentController {
         return ResponseEntity.status(HttpStatus.CREATED).body(CommentResponse.from(created));
     }
 
-    @GetMapping("/api/v1/financial-requests/{id}/comments")
+    @GetMapping("/api/v1/work-requests/{id}/comments")
     public List<CommentResponse> list(@PathVariable UUID id) {
         return commentService.list(id, currentAuthenticatedUser.get()).stream()
                 .map(CommentResponse::from)
                 .toList();
     }
 
-    @GetMapping("/api/v1/financial-requests/{id}/comments/{commentId}/attachment")
+    @GetMapping("/api/v1/work-requests/{id}/comments/{commentId}/attachment")
     public ResponseEntity<Resource> downloadAttachment(@PathVariable UUID id, @PathVariable UUID commentId) throws IOException {
-        FinancialRequestComment comment = commentService.getAttachment(id, commentId, currentAuthenticatedUser.get());
+        WorkRequestComment comment = commentService.getAttachment(id, commentId, currentAuthenticatedUser.get());
         Resource resource = new FileSystemResource(comment.getAttachmentStoredPath());
         String contentType = comment.getAttachmentContentType() != null ? comment.getAttachmentContentType() : MediaType.APPLICATION_OCTET_STREAM_VALUE;
         return ResponseEntity.ok()
@@ -73,7 +73,7 @@ public class FinancialRequestCommentController {
             String attachmentName, Long attachmentSizeBytes, Instant createdAt
     ) {
         public static CommentResponse from(CommentView view) {
-            FinancialRequestComment comment = view.comment();
+            WorkRequestComment comment = view.comment();
             var author = view.author();
             return new CommentResponse(
                     comment.getId(), comment.getAuthorId(), author != null ? author.getName() : "알 수 없음",

@@ -3,7 +3,7 @@ import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
 import {
 	LayoutDashboard, CheckSquare, Users, GraduationCap, Pin, Warehouse, ClipboardCheck,
-	CreditCard, Receipt, Calculator, ClipboardList, History, CalendarClock, Wrench, Target,
+	CreditCard, Receipt, Calculator, ClipboardList, History, Wrench, Target,
 	Wallet, CalendarDays, Calendar, User, Building2, Moon, Sun, Bell, LogOut, UserCog, Search, Menu
 } from "lucide-react";
 import { closeSidebar, toggleCollapse, openSidebar } from "./default.js";
@@ -17,7 +17,7 @@ import { getCurrentUser, loadCurrentUser, clearSession, displayName } from "../a
 import { listPlatforms, listAllScheduleRequests, listAllLeaveRequests, getMyPermissions, MANAGER_PERMISSIONS } from "../api/common.js";
 
 import ManagerDashBoardView from "./manager/ManagerDashBoardView.jsx";
-import ManagerApprovalView from "./manager/ManagerApprovalView.jsx";
+import ApprovalView from "./ApprovalView.jsx";
 import ManagerMemberManageView from "./manager/ManagerMemberManageView.jsx";
 import ManagerTutorManageView from "./manager/ManagerTutorManageView.jsx";
 import ManagerManagerManageView from "./manager/ManagerManagerManageView.jsx";
@@ -34,11 +34,9 @@ import ManagerMypageView from "./manager/ManagerMypageView.jsx";
 import TutorCalendarView from "./tutor/TutorCalendarView.jsx";
 import TutorAttendanceView from "./tutor/TutorAttendanceView.jsx";
 import TutorAttendanceHistoryView from "./tutor/TutorAttendanceHistoryView.jsx";
-import TutorScheduleRequestView from "./tutor/TutorScheduleRequestView.jsx";
 import TutorMypageView from "./tutor/TutorMypageView.jsx";
 
 import OwnerDashboardView from "./owner/OwnerDashboardView.jsx";
-import OwnerApprovalView from "./owner/OwnerApprovalView.jsx";
 import OwnerPlatformView from "./owner/OwnerPlatformView.jsx";
 import OwnerMypageView from "./owner/OwnerMypageView.jsx";
 
@@ -47,7 +45,6 @@ import UserReservationView from "./user/UserReservationView.jsx";
 
 import TaxAccountantRevenueView from "./taxaccountant/TaxAccountantRevenueView.jsx";
 import TaxAccountantStaffView from "./taxaccountant/TaxAccountantStaffView.jsx";
-import TaxAccountantCalendarView from "./taxaccountant/TaxAccountantCalendarView.jsx";
 import TaxAccountantMypageView from "./taxaccountant/TaxAccountantMypageView.jsx";
 
 import ManagerActivityLogView from "./manager/ManagerActivityLogView.jsx";
@@ -103,11 +100,11 @@ const ROLE_MENU = {
 		{ id: "platform", label: "플랫폼 관리", icon: Building2 },
 		{ id: "facility", label: "시설물 관리", icon: Warehouse },
 		{ id: "facilityStatus", label: "시설물 현황", icon: ClipboardCheck },
-		{ id: "approval", label: "승인 관리", icon: CheckSquare }
+		{ id: "approval", label: "결재", icon: CheckSquare }
 	],
 	MANAGER: [
 		{ id: "dashboard", label: "대시보드", icon: LayoutDashboard },
-		{ id: "approval", label: "승인 관리", icon: CheckSquare },
+		{ id: "approval", label: "결재", icon: CheckSquare },
 		{ id: "members", label: "회원 관리", icon: Users },
 		{ id: "tutor", label: "강사 관리", icon: GraduationCap },
 		{ id: "managerManage", label: "매니저 관리", icon: UserCog },
@@ -122,7 +119,7 @@ const ROLE_MENU = {
 	TUTOR: [
 		{ id: "attendance", label: "출석 관리", icon: CheckSquare },
 		{ id: "attendHistory", label: "출석 이력", icon: ClipboardList },
-		{ id: "schedule", label: "일정 변경 요청", icon: CalendarClock },
+		{ id: "approval", label: "결재", icon: CheckSquare },
 		{ id: "facilityReport", label: "시설물 고장 신고", icon: Wrench }
 	],
 	USER: [
@@ -133,7 +130,7 @@ const ROLE_MENU = {
 	TAX_ACCOUNTANT: [
 		{ id: "revenue", label: "매출 집계", icon: Wallet },
 		{ id: "payroll", label: "직원 정보", icon: Receipt },
-		{ id: "finCalendar", label: "재무 일정", icon: CalendarDays }
+		{ id: "approval", label: "결재", icon: CheckSquare }
 	]
 };
 
@@ -629,7 +626,7 @@ export default function AppShell() {
 						<OwnerDashboardView
 							platforms={ownerPlatforms}
 							requests={ownerRequests}
-							onDecided={refreshOwnerRequests}
+							platformId={currentPlatformId}
 							onNavigate={setCurrentContext}
 						/>
 					);
@@ -647,7 +644,7 @@ export default function AppShell() {
 				case "facilityStatus":
 					return <ManagerFacilityView platformId={currentPlatformId} />;
 				case "approval":
-					return <OwnerApprovalView requests={ownerRequests} onDecided={refreshOwnerRequests} />;
+					return <ApprovalView platformId={currentPlatformId} role="OWNER" />;
 				default:
 					return null;
 			}
@@ -667,7 +664,7 @@ export default function AppShell() {
 						/>
 					);
 				case "approval":
-					return <ManagerApprovalView platformId={currentPlatformId} />;
+					return <ApprovalView platformId={currentPlatformId} role="MANAGER" />;
 				case "members":
 					return <ManagerMemberManageView platformId={currentPlatformId} />;
 				case "tutor":
@@ -704,8 +701,8 @@ export default function AppShell() {
 					return <TutorAttendanceView platformId={currentPlatformId} />;
 				case "attendHistory":
 					return <TutorAttendanceHistoryView platformId={currentPlatformId} />;
-				case "schedule":
-					return <TutorScheduleRequestView platformId={currentPlatformId} />;
+				case "approval":
+					return <ApprovalView platformId={currentPlatformId} role="TUTOR" />;
 				case "facilityReport":
 					return <TutorFacilityReportView platformId={currentPlatformId} />;
 				default:
@@ -721,10 +718,8 @@ export default function AppShell() {
 					);
 				case "payroll":
 					return <TaxAccountantStaffView platformId={currentPlatformId} />;
-				case "finCalendar":
-					return (
-						<TaxAccountantCalendarView platformId={currentPlatformId} platformName={currentPlatform?.name} />
-					);
+				case "approval":
+					return <ApprovalView platformId={currentPlatformId} role="TAX_ACCOUNTANT" />;
 				default:
 					return null;
 			}

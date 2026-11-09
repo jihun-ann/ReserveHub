@@ -47,7 +47,7 @@ export const removeStaff = (platformId, userId) =>
 // 매니저 그룹에 줄 수 있는 메뉴/기능 권한 — 백엔드 ManagerPermission과 같은 이름이다.
 // kind "menu"는 매니저 사이드바 메뉴(menuId) 노출, "feature"는 해당 기능 실행 권한이다.
 export const MANAGER_PERMISSIONS = [
-	{ key: "MENU_APPROVAL", label: "승인 관리", kind: "menu", menuId: "approval" },
+	{ key: "MENU_APPROVAL", label: "결재함 (휴가·일정 변경 조회, 일정 변경 승인)", kind: "feature" },
 	{ key: "MENU_MEMBERS", label: "회원 관리", kind: "menu", menuId: "members" },
 	{ key: "MENU_TUTOR", label: "강사 관리", kind: "menu", menuId: "tutor" },
 	{ key: "MENU_LESSON", label: "수업 관리", kind: "menu", menuId: "lessonManage" },
@@ -61,7 +61,6 @@ export const MANAGER_PERMISSIONS = [
 	{ key: "PROGRAM_MANAGE", label: "프로그램 운영", kind: "feature" },
 	{ key: "TUTOR_MANAGE", label: "강사 초대 / 삭제", kind: "feature" },
 	{ key: "MANAGER_MANAGE", label: "매니저 초대 / 삭제, 그룹 관리", kind: "feature", menuId: "managerManage" },
-	{ key: "FINANCIAL_APPROVE", label: "재무요청 승인 / 반려", kind: "feature" },
 	{ key: "LEAVE_APPROVE", label: "휴가요청 승인 / 반려", kind: "feature" },
 	{ key: "DISCOUNT_POLICY", label: "할인정책 관리", kind: "feature" },
 	{ key: "REFUND", label: "환불", kind: "feature" },
@@ -120,35 +119,35 @@ export const updateStaffSessionRate = (platformId, userId, sessionRate) =>
 export const updateTaxAccountantIncomeType = (platformId, userId, incomeType) =>
 	apiPatch(`/api/v1/platforms/${platformId}/tax-accountants/${userId}/income-type`, { incomeType });
 
-export const FINANCIAL_REQUEST_TYPE_LABEL = { PAYDAY: "월급날", EXPENSE: "지출일", STATEMENT: "명세서 제출" };
+export const WORK_REQUEST_STATUS_LABEL = { REQUESTED: "요청됨", IN_PROGRESS: "진행 중", DONE: "완료", CANCELED: "취소" };
 
-export const createFinancialRequest = (platformId, payload) =>
-	apiPost(`/api/v1/platforms/${platformId}/financial-requests`, payload);
+export const createWorkRequest = (platformId, { assigneeId, title, memo, dueDate }) =>
+	apiPost(`/api/v1/platforms/${platformId}/work-requests`, { assigneeId, title, memo: memo || null, dueDate: dueDate || null });
 
-export const listFinancialRequests = (platformId) =>
-	apiGet(`/api/v1/platforms/${platformId}/financial-requests`);
+export const listWorkRequests = (platformId) =>
+	apiGet(`/api/v1/platforms/${platformId}/work-requests`);
 
-export const approveFinancialRequest = (id, memo) =>
-	apiPost(`/api/v1/financial-requests/${id}/approve`, memo ? { memo } : undefined);
+export const listWorkRequestAssignees = (platformId) =>
+	apiGet(`/api/v1/platforms/${platformId}/work-requests/assignees`);
 
-export const rejectFinancialRequest = (id, memo) =>
-	apiPost(`/api/v1/financial-requests/${id}/reject`, memo ? { memo } : undefined);
+export const changeWorkRequestStatus = (id, status) =>
+	apiPost(`/api/v1/work-requests/${id}/status`, { status });
 
-export const listFinancialRequestComments = (requestId) =>
-	apiGet(`/api/v1/financial-requests/${requestId}/comments`);
+export const listWorkRequestComments = (requestId) =>
+	apiGet(`/api/v1/work-requests/${requestId}/comments`);
 
-export const addFinancialRequestComment = (requestId, { content, file } = {}) => {
+export const addWorkRequestComment = (requestId, { content, file } = {}) => {
 	const formData = new FormData();
 	if (content?.trim()) formData.append("content", content);
 	if (file) formData.append("file", file);
-	return apiPostForm(`/api/v1/financial-requests/${requestId}/comments`, formData);
+	return apiPostForm(`/api/v1/work-requests/${requestId}/comments`, formData);
 };
 
 // 인증이 Bearer 토큰이라 <a href>로 그냥 열 수 없다 — Authorization 헤더를 실어 fetch한 뒤
 // blob URL로 새 탭에 연다.
-export async function openFinancialRequestAttachment(requestId, commentId) {
+export async function openWorkRequestAttachment(requestId, commentId) {
 	const response = await fetch(
-		`${API_BASE_URL}/api/v1/financial-requests/${requestId}/comments/${commentId}/attachment`,
+		`${API_BASE_URL}/api/v1/work-requests/${requestId}/comments/${commentId}/attachment`,
 		{ headers: { Authorization: `Bearer ${getAccessToken()}` } }
 	);
 	if (!response.ok) throw new Error(`Request failed: ${response.status}`);
@@ -169,7 +168,7 @@ export const ACTION_TARGET_LABEL = {
 	PROGRAM_CHANGE: "프로그램 변경",
 	PASS_CHANGE: "수강권 변경",
 	DISCOUNT_CHANGE: "할인 정책 변경",
-	FINANCIAL_REQUEST: "재무 일정",
+	FINANCIAL_REQUEST: "업무 요청",
 	FACILITY_CHANGE: "시설 변경",
 	LEAVE_REQUEST: "휴가 요청",
 	JOIN_REQUEST: "가입 신청"

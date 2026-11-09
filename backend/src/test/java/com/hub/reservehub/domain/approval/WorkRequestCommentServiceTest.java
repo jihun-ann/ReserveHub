@@ -7,27 +7,27 @@ import org.junit.jupiter.api.Test;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.web.multipart.MultipartFile;
 
-class FinancialRequestCommentServiceTest {
+class WorkRequestCommentServiceTest {
 
     @Test
     void blankContentAndNoFileIsNotUsable() {
-        assertFalse(FinancialRequestCommentService.hasUsableContent("   ", null));
+        assertFalse(WorkRequestCommentService.hasUsableContent("   ", null));
     }
 
     @Test
     void nonBlankContentAloneIsUsable() {
-        assertTrue(FinancialRequestCommentService.hasUsableContent("자료 확인했습니다", null));
+        assertTrue(WorkRequestCommentService.hasUsableContent("자료 확인했습니다", null));
     }
 
     @Test
     void nonEmptyFileAloneIsUsable() {
         MultipartFile file = new MockMultipartFile("file", "receipt.pdf", "application/pdf", new byte[]{1, 2, 3});
-        assertTrue(FinancialRequestCommentService.hasUsableContent(null, file));
+        assertTrue(WorkRequestCommentService.hasUsableContent(null, file));
     }
 
     @Test
     void emptyFileWithoutContentIsNotUsable() {
         MultipartFile file = new MockMultipartFile("file", "empty.pdf", "application/pdf", new byte[0]);
-        assertFalse(FinancialRequestCommentService.hasUsableContent(null, file));
+        assertFalse(WorkRequestCommentService.hasUsableContent(null, file));
     }
 }

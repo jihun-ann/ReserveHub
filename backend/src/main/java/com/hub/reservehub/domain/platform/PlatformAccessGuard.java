@@ -98,16 +98,19 @@ public class PlatformAccessGuard {
     // Financial/payroll data only — the owner, this platform's MANAGER, or a tax accountant the owner
     // invited (PlatformTaxAccountant, not a staff role) may view it.
     public void verifyFinancialAccess(UUID platformId, AuthenticatedUser user) {
-        if (platformRepository.existsByIdAndCreatedBy(platformId, user.getId())) {
-            return;
-        }
-        boolean isManager = platformStaffRepository.findByPlatformIdAndUserId(platformId, user.getId()).stream()
-                .anyMatch(staff -> staff.isActive() && staff.getStaffRole() == StaffRole.MANAGER);
-        boolean isTaxAccountant = platformTaxAccountantRepository
-                .existsByPlatformIdAndUserIdAndIsActiveTrue(platformId, user.getId());
-        if (!isManager && !isTaxAccountant) {
+        if (!isOfficeMember(platformId, user.getId())) {
             throw new PlatformAccessDeniedException(platformId);
         }
+    }
+
+    // 오너·활성 MANAGER·활성 세무사인지 — 재무 데이터와 업무 요청(담당자 지정 포함)을 다룰 수 있는 사람들.
+    public boolean isOfficeMember(UUID platformId, UUID userId) {
+        if (platformRepository.existsByIdAndCreatedBy(platformId, userId)) {
+            return true;
+        }
+        boolean isManager = platformStaffRepository.findByPlatformIdAndUserId(platformId, userId).stream()
+                .anyMatch(staff -> staff.isActive() && staff.getStaffRole() == StaffRole.MANAGER);
+        return isManager || platformTaxAccountantRepository.existsByPlatformIdAndUserIdAndIsActiveTrue(platformId, userId);
     }
 
     // 세무사가 이 플랫폼에 재무 일정을 등록/조회할 때 — 오너가 초대해 활성 상태인 세무사만 통과한다.

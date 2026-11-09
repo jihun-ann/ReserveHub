@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import { listFinancialRequestComments, addFinancialRequestComment, openFinancialRequestAttachment } from "../api/common.js";
+import { listWorkRequestComments, addWorkRequestComment, openWorkRequestAttachment } from "../api/common.js";
 import { Paperclip } from "lucide-react";
 import { formatDateTime } from "../utils/formatDateTime.js";
 
@@ -12,10 +12,10 @@ function formatFileSize(bytes) {
 	return `${(bytes / (1024 * 1024)).toFixed(1)}MB`;
 }
 
-// 재무 요청(FinancialRequest) 하나에 달린 댓글 스레드 — 세무사/매니저/오너가 이어서 댓글을 달거나
+// 업무 요청(WorkRequest) 하나에 달린 댓글 스레드 — 오너/매니저/세무사가 이어서 댓글을 달거나
 // 파일을 첨부할 수 있다. 세무사 화면(TaxAccountantCalendarView)과 매니저 승인 화면(ManagerApprovalView)
 // 양쪽에서 같은 요청을 두고 대화해야 하므로 두 화면 모두에서 재사용한다.
-export default function FinancialRequestThread({ requestId }) {
+export default function WorkRequestThread({ requestId }) {
 	const [comments, setComments] = useState([]);
 	const [loading, setLoading] = useState(true);
 	const [text, setText] = useState("");
@@ -26,7 +26,7 @@ export default function FinancialRequestThread({ requestId }) {
 	const refresh = useCallback(async () => {
 		setLoading(true);
 		try {
-			setComments(await listFinancialRequestComments(requestId));
+			setComments(await listWorkRequestComments(requestId));
 		} finally {
 			setLoading(false);
 		}
@@ -41,7 +41,7 @@ export default function FinancialRequestThread({ requestId }) {
 		if (!text.trim() && !file) return;
 		setSubmitting(true);
 		try {
-			await addFinancialRequestComment(requestId, { content: text, file });
+			await addWorkRequestComment(requestId, { content: text, file });
 			setText("");
 			setFile(null);
 			if (fileInputRef.current) fileInputRef.current.value = "";
@@ -71,7 +71,7 @@ export default function FinancialRequestThread({ requestId }) {
 							{c.attachmentName && (
 								<button
 									type="button"
-									onClick={() => openFinancialRequestAttachment(requestId, c.id)}
+									onClick={() => openWorkRequestAttachment(requestId, c.id)}
 									style={{ display: "inline-flex", alignItems: "center", gap: "4px", marginTop: "4px", color: "var(--accent)", background: "none", border: "none", padding: 0, cursor: "pointer", font: "inherit" }}
 								>
 									<Paperclip size={14} strokeWidth={1.5} /> {c.attachmentName} {c.attachmentSizeBytes ? `(${formatFileSize(c.attachmentSizeBytes)})` : ""}

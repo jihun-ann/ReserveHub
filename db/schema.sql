@@ -515,45 +515,40 @@ CREATE TABLE leave_requests (
 COMMENT ON TABLE leave_requests IS '스태프가 제출한 휴가 요청. 매니저 또는 오너가 승인';
 
 
--- 세무사가 등록한 재무 일정(월급날/지출일/명세서 제출일) — 매니저 또는 오너가 승인
-CREATE TYPE financial_request_type AS ENUM (
-    'PAYDAY',     -- 월급날
-    'EXPENSE',    -- 지출일
-    'STATEMENT'   -- 명세서 제출
+-- 업무 요청 — 오너·매니저·세무사가 같은 플랫폼의 오너·매니저·세무사에게(자기 자신 포함) 맡기는 일.
+-- 담당자가 진행 중 → 완료로 넘기고, 요청자는 끝나기 전에 취소할 수 있다.
+CREATE TYPE work_request_status AS ENUM ('REQUESTED', 'IN_PROGRESS', 'DONE', 'CANCELED');
+
+CREATE TABLE work_requests (
+                               id              UUID                  PRIMARY KEY DEFAULT uuid_generate_v4(),
+                               platform_id     UUID                  NOT NULL REFERENCES platforms(id) ON DELETE CASCADE,
+                               requested_by    UUID                  NOT NULL REFERENCES users(id),
+                               assignee_id     UUID                  NOT NULL REFERENCES users(id),
+                               title           VARCHAR(200)          NOT NULL,
+                               memo            TEXT,
+                               due_date        DATE,
+                               status          work_request_status   NOT NULL DEFAULT 'REQUESTED',
+                               created_at      TIMESTAMPTZ           NOT NULL DEFAULT NOW(),
+                               updated_at      TIMESTAMPTZ           NOT NULL DEFAULT NOW()
 );
 
-CREATE TABLE financial_requests (
-                                     id              UUID                     PRIMARY KEY DEFAULT uuid_generate_v4(),
-                                     platform_id     UUID                     NOT NULL REFERENCES platforms(id),
-                                     requested_by    UUID                     NOT NULL REFERENCES users(id),  -- 세무사
-                                     type            financial_request_type   NOT NULL,
-                                     title           VARCHAR(200)             NOT NULL,
-                                     event_date      DATE                     NOT NULL,
-                                     memo            TEXT,
-                                     status          request_status           NOT NULL DEFAULT 'PENDING',
-                                     decision_memo   TEXT,
-                                     created_at      TIMESTAMPTZ              NOT NULL DEFAULT NOW(),
-                                     updated_at      TIMESTAMPTZ              NOT NULL DEFAULT NOW()
+COMMENT ON TABLE work_requests IS '업무 요청. 요청자=담당자면 개인 할 일';
+
+
+-- 업무 요청 댓글 스레드 — 텍스트 없이 파일만 첨부할 수도 있다 (content, attachment_stored_path 중 최소 하나는 앱 레이어에서 검증).
+CREATE TABLE work_request_comments (
+                                       id                       UUID         PRIMARY KEY DEFAULT uuid_generate_v4(),
+                                       request_id               UUID         NOT NULL REFERENCES work_requests(id) ON DELETE CASCADE,
+                                       author_id                UUID         NOT NULL REFERENCES users(id),
+                                       content                  TEXT,
+                                       attachment_original_name VARCHAR(255),
+                                       attachment_stored_path   VARCHAR(500),
+                                       attachment_content_type  VARCHAR(100),
+                                       attachment_size_bytes    BIGINT,
+                                       created_at               TIMESTAMPTZ  NOT NULL DEFAULT NOW()
 );
 
-COMMENT ON TABLE financial_requests IS '세무사가 등록한 재무 일정. 매니저 또는 오너가 승인';
-
-
--- 재무 요청에 대한 댓글 스레드 — 세무사·매니저·오너가 계속 이어서 남기고, 텍스트 없이 파일만
--- 첨부할 수도 있다 (content, attachment_stored_path 중 최소 하나는 앱 레이어에서 검증).
-CREATE TABLE financial_request_comments (
-                                             id                       UUID         PRIMARY KEY DEFAULT uuid_generate_v4(),
-                                             request_id               UUID         NOT NULL REFERENCES financial_requests(id),
-                                             author_id                UUID         NOT NULL REFERENCES users(id),
-                                             content                  TEXT,
-                                             attachment_original_name VARCHAR(255),
-                                             attachment_stored_path   VARCHAR(500),
-                                             attachment_content_type  VARCHAR(100),
-                                             attachment_size_bytes    BIGINT,
-                                             created_at               TIMESTAMPTZ  NOT NULL DEFAULT NOW()
-);
-
-COMMENT ON TABLE financial_request_comments IS '재무 요청에 대한 세무사/매니저/오너 간 댓글 스레드. 파일 첨부는 로컬 디스크에 저장(uploads/), 이 테이블엔 경로만 기록';
+COMMENT ON TABLE work_request_comments IS '업무 요청 댓글 스레드. 파일 첨부는 로컬 디스크에 저장(uploads/), 이 테이블엔 경로만 기록';
 
 
 -- 처리 이력 (모든 승인/반려 행위 기록 — 담당자 추적)
@@ -764,10 +759,10 @@ CREATE INDEX idx_leavereq_platform     ON leave_requests(platform_id);
 CREATE INDEX idx_leavereq_status       ON leave_requests(status);
 CREATE INDEX idx_leavereq_requested_by ON leave_requests(requested_by);
 
--- financial_requests
-CREATE INDEX idx_finreq_platform   ON financial_requests(platform_id);
-CREATE INDEX idx_finreq_status     ON financial_requests(status);
-CREATE INDEX idx_finreq_requested_by ON financial_requests(requested_by);
+-- work_requests
+CREATE INDEX idx_wreq_platform     ON work_requests(platform_id, status);
+CREATE INDEX idx_wreq_assignee     ON work_requests(assignee_id, status);
+CREATE INDEX idx_wreq_comment_req  ON work_request_comments(request_id);
 
 -- action_logs
 CREATE INDEX idx_alog_platform     ON action_logs(platform_id);

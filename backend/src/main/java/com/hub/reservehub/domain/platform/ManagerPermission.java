@@ -5,7 +5,7 @@ package com.hub.reservehub.domain.platform;
  * 오너는 항상 전부 가진다. 권한 검사는 PlatformAccessGuard.verifyManagerPermission. label은 활동 이력 메모용 한글 이름.
  */
 public enum ManagerPermission {
-    MENU_APPROVAL("승인 관리 메뉴"),
+    MENU_APPROVAL("결재함: 휴가·일정 변경 조회, 일정 변경 승인/반려"),
     MENU_MEMBERS("회원 관리 메뉴"),
     MENU_TUTOR("강사 관리 메뉴"),
     MENU_LESSON("수업 관리 메뉴"),
@@ -20,7 +20,7 @@ public enum ManagerPermission {
     PROGRAM_MANAGE("프로그램 운영"),
     TUTOR_MANAGE("강사 초대/삭제"),
     MANAGER_MANAGE("매니저 초대/삭제, 그룹 관리"),
-    FINANCIAL_APPROVE("재무요청 승인/반려"),
+    FINANCIAL_APPROVE("재무요청 승인/반려"), // 더 이상 검사하지 않음(업무 요청으로 대체) — 그룹에 저장된 값 때문에 남겨둔다
     LEAVE_APPROVE("휴가요청 승인/반려"),
     DISCOUNT_POLICY("할인정책 관리"),
     REFUND("환불"),

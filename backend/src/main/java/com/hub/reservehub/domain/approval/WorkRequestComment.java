@@ -10,12 +10,12 @@ import java.util.UUID;
 import org.springframework.lang.Nullable;
 
 /**
- * 재무 요청(FinancialRequest)에 대한 댓글 — 세무사·매니저·오너가 계속 이어서 남길 수 있고,
+ * 업무 요청(WorkRequest)에 대한 댓글 — 오너·매니저·세무사가 계속 이어서 남길 수 있고,
  * 텍스트 없이 파일만 첨부할 수도 있다 (content/첨부 중 최소 하나는 있어야 함, 서비스에서 검증).
  */
 @Entity
-@Table(name = "financial_request_comments")
-public class FinancialRequestComment {
+@Table(name = "work_request_comments")
+public class WorkRequestComment {
 
     @Id
     @GeneratedValue
@@ -45,22 +45,22 @@ public class FinancialRequestComment {
     @Column(nullable = false, updatable = false)
     private Instant createdAt;
 
-    protected FinancialRequestComment() {
+    protected WorkRequestComment() {
         // JPA only.
     }
 
-    public FinancialRequestComment(UUID requestId, UUID authorId, @Nullable String content) {
+    public WorkRequestComment(UUID requestId, UUID authorId, @Nullable String content) {
         this.requestId = requestId;
         this.authorId = authorId;
         this.content = content;
         this.createdAt = Instant.now();
     }
 
-    public static FinancialRequestComment withAttachment(
+    public static WorkRequestComment withAttachment(
             UUID requestId, UUID authorId, @Nullable String content, String attachmentOriginalName,
             String attachmentStoredPath, @Nullable String attachmentContentType, long attachmentSizeBytes
     ) {
-        FinancialRequestComment comment = new FinancialRequestComment(requestId, authorId, content);
+        WorkRequestComment comment = new WorkRequestComment(requestId, authorId, content);
         comment.attachmentOriginalName = attachmentOriginalName;
         comment.attachmentStoredPath = attachmentStoredPath;
         comment.attachmentContentType = attachmentContentType;

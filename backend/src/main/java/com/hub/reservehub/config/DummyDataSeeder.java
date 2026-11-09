@@ -1,8 +1,8 @@
 package com.hub.reservehub.config;
 
 import com.hub.reservehub.api.v1.auth.service.AuthService;
-import com.hub.reservehub.domain.approval.FinancialRequestService;
-import com.hub.reservehub.domain.approval.FinancialRequestType;
+import com.hub.reservehub.domain.approval.WorkRequestService;
+import com.hub.reservehub.domain.approval.WorkRequestStatus;
 import com.hub.reservehub.domain.approval.ScheduleChangeRequest;
 import com.hub.reservehub.domain.approval.ScheduleChangeRequestRepository;
 import com.hub.reservehub.domain.approval.ScheduleChangeRequestService;
@@ -79,7 +79,7 @@ public class DummyDataSeeder implements CommandLineRunner {
     private final LessonService lessonService;
     private final ReservationService reservationService;
     private final ScheduleChangeRequestService scheduleChangeRequestService;
-    private final FinancialRequestService financialRequestService;
+    private final WorkRequestService workRequestService;
     private final FacilityService facilityService;
 
     public DummyDataSeeder(
@@ -91,7 +91,7 @@ public class DummyDataSeeder implements CommandLineRunner {
             CalendarEventService calendarEventService, ProgramService programService,
             LessonService lessonService, ReservationService reservationService,
             ScheduleChangeRequestService scheduleChangeRequestService,
-            FinancialRequestService financialRequestService, FacilityService facilityService
+            WorkRequestService workRequestService, FacilityService facilityService
     ) {
         this.authService = authService;
         this.platformService = platformService;
@@ -107,7 +107,7 @@ public class DummyDataSeeder implements CommandLineRunner {
         this.lessonService = lessonService;
         this.reservationService = reservationService;
         this.scheduleChangeRequestService = scheduleChangeRequestService;
-        this.financialRequestService = financialRequestService;
+        this.workRequestService = workRequestService;
         this.facilityService = facilityService;
     }
 
@@ -199,23 +199,23 @@ public class DummyDataSeeder implements CommandLineRunner {
                 platform2.getId(), ownerPrincipal, "taxaccount", "taxaccount@test.com", PASSWORD, "오세무", "010-1234-5678"
         );
 
-        seedFinancialRequests(platform.getId(), taxAccountant, managerPrincipal);
+        seedWorkRequests(platform.getId(), taxAccountant, managerPrincipal);
     }
 
-    // 세무사가 등록한 재무 일정(월급날/지출일/명세서 제출일) 예시 — 하나는 매니저가 이미 승인한 상태로,
-    // 다른 하나는 대기 중인 상태로 만들어 승인 관리/활동 이력 화면을 바로 확인할 수 있게 한다.
-    private void seedFinancialRequests(UUID platformId, User taxAccountant, AuthenticatedUser managerPrincipal) {
+    // 업무 요청 예시 — 세무사가 매니저에게 맡긴 일 하나는 완료, 하나는 요청 상태로 두어
+    // 결재함/내 신청/대시보드 화면을 바로 확인할 수 있게 한다.
+    private void seedWorkRequests(UUID platformId, User taxAccountant, AuthenticatedUser managerPrincipal) {
         AuthenticatedUser taxAccountantPrincipal = AuthenticatedUser.from(taxAccountant);
 
-        var payday = financialRequestService.create(
-                platformId, taxAccountantPrincipal, FinancialRequestType.PAYDAY,
-                "8월 급여 지급일", LocalDate.now().withDayOfMonth(25), "급여 이체 예정일입니다."
+        var payday = workRequestService.create(
+                platformId, taxAccountantPrincipal, managerPrincipal.getId(),
+                "8월 급여 이체", "급여 이체 예정일입니다.", LocalDate.now().withDayOfMonth(25)
         );
-        financialRequestService.approve(payday.getId(), managerPrincipal, "확인했습니다. 예정대로 진행합니다.");
+        workRequestService.changeStatus(payday.getId(), managerPrincipal, WorkRequestStatus.DONE);
 
-        financialRequestService.create(
-                platformId, taxAccountantPrincipal, FinancialRequestType.STATEMENT,
-                "부가세 신고 자료 제출", LocalDate.now().plusDays(10), "신고 전 정산 자료 확인 부탁드립니다."
+        workRequestService.create(
+                platformId, taxAccountantPrincipal, managerPrincipal.getId(),
+                "부가세 신고 자료 제출", "신고 전 정산 자료 확인 부탁드립니다.", LocalDate.now().plusDays(10)
         );
     }
 

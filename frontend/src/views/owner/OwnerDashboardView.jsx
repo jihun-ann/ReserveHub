@@ -1,27 +1,9 @@
-import { useState } from "react";
-import {
-	approveScheduleRequest, rejectScheduleRequest, approveLeaveRequest, rejectLeaveRequest, hexAlpha, businessTypeLabel, businessTypeIcon
-} from "../../api/common.js";
+import { businessTypeLabel } from "../../api/common.js";
+import MyTasksCard from "../../components/MyTasksCard.jsx";
 
-export default function OwnerDashboardView({ platforms, requests, onDecided, onNavigate }) {
-	const [busyId, setBusyId] = useState(null);
+// 처리 대기 업무(할 일·승인 대기)는 현재 고른 플랫폼 기준 — 실제 승인/반려는 결재 화면에서 한다.
+export default function OwnerDashboardView({ platforms, requests, platformId, onNavigate }) {
 	const pending = requests.filter((r) => r.status === "PENDING");
-
-	async function decide(request, action) {
-		setBusyId(request.id);
-		try {
-			if (request.requestType === "LEAVE") {
-				await (action === "approve" ? approveLeaveRequest(request.id) : rejectLeaveRequest(request.id));
-			} else {
-				await (action === "approve" ? approveScheduleRequest(request.id) : rejectScheduleRequest(request.id));
-			}
-			onDecided();
-		} catch (err) {
-			alert(err.message || "처리 중 오류가 발생했습니다.");
-		} finally {
-			setBusyId(null);
-		}
-	}
 
 	return (
 		<div id="owner-dashboard" className="page active">
@@ -77,53 +59,7 @@ export default function OwnerDashboardView({ platforms, requests, onDecided, onN
 					</div>
 				</div>
 
-				{/* 승인 대기 빠른 처리 */}
-				<div className="card">
-					<div className="card-title" style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-						<span>승인 대기</span>
-						<span style={{ fontFamily: "var(--mono)", fontSize: "12px", fontWeight: 400, color: "var(--text-dim)" }}>{pending.length}건</span>
-					</div>
-					<div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-						{pending.length === 0 && (
-							<div style={{ fontSize: "12px", color: "var(--text-dim)", textAlign: "center", padding: "16px 0" }}>처리할 승인 요청이 없습니다</div>
-						)}
-						{pending.map((r) => (
-							<div key={r.id} style={{ background: "var(--surface2)", borderRadius: "var(--radius-sm)", border: "1px solid var(--border)", padding: "16px" }}>
-								<div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "8px", marginBottom: "8px" }}>
-									<div>
-										{r.requestType === "LEAVE" ? (
-											<>
-												<div style={{ fontSize: "13px", fontWeight: 600 }}>{r.startDate} ~ {r.endDate} 휴가 요청</div>
-												{r.reason && <div style={{ fontSize: "11px", color: "var(--text-sub)", marginTop: "2px" }}>{r.reason}</div>}
-											</>
-										) : (
-											<>
-												<div style={{ fontSize: "13px", fontWeight: 600 }}>{r.requestedDate} 일정 변경 요청</div>
-												<div style={{ fontSize: "11px", color: "var(--text-sub)", marginTop: "2px" }}>{r.originalDate} → {r.requestedDate}</div>
-											</>
-										)}
-										<div style={{ marginTop: "4px" }}>
-											<span className="plat-chip" style={{ background: hexAlpha(r.platform.colorHex, 0.12), color: r.platform.colorHex, borderColor: hexAlpha(r.platform.colorHex, 0.3) }}>
-												{businessTypeIcon(r.platform.businessType, 12)} {r.platform.name}
-											</span>
-										</div>
-									</div>
-								</div>
-								<div style={{ display: "flex", gap: "8px" }}>
-									<button
-										className="btn btn-sm"
-										disabled={busyId === r.id}
-										style={{ flex: 1, background: "rgba(var(--green-rgb),0.12)", color: "var(--green)", border: "1px solid rgba(var(--green-rgb),0.3)" }}
-										onClick={() => decide(r, "approve")}
-									>
-										승인
-									</button>
-									<button className="btn btn-sm btn-danger" style={{ flex: 1 }} disabled={busyId === r.id} onClick={() => decide(r, "reject")}>반려</button>
-								</div>
-							</div>
-						))}
-					</div>
-				</div>
+				<MyTasksCard platformId={platformId} canApprove onOpenApproval={() => onNavigate("approval")} />
 
 			</div>
 		</div>
