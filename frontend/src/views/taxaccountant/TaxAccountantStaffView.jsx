@@ -57,7 +57,6 @@ export default function TaxAccountantStaffView({ platformId }) {
 	return (
 		<div className="page" id="taxacct-staff">
 			<div className="page-header">
-				<div className="page-label">Tax Accountant / Staff</div>
 				<div className="page-title">직원 정보</div>
 				<div className="page-subtitle">이 플랫폼 오너·매니저·강사·세무사의 개인정보, 정산 계좌, 이번 달 강사 정산액을 확인하세요</div>
 			</div>

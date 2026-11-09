@@ -66,7 +66,8 @@ function deriveStatus(expiresAt) {
 	return { key: "active", label: "활성", cls: "bs-active", days };
 }
 
-export default function ManagerMemberManageView({ platformId }) {
+// embedded: 오너 플랫폼 관리 탭 안에 넣을 때 — 탭 이름이 제목 역할을 하므로 페이지 헤더를 숨긴다
+export default function ManagerMemberManageView({ platformId, embedded = false }) {
 	const [members, setMembers] = useState([]);
 	const [joinRequests, setJoinRequests] = useState([]); // 가입 신청(대기/승인) — 권한이 없으면 빈 목록
 	const [joinNotice, setJoinNotice] = useState("");
@@ -202,7 +203,7 @@ export default function ManagerMemberManageView({ platformId }) {
 		const rowStyle = { display: "flex", alignItems: "center", gap: "12px", padding: "12px 16px", borderTop: "1px solid var(--border)", flexWrap: "wrap" };
 		return (
 			<div className="card" style={{ padding: 0, overflow: "hidden", marginBottom: "16px" }}>
-				<div style={{ padding: "12px 16px", fontSize: "14px", fontWeight: 700, display: "flex", gap: "10px", alignItems: "center" }}>
+				<div style={{ padding: "12px 16px", fontSize: "14px", fontWeight: 600, display: "flex", gap: "12px", alignItems: "center" }}>
 					가입 신청 <span style={{ fontSize: "12px", color: "var(--text-dim)", fontWeight: 400 }}>대기 {pending.length} · 수강권 등록 대기 {waiting.length}</span>
 					{joinNotice && <span style={{ marginLeft: "auto", fontSize: "12px", color: "var(--green)", fontWeight: 400 }}>{joinNotice}</span>}
 				</div>
@@ -300,22 +301,23 @@ export default function ManagerMemberManageView({ platformId }) {
 	return (
 		<>
 		<div className="page" id="manager-members">
+			{!embedded && (
 			<div className="page-header">
-				<div className="page-label">MEMBERS</div>
 				<div className="page-title">회원 관리</div>
-				<div className="page-subtitle">플랫폼 회원을 조회하고 관리하세요</div>
+				<div className="page-subtitle">플랫폼 회원 목록</div>
 			</div>
+			)}
 
 			<div style={{ display: "flex", gap: "8px", marginBottom: "16px", flexWrap: "wrap", alignItems: "center" }}>
 				<input
 					type="text"
-					placeholder="이름 / 이메일 검색..."
+					placeholder="이름, 이메일 검색"
 					value={search}
 					onChange={(e) => setSearch(e.target.value)}
 					style={{
 						flex: "1",
 						minWidth: "160px",
-						padding: "8px 14px",
+						padding: "8px 16px",
 						background: "var(--surface)",
 						border: "1px solid var(--border)",
 						borderRadius: "20px",
@@ -372,26 +374,26 @@ export default function ManagerMemberManageView({ platformId }) {
 										<>
 										<tr key={key} onClick={() => toggleDetail(m)} style={{ cursor: "pointer" }}>
 											<td style={{ fontWeight: 600 }}>{m.name}</td>
-											<td style={{ fontFamily: "'DM Mono',monospace", fontSize: "12px" }}>{m.phone || "-"}</td>
+											<td style={{ fontFamily: "var(--mono)", fontSize: "12px" }}>{m.phone || "-"}</td>
 											<td>{m.email}</td>
 											<td style={{ fontSize: "12px" }}>
 												{m.guardianName ? `${m.guardianName}${m.guardianPhone ? " / " + m.guardianPhone : ""}` : "-"}
 											</td>
 											<td>{m.passName}</td>
-											<td style={{ fontFamily: "'DM Mono',monospace", fontSize: "12px" }}>
+											<td style={{ fontFamily: "var(--mono)", fontSize: "12px" }}>
 												{m.sessionsTotal != null ? `${m.sessionsUsed}/${m.sessionsTotal}` : `${m.sessionsUsed}회`}
 											</td>
-											<td style={{ fontFamily: "'DM Mono',monospace", fontSize: "12px" }}>{m.expiresAt}</td>
+											<td style={{ fontFamily: "var(--mono)", fontSize: "12px" }}>{m.expiresAt}</td>
 											<td>
 												{st.key === "expired" ? (
-													<span className="badge bs-expired" style={{ fontSize: "10px" }}>만료</span>
+													<span className="badge bs-expired" style={{ fontSize: "11px" }}>만료</span>
 												) : st.days <= 7 ? (
-													<span className={`badge ${st.cls}`} style={{ fontSize: "10px" }}>D-{st.days}</span>
+													<span className={`badge ${st.cls}`} style={{ fontSize: "11px" }}>D-{st.days}</span>
 												) : (
-													<span style={{ fontSize: "12px", fontFamily: "'DM Mono',monospace", color: "var(--accent2)" }}>D-{st.days}</span>
+													<span style={{ fontSize: "12px", fontFamily: "var(--mono)", color: "var(--text)" }}>D-{st.days}</span>
 												)}
 											</td>
-											<td><span className={`badge ${st.cls}`} style={{ fontSize: "10px" }}>{st.label}</span></td>
+											<td><span className={`badge ${st.cls}`} style={{ fontSize: "11px" }}>{st.label}</span></td>
 											<td>
 												<button
 													className="btn btn-ghost btn-sm"
@@ -407,7 +409,7 @@ export default function ManagerMemberManageView({ platformId }) {
 											<tr>
 												<td colSpan={11} style={{ padding: 0 }}>
 													<div className="member-detail" style={{ margin: "8px 12px" }}>
-														<div style={{ fontSize: "11px", color: "var(--text-sub)", marginBottom: "8px", fontWeight: 600, letterSpacing: ".5px" }}>
+														<div style={{ fontSize: "11px", color: "var(--text-sub)", marginBottom: "8px", fontWeight: 600 }}>
 															보호자 정보
 														</div>
 														<div style={{ display: "flex", gap: "8px", marginBottom: "16px" }} onClick={(e) => e.stopPropagation()}>
@@ -425,10 +427,10 @@ export default function ManagerMemberManageView({ platformId }) {
 																{savingGuardian ? "저장 중..." : "저장"}
 															</button>
 														</div>
-														<div style={{ fontSize: "11px", color: "var(--text-sub)", marginBottom: "8px", fontWeight: 600, letterSpacing: ".5px" }}>
+														<div style={{ fontSize: "11px", color: "var(--text-sub)", marginBottom: "8px", fontWeight: 600 }}>
 															CONSULTATION NOTES
 														</div>
-														<div style={{ display: "flex", flexDirection: "column", gap: "6px", marginBottom: "10px", minHeight: "40px" }}>
+														<div style={{ display: "flex", flexDirection: "column", gap: "8px", marginBottom: "12px", minHeight: "40px" }}>
 															{memos.length === 0 ? (
 																<div style={{ fontSize: "12px", color: "var(--text-dim)", padding: "8px 0" }}>상담 메모가 없습니다</div>
 															) : (
@@ -438,7 +440,7 @@ export default function ManagerMemberManageView({ platformId }) {
 																		<div style={{ flex: 1, fontSize: "12px" }}>{n.content}</div>
 																		<button
 																			className="btn btn-ghost btn-sm"
-																			style={{ padding: "2px 6px", fontSize: "11px" }}
+																			style={{ padding: "2px 8px", fontSize: "11px" }}
 																			onClick={() => removeMemo(n.id)}
 																		>
 																			삭제

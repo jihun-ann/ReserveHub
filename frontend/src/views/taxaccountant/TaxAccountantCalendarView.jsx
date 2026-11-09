@@ -56,7 +56,6 @@ export default function TaxAccountantCalendarView({ platformId, platformName }) 
 	return (
 		<div className="page" id="taxacct-calendar">
 			<div className="page-header">
-				<div className="page-label">Tax Accountant / Calendar</div>
 				<div className="page-title">재무 일정</div>
 				<div className="page-subtitle">
 					{platformName ? `${platformName}의 ` : ""}월급날·지출일·명세서 제출일을 등록하면 매니저에게 승인 요청이 갑니다
@@ -112,7 +111,7 @@ export default function TaxAccountantCalendarView({ platformId, platformName }) 
 
 			<div className="card-title" style={{ marginBottom: "10px" }}>등록한 요청</div>
 			{loading ? (
-				<div style={{ padding: "40px", textAlign: "center", color: "var(--text-dim)" }}>불러오는 중...</div>
+				<div style={{ padding: "40px", textAlign: "center", color: "var(--text-dim)", fontSize: "13px" }}>불러오는 중...</div>
 			) : requests.length === 0 ? (
 				<div className="card" style={{ textAlign: "center", padding: "32px", color: "var(--text-dim)" }}>
 					등록된 재무 일정이 없습니다

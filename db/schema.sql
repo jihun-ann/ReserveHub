@@ -147,6 +147,7 @@ CREATE TABLE staff_invitations (
                                    platform_id     UUID               NOT NULL REFERENCES platforms(id) ON DELETE CASCADE,
                                    staff_role      staff_role         NOT NULL,
                                    manager_tier    manager_tier,                        -- MANAGER 초대에서만 의미 있음
+                                   manager_group_id UUID REFERENCES manager_groups(id) ON DELETE SET NULL, -- MANAGER 초대: 수락 시 배정할 그룹
                                    email           VARCHAR(255),                        -- email/phone 중 최소 하나
                                    phone           VARCHAR(30),                         -- 숫자만 저장
                                    token           VARCHAR(64)        NOT NULL UNIQUE,

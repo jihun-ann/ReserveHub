@@ -7,8 +7,8 @@ const inputStyle = {
 	borderRadius: "var(--radius-sm)", color: "var(--text)", fontSize: "14px", outline: "none"
 };
 const buttonStyle = {
-	padding: "9px 16px", border: "none", borderRadius: "var(--radius-sm)", background: "var(--cta)",
-	color: "white", fontWeight: 600, fontSize: "13px", cursor: "pointer"
+	padding: "8px 16px", border: "none", borderRadius: "var(--radius-sm)", background: "var(--cta)",
+	color: "var(--cta-text)", fontWeight: 600, fontSize: "13px", cursor: "pointer"
 };
 const ghostButtonStyle = { ...buttonStyle, background: "transparent", color: "var(--text-sub)", border: "1px solid var(--border)" };
 const dangerButtonStyle = { ...buttonStyle, background: "var(--red)" };
@@ -218,9 +218,8 @@ export default function AccountMypageView({ user, onDeactivated }) {
 	return (
 		<div className="page" id="page-account">
 			<div className="page-header">
-				<div className="page-label">MY PAGE</div>
 				<div className="page-title">내 정보</div>
-				<div className="page-subtitle">계정 정보를 확인하고 수정하세요</div>
+				<div className="page-subtitle">이름, 연락처, 비밀번호</div>
 			</div>
 
 			{message.text && (

@@ -34,7 +34,8 @@ public class StaffInvitationController {
     @PostMapping("/api/v1/platforms/{platformId}/staff-invitations")
     public ResponseEntity<InvitationResponse> create(@PathVariable UUID platformId, @Valid @RequestBody CreateInvitationRequest request) {
         StaffInvitation invitation = invitationService.create(
-                platformId, currentAuthenticatedUser.get(), request.staffRole(), request.managerTier(), request.email(), request.phone()
+                platformId, currentAuthenticatedUser.get(), request.staffRole(), request.managerTier(), request.managerGroupId(),
+                request.email(), request.phone()
         );
         return ResponseEntity.status(HttpStatus.CREATED).body(InvitationResponse.from(invitation));
     }
@@ -68,17 +69,20 @@ public class StaffInvitationController {
     }
 
     public record CreateInvitationRequest(
-            @NotNull StaffRole staffRole, @Nullable ManagerTier managerTier, @Nullable String email, @Nullable String phone
+            @NotNull StaffRole staffRole, @Nullable ManagerTier managerTier,
+            // MANAGER 초대에서만 의미 — 수락하는 순간 이 그룹에 배정된다(없으면 그룹 없이 배정)
+            @Nullable UUID managerGroupId,
+            @Nullable String email, @Nullable String phone
     ) {
     }
 
     public record InvitationResponse(
-            UUID id, String token, StaffRole staffRole, @Nullable ManagerTier managerTier,
+            UUID id, String token, StaffRole staffRole, @Nullable ManagerTier managerTier, @Nullable UUID managerGroupId,
             @Nullable String email, @Nullable String phone, InvitationStatus status, Instant expiresAt
     ) {
         static InvitationResponse from(StaffInvitation i) {
             return new InvitationResponse(
-                    i.getId(), i.getToken(), i.getStaffRole(), i.getManagerTier(), i.getEmail(), i.getPhone(), i.getStatus(), i.getExpiresAt()
+                    i.getId(), i.getToken(), i.getStaffRole(), i.getManagerTier(), i.getManagerGroupId(), i.getEmail(), i.getPhone(), i.getStatus(), i.getExpiresAt()
             );
         }
     }

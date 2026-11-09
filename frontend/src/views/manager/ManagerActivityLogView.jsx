@@ -26,19 +26,18 @@ export default function ManagerActivityLogView({ platformId }) {
 	const filtered = targetFilter === "ALL" ? logs : logs.filter((l) => l.targetType === targetFilter);
 
 	const selectStyle = {
-		padding: "7px 12px", background: "var(--surface)", border: "1px solid var(--border)",
+		padding: "8px 12px", background: "var(--surface)", border: "1px solid var(--border)",
 		borderRadius: "var(--rs)", color: "var(--text)", fontSize: "13px", outline: "none"
 	};
 
 	return (
 		<div className="page" id="manager-activity-log">
 			<div className="page-header">
-				<div className="page-label">ACTIVITY LOG</div>
 				<div className="page-title">활동 이력</div>
-				<div className="page-subtitle">이 플랫폼에서 처리된 승인·변경·등록 작업을 시각과 함께 확인하세요</div>
+				<div className="page-subtitle">이 플랫폼에서 처리된 승인·변경·등록 기록</div>
 			</div>
 
-			<div style={{ display: "flex", gap: "10px", marginBottom: "20px", flexWrap: "wrap" }}>
+			<div style={{ display: "flex", gap: "12px", marginBottom: "20px", flexWrap: "wrap" }}>
 				<select value={targetFilter} onChange={(e) => setTargetFilter(e.target.value)} style={selectStyle}>
 					<option value="ALL">전체 항목</option>
 					{targets.map((t) => (
@@ -61,7 +60,7 @@ export default function ManagerActivityLogView({ platformId }) {
 							) : (
 								filtered.map((l) => (
 									<tr key={l.id}>
-										<td style={{ fontFamily: "'DM Mono',monospace", fontSize: "12px" }}>{formatDateTime(l.createdAt)}</td>
+										<td style={{ fontFamily: "var(--mono)", fontSize: "12px" }}>{formatDateTime(l.createdAt)}</td>
 										<td>{l.actorName || "-"}</td>
 										<td>{ACTION_TARGET_LABEL[l.targetType] || l.targetType}</td>
 										<td>{ACTION_LABEL[l.action] || l.action}</td>

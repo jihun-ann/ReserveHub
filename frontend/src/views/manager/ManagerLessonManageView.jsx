@@ -39,7 +39,8 @@ function dayKeyOfDate(dateIso) {
 	return DAY_KEYS[(new Date(dateIso).getDay() + 6) % 7];
 }
 
-export default function ManagerLessonManageView({ platformId }) {
+// embedded: 오너 플랫폼 관리 탭 안에 넣을 때 — 탭 이름이 제목 역할을 하므로 페이지 헤더를 숨긴다
+export default function ManagerLessonManageView({ platformId, embedded = false }) {
 	const [weekStart, setWeekStart] = useState(() => mondayOf(new Date()));
 	const [programs, setPrograms] = useState([]);
 	const [instructors, setInstructors] = useState([]);
@@ -174,8 +175,8 @@ export default function ManagerLessonManageView({ platformId }) {
 
 	return (
 		<div className="page" id="manager-lesson-manage">
+			{!embedded && (
 			<div className="page-header">
-				<div className="page-label">Lesson Management</div>
 				<div className="page-title">수업 관리</div>
 				<div className="page-subtitle">
 					주 단위로 수업 일정을 관리하세요. 매주 반복되는 수업인지 1회성(인스턴트) 수업인지 정하고 강사를 배정합니다.
@@ -183,11 +184,12 @@ export default function ManagerLessonManageView({ platformId }) {
 					신청형 그룹반은 매주 학생이 직접 신청(예약)해서 채워집니다.
 				</div>
 			</div>
+			)}
 
-			<div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "14px", flexWrap: "wrap", gap: "8px" }}>
+			<div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px", flexWrap: "wrap", gap: "8px" }}>
 				<div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
 					<button className="btn btn-ghost btn-sm" onClick={() => setWeekStart(addDays(weekStart, -7))}>‹ 이전 주</button>
-					<div style={{ fontWeight: 700, fontSize: "13px", fontFamily: "'DM Mono',monospace" }}>
+					<div style={{ fontWeight: 600, fontSize: "13px", fontFamily: "var(--mono)" }}>
 						{isoDate(weekDates[0])} ~ {isoDate(weekDates[6])}
 					</div>
 					<button className="btn btn-ghost btn-sm" onClick={() => setWeekStart(addDays(weekStart, 7))}>다음 주 ›</button>
@@ -196,7 +198,7 @@ export default function ManagerLessonManageView({ platformId }) {
 				<button className="btn btn-primary btn-sm" onClick={() => openAddModal()} disabled={programs.length === 0}>+ 수업 추가</button>
 			</div>
 			{!loading && programs.length === 0 && (
-				<div className="card" style={{ marginBottom: "14px", fontSize: "12px", color: "var(--text-dim)" }}>
+				<div className="card" style={{ marginBottom: "16px", fontSize: "12px", color: "var(--text-dim)" }}>
 					아직 등록된 수업 종류가 없습니다. "수강권/결제" 메뉴에서 수강권을 등록하면 수업도 함께 만들어집니다.
 				</div>
 			)}
@@ -240,17 +242,17 @@ export default function ManagerLessonManageView({ platformId }) {
 															style={{
 																background: isSelected ? "rgba(var(--manager-rgb),0.12)" : "var(--surface2)",
 																border: isSelected ? "1px solid var(--manager)" : "1px solid transparent",
-																borderRadius: "var(--radius-sm)", padding: "8px", marginBottom: "6px", cursor: "pointer"
+																borderRadius: "var(--radius-sm)", padding: "8px", marginBottom: "8px", cursor: "pointer"
 															}}
 														>
-															<div style={{ fontSize: "12px", fontWeight: 700 }}>{s.name || program?.name || "-"}</div>
+															<div style={{ fontSize: "12px", fontWeight: 600 }}>{s.name || program?.name || "-"}</div>
 															{s.name && (
-																<div style={{ fontSize: "10px", color: "var(--text-dim)" }}>{program?.name || "-"}</div>
+																<div style={{ fontSize: "11px", color: "var(--text-dim)" }}>{program?.name || "-"}</div>
 															)}
-															<div style={{ fontSize: "10px", color: "var(--text-sub)", marginTop: "2px" }}>
+															<div style={{ fontSize: "11px", color: "var(--text-sub)", marginTop: "2px" }}>
 																{instructor?.name || "-"} · {instant ? "1회" : "매주"}
 															</div>
-															<div style={{ fontSize: "11px", fontFamily: "'DM Mono',monospace", color: "var(--manager)", marginTop: "4px" }}>
+															<div style={{ fontSize: "11px", fontFamily: "var(--mono)", color: "var(--text)", marginTop: "4px" }}>
 																{s.startTime?.slice(0, 5)}-{s.endTime?.slice(0, 5)}
 															</div>
 														</div>
@@ -277,7 +279,7 @@ export default function ManagerLessonManageView({ platformId }) {
 				<div className="card">
 					<div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "12px" }}>
 						<div>
-							<div style={{ fontWeight: 700 }}>
+							<div style={{ fontWeight: 600 }}>
 								{expandedSlot.name || expandedProgram.name}
 								{" "}<span style={{ fontWeight: 400, color: "var(--text-dim)", fontSize: "12px" }}>
 									({expandedProgram.name} · {PROGRAM_TYPE_LABEL[expandedProgram.type] || expandedProgram.type}
@@ -296,16 +298,16 @@ export default function ManagerLessonManageView({ platformId }) {
 					</div>
 
 					{isFixedRoster && (
-						<div style={{ marginTop: "14px", paddingTop: "14px", borderTop: "1px solid var(--border)" }}>
+						<div style={{ marginTop: "16px", paddingTop: "16px", borderTop: "1px solid var(--border)" }}>
 							<div style={{ fontSize: "12px", color: "var(--text-dim)", marginBottom: "8px" }}>
 								정원 {expandedProgram.capacity}명 중 {(roster || []).length}명 등록됨 (고정 로스터)
 							</div>
 							{!roster ? (
 								<div style={{ fontSize: "12px", color: "var(--text-dim)" }}>불러오는 중...</div>
 							) : roster.length === 0 ? (
-								<div style={{ fontSize: "12px", color: "var(--text-dim)", marginBottom: "10px" }}>등록된 학생이 없습니다</div>
+								<div style={{ fontSize: "12px", color: "var(--text-dim)", marginBottom: "12px" }}>등록된 학생이 없습니다</div>
 							) : (
-								<div style={{ display: "flex", flexDirection: "column", gap: "6px", marginBottom: "10px" }}>
+								<div style={{ display: "flex", flexDirection: "column", gap: "8px", marginBottom: "12px" }}>
 									{roster.map((m) => {
 										const member = members.find((mm) => mm.userId === m.userId && mm.userPassId === m.userPassId);
 										return (
@@ -390,7 +392,7 @@ export default function ManagerLessonManageView({ platformId }) {
 										{DAY_KEYS.map((key) => <option key={key} value={key}>{DAY_OF_WEEK_LABEL[key]}요일</option>)}
 									</select>
 								</div>
-								<div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(160px,1fr))", gap: "10px" }}>
+								<div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(160px,1fr))", gap: "12px" }}>
 									<div className="form-field">
 										<label>시작일</label>
 										<input type="date" value={addForm.validFrom} onChange={(e) => setAddForm({ ...addForm, validFrom: e.target.value })} />
@@ -408,7 +410,7 @@ export default function ManagerLessonManageView({ platformId }) {
 							</div>
 						)}
 
-						<div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(160px,1fr))", gap: "10px" }}>
+						<div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(160px,1fr))", gap: "12px" }}>
 							<div className="form-field">
 								<label>시작 시간</label>
 								<input type="time" value={addForm.startTime} onChange={(e) => setAddForm({ ...addForm, startTime: e.target.value })} />

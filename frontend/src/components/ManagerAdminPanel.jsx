@@ -8,10 +8,10 @@ import { formatDateTime } from "../utils/formatDateTime.js";
 const PAGE_SIZE = 10;
 const inviteLink = (token) => `${window.location.origin}/invite/${token}`;
 
-const rowStyle = { background: "var(--surface2)", border: "1px solid var(--border)", borderRadius: "var(--radius-sm)", padding: "14px", display: "flex", alignItems: "center", gap: "14px" };
-const gridForm = { display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(160px,1fr))", gap: "10px" };
+const rowStyle = { background: "var(--surface2)", border: "1px solid var(--border)", borderRadius: "var(--radius-sm)", padding: "16px", display: "flex", alignItems: "center", gap: "16px" };
+const gridForm = { display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(160px,1fr))", gap: "12px" };
 const fullRow = { gridColumn: "1/-1" };
-const searchStyle = { padding: "8px 14px", background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "20px", color: "var(--text)", fontSize: "13px", outline: "none" };
+const searchStyle = { padding: "8px 16px", background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "20px", color: "var(--text)", fontSize: "13px", outline: "none" };
 
 // 매니저 관리 — 등록된 매니저(그룹 변경/삭제), 초대 중인 매니저(초대/링크/취소), 그룹 설정(이름 + 메뉴/기능 권한).
 // 오너 플랫폼 화면의 매니저 탭과, 매니저 그룹에 'MANAGER_MANAGE' 권한이 있는 매니저의 메뉴가 같이 쓴다.
@@ -29,7 +29,7 @@ export default function ManagerAdminPanel({ platformId }) {
 	const [groupForm, setGroupForm] = useState(null); // 그룹 추가/수정 영역: { id: 'new' | 그룹 id, name, permissions }
 	const [groupError, setGroupError] = useState("");
 	const [showInvite, setShowInvite] = useState(false);
-	const [invite, setInvite] = useState({ method: "email", value: "" });
+	const [invite, setInvite] = useState({ method: "email", value: "", groupId: "" });
 	const [inviteError, setInviteError] = useState("");
 	const [saving, setSaving] = useState(false);
 
@@ -122,13 +122,16 @@ export default function ManagerAdminPanel({ platformId }) {
 		}
 	}
 
+	// 그룹을 따로 고르지 않았으면 목록의 첫 그룹으로 초대한다
+	const inviteGroupId = invite.groupId || groups[0]?.id || "";
+
 	async function submitInvite(e) {
 		e.preventDefault();
 		setInviteError("");
 		setSaving(true);
 		try {
-			await createStaffInvitation(platformId, { staffRole: "MANAGER", [invite.method]: invite.value.trim() });
-			setInvite({ method: "email", value: "" });
+			await createStaffInvitation(platformId, { staffRole: "MANAGER", [invite.method]: invite.value.trim(), managerGroupId: inviteGroupId });
+			setInvite({ method: "email", value: "", groupId: "" });
 			setShowInvite(false);
 			loadInvitations();
 			notify("초대 링크를 만들었습니다.");
@@ -173,9 +176,9 @@ export default function ManagerAdminPanel({ platformId }) {
 			{[["menu", "메뉴"], ["feature", "기능"]].map(([kind, title]) => (
 				<div key={kind} className="form-field" style={fullRow}>
 					<label>{title} 권한</label>
-					<div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(200px,1fr))", gap: "6px 12px" }}>
+					<div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(200px,1fr))", gap: "8px 12px" }}>
 						{MANAGER_PERMISSIONS.filter((perm) => perm.kind === kind).map((perm) => (
-							<label key={perm.key} style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "13px", color: "var(--text)" }}>
+							<label key={perm.key} style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "13px", color: "var(--text)" }}>
 								<input
 									type="checkbox" style={{ width: "auto" }}
 									checked={groupForm.permissions.includes(perm.key)}
@@ -201,8 +204,8 @@ export default function ManagerAdminPanel({ platformId }) {
 	const tabs = [["registered", "등록됨", managers.length], ["pending", "초대 중", invitations.length], ["groups", "그룹 설정", groups.length]];
 
 	return (
-		<div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
-			<div style={{ display: "flex", gap: "6px" }}>
+		<div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+			<div style={{ display: "flex", gap: "8px" }}>
 				{tabs.map(([key, label, count]) => (
 					<button key={key} type="button" className={`btn btn-sm ${tab === key ? "btn-primary" : "btn-ghost"}`} onClick={() => switchTab(key)}>{label} {count}</button>
 				))}
@@ -213,18 +216,18 @@ export default function ManagerAdminPanel({ platformId }) {
 				<>
 					<input type="text" placeholder="이메일/이름 검색" value={query} onChange={(e) => { setQuery(e.target.value); setPage(0); }} style={searchStyle} />
 					{visible.map((s) => (
-						<div key={s.id} style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+						<div key={s.id} style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
 							<div style={rowStyle}>
-								<div className="avatar" style={{ background: "linear-gradient(135deg,var(--owner),#f7b955)", width: "38px", height: "38px", fontSize: "15px" }}>{s.email?.[0]?.toUpperCase() || "?"}</div>
+								<div className="avatar" style={{ width: "38px", height: "38px", fontSize: "15px" }}>{s.email?.[0]?.toUpperCase() || "?"}</div>
 								<div style={{ flex: 1 }}>
-									<div style={{ fontSize: "14px", fontWeight: 700 }}>{s.email}</div>
+									<div style={{ fontSize: "14px", fontWeight: 600 }}>{s.email}</div>
 									{s.name && <div style={{ fontSize: "11px", color: "var(--text-dim)" }}>{s.name}</div>}
 								</div>
 								<div style={{ fontSize: "12px", color: "var(--text-sub)", textAlign: "right" }}>
 									{groups.find((g) => g.id === s.managerGroupId)?.name || "그룹 없음"}
 								</div>
 								<button className="btn btn-sm" onClick={() => setGroupEdit(groupEdit?.s.id === s.id ? null : { s, groupId: s.managerGroupId || "" })}>그룹 변경</button>
-								<span className="plat-status ps-active" style={{ fontSize: "10px" }}>재직</span>
+								<span className="plat-status ps-active" style={{ fontSize: "11px" }}>재직</span>
 								<button className="btn btn-sm btn-danger" onClick={() => removeManager(s)}>삭제</button>
 							</div>
 							{groupEdit?.s.id === s.id && (
@@ -248,7 +251,7 @@ export default function ManagerAdminPanel({ platformId }) {
 						<div style={{ fontSize: "12px", color: "var(--text-dim)", textAlign: "center", padding: "16px 0" }}>배정된 매니저가 없습니다</div>
 					)}
 					{pages > 1 && (
-						<div style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: "10px", fontSize: "12px" }}>
+						<div style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: "12px", fontSize: "12px" }}>
 							<button className="btn btn-sm btn-ghost" disabled={safePage === 0} onClick={() => setPage(safePage - 1)}>이전</button>
 							<span>{safePage + 1} / {pages}</span>
 							<button className="btn btn-sm btn-ghost" disabled={safePage >= pages - 1} onClick={() => setPage(safePage + 1)}>다음</button>
@@ -263,7 +266,9 @@ export default function ManagerAdminPanel({ platformId }) {
 						<div key={i.id} style={{ ...rowStyle, border: "1px dashed var(--border)" }}>
 							<div style={{ flex: 1, fontSize: "13px" }}>
 								{[i.email, i.phone].filter(Boolean).join(" / ")}
-								<div style={{ fontSize: "11px", color: "var(--text-dim)" }}>수락 대기 · {formatDateTime(i.expiresAt)}까지</div>
+								<div style={{ fontSize: "11px", color: "var(--text-dim)" }}>
+									{groups.find((g) => g.id === i.managerGroupId)?.name || "그룹 미지정"} · 수락 대기 · {formatDateTime(i.expiresAt)}까지
+								</div>
 							</div>
 							<button className="btn btn-sm" onClick={() => copyLink(i.token)}>링크 복사</button>
 							<button className="btn btn-sm btn-danger" onClick={() => cancelInvite(i.id)}>취소</button>
@@ -275,9 +280,9 @@ export default function ManagerAdminPanel({ platformId }) {
 					<button className="btn btn-primary btn-sm" style={{ alignSelf: "flex-start" }} onClick={() => setShowInvite((v) => !v)}>+ 매니저 초대</button>
 					{showInvite && (
 						<form onSubmit={submitInvite} className="card" style={gridForm}>
-							<div style={{ ...fullRow, display: "flex", gap: "6px" }}>
+							<div style={{ ...fullRow, display: "flex", gap: "8px" }}>
 								{[["email", "이메일"], ["phone", "연락처"]].map(([m, label]) => (
-									<button key={m} type="button" className={`btn btn-sm ${invite.method === m ? "btn-primary" : "btn-ghost"}`} onClick={() => setInvite({ method: m, value: "" })}>{label}</button>
+									<button key={m} type="button" className={`btn btn-sm ${invite.method === m ? "btn-primary" : "btn-ghost"}`} onClick={() => setInvite({ ...invite, method: m, value: "" })}>{label}</button>
 								))}
 							</div>
 							<div className="form-field" style={fullRow}>
@@ -288,8 +293,15 @@ export default function ManagerAdminPanel({ platformId }) {
 									value={invite.value} onChange={(e) => setInvite({ ...invite, value: e.target.value })}
 								/>
 							</div>
+							<div className="form-field" style={fullRow}>
+								<label>매니저 그룹</label>
+								<select required value={inviteGroupId} onChange={(e) => setInvite({ ...invite, groupId: e.target.value })}>
+									{groups.length === 0 && <option value="" disabled>그룹이 없습니다 — 그룹 설정에서 먼저 만드세요</option>}
+									{groups.map((g) => <option key={g.id} value={g.id}>{g.name}</option>)}
+								</select>
+							</div>
 							<div style={{ ...fullRow, fontSize: "11px", color: "var(--text-dim)" }}>
-								수락한 뒤 '그룹 설정'에서 그룹을 지정하기 전까지는 권한이 없습니다. 발급된 링크를 직접 전달하세요 — 상대가 가입/로그인한 계정의 이메일 또는 연락처가 여기 적은 값과 일치해야 수락할 수 있습니다. (7일간 유효)
+								수락하는 즉시 고른 그룹의 권한이 적용됩니다. 발급된 링크를 직접 전달하세요 — 상대가 가입/로그인한 계정의 이메일 또는 연락처가 여기 적은 값과 일치해야 수락할 수 있습니다. (7일간 유효)
 							</div>
 							{inviteError && <div style={{ ...fullRow, color: "var(--red)", fontSize: "12px" }}>{inviteError}</div>}
 							<button className="btn btn-primary btn-sm" style={fullRow} type="submit" disabled={saving}>{saving ? "발급 중..." : "초대 링크 만들기"}</button>
@@ -304,10 +316,10 @@ export default function ManagerAdminPanel({ platformId }) {
 						그룹마다 이름과 사용할 수 있는 메뉴/기능을 고릅니다. 매니저는 그룹 하나에 속하고, 그 그룹의 권한을 갖습니다. 그룹이 없는 매니저는 대시보드/캘린더/내 정보만 쓸 수 있습니다.
 					</div>
 					{groups.map((g) => (
-						<div key={g.id} style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+						<div key={g.id} style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
 							<div style={rowStyle}>
 								<div style={{ flex: 1 }}>
-									<div style={{ fontSize: "14px", fontWeight: 700 }}>{g.name}</div>
+									<div style={{ fontSize: "14px", fontWeight: 600 }}>{g.name}</div>
 									<div style={{ fontSize: "11px", color: "var(--text-dim)" }}>소속 {managers.filter((s) => s.managerGroupId === g.id).length}명</div>
 								</div>
 								<div style={{ fontSize: "12px", color: "var(--text-sub)", textAlign: "right" }}>

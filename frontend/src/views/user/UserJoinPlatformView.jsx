@@ -10,17 +10,17 @@ const STATUS = {
 };
 
 const inputStyle = {
-	padding: "10px 12px", background: "var(--surface2)", border: "1px solid var(--border)",
+	padding: "12px 12px", background: "var(--surface2)", border: "1px solid var(--border)",
 	borderRadius: "var(--radius-sm)", color: "var(--text)", fontSize: "14px", outline: "none"
 };
 const buttonStyle = {
-	padding: "9px 16px", border: "none", borderRadius: "var(--radius-sm)", background: "var(--cta)",
-	color: "white", fontWeight: 600, fontSize: "13px", cursor: "pointer"
+	padding: "8px 16px", border: "none", borderRadius: "var(--radius-sm)", background: "var(--cta)",
+	color: "var(--cta-text)", fontWeight: 600, fontSize: "13px", cursor: "pointer"
 };
 const ghostButtonStyle = { ...buttonStyle, background: "transparent", color: "var(--text-sub)", border: "1px solid var(--border)" };
 const cardStyle = {
 	background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--radius)",
-	padding: "16px", display: "flex", flexDirection: "column", gap: "10px"
+	padding: "16px", display: "flex", flexDirection: "column", gap: "12px"
 };
 
 // 회원이 플랫폼을 이름 또는 ID로 찾아 가입을 신청하는 화면 — 플랫폼이 하나도 없는 계정의 기본 화면이기도 하다.
@@ -91,9 +91,8 @@ export default function UserJoinPlatformView() {
 	return (
 		<div className="page" id="page-join-platform">
 			<div className="page-header">
-				<div className="page-label">FIND PLATFORM</div>
 				<div className="page-title">플랫폼 찾기</div>
-				<div className="page-subtitle">다니고 싶은 센터를 이름이나 플랫폼 ID로 찾아 가입을 신청하세요</div>
+				<div className="page-subtitle">센터 이름이나 플랫폼 ID로 찾아 가입 신청</div>
 			</div>
 
 			{notice && <div style={{ color: "var(--green)", fontSize: "13px", marginBottom: "12px" }}>{notice}</div>}
@@ -108,7 +107,7 @@ export default function UserJoinPlatformView() {
 			{searchError && <div style={{ color: "var(--red)", fontSize: "13px", marginBottom: "12px" }}>{searchError}</div>}
 
 			{results && (
-				<div style={{ display: "flex", flexDirection: "column", gap: "10px", marginBottom: "28px" }}>
+				<div style={{ display: "flex", flexDirection: "column", gap: "12px", marginBottom: "28px" }}>
 					{results.length === 0 && (
 						<div style={{ color: "var(--text-dim)", fontSize: "13px", textAlign: "center", padding: "16px 0" }}>검색 결과가 없습니다</div>
 					)}
@@ -116,7 +115,7 @@ export default function UserJoinPlatformView() {
 						<div key={p.id} style={cardStyle}>
 							<div style={{ display: "flex", alignItems: "center", gap: "12px", flexWrap: "wrap" }}>
 								<div style={{ flex: 1, minWidth: "180px" }}>
-									<div style={{ fontSize: "15px", fontWeight: 700, color: "var(--text)" }}>{p.name}</div>
+									<div style={{ fontSize: "15px", fontWeight: 600, color: "var(--text)" }}>{p.name}</div>
 									<div style={{ fontSize: "12px", color: "var(--text-sub)" }}>
 										ID {p.code} · {businessTypeLabel(p.businessType)}{p.address ? ` · ${p.address}` : ""}
 									</div>
@@ -143,15 +142,15 @@ export default function UserJoinPlatformView() {
 				</div>
 			)}
 
-			<div style={{ fontSize: "14px", fontWeight: 700, color: "var(--text)", marginBottom: "10px" }}>내 신청 내역</div>
-			<div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+			<div style={{ fontSize: "14px", fontWeight: 600, color: "var(--text)", marginBottom: "12px" }}>내 신청 내역</div>
+			<div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
 				{mine.length === 0 && (
 					<div style={{ color: "var(--text-dim)", fontSize: "13px", textAlign: "center", padding: "16px 0" }}>아직 신청한 플랫폼이 없습니다</div>
 				)}
 				{mine.map((r) => (
 					<div key={r.id} style={{ ...cardStyle, flexDirection: "row", alignItems: "center", gap: "12px", flexWrap: "wrap" }}>
 						<div style={{ flex: 1, minWidth: "180px" }}>
-							<div style={{ fontSize: "14px", fontWeight: 700, color: "var(--text)" }}>{r.platformName}</div>
+							<div style={{ fontSize: "14px", fontWeight: 600, color: "var(--text)" }}>{r.platformName}</div>
 							<div style={{ fontSize: "11px", color: "var(--text-dim)" }}>{formatDateTime(r.createdAt)} 신청</div>
 							{r.message && <div style={{ fontSize: "12px", color: "var(--text-sub)", marginTop: "4px" }}>내 메모: {r.message}</div>}
 							{r.decisionMemo && <div style={{ fontSize: "12px", color: "var(--text-sub)", marginTop: "2px" }}>센터 메모: {r.decisionMemo}</div>}

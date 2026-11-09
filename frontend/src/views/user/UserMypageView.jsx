@@ -1,13 +1,13 @@
 import { openModal, closeModal } from "../default.js";
+import { businessTypeIcon } from "../../api/common.js";
 
 export default function UserMypageView() {
 	return (
 		<>
 		<div className="page" id="page-mypage">
 			<div className="page-header">
-				<div className="page-label">MY PAGE</div>
 				<div className="page-title">마이페이지</div>
-				<div className="page-subtitle">내 정보와 등록된 플랫폼을 확인하세요</div>
+				<div className="page-subtitle">내 정보와 등록한 플랫폼</div>
 			</div>
 
 			{/* 프로필 히어로 */}
@@ -32,19 +32,19 @@ export default function UserMypageView() {
 					<div className="mypage-stat-key">이번달 누적 예약</div>
 				</div>
 				<div className="mypage-stat-card">
-					<div className="mypage-stat-val" style={{ color: "var(--accent2)" }}>
+					<div className="mypage-stat-val">
 						18
 					</div>
 					<div className="mypage-stat-key">이번달 출석 횟수</div>
 				</div>
 				<div className="mypage-stat-card">
-					<div className="mypage-stat-val" style={{ color: "var(--green)" }}>
+					<div className="mypage-stat-val">
 						78%
 					</div>
 					<div className="mypage-stat-key">출석률</div>
 				</div>
 				<div className="mypage-stat-card">
-					<div className="mypage-stat-val" style={{ color: "var(--accent3)" }}>
+					<div className="mypage-stat-val">
 						D-7
 					</div>
 					<div className="mypage-stat-key">수강권 만료까지</div>
@@ -56,8 +56,8 @@ export default function UserMypageView() {
 				<div className="card-title">등록 플랫폼</div>
 				<div className="platform-list">
 					<div className="platform-item">
-						<div className="platform-icon" style={{ background: "rgba(124,106,247,.15)" }}>
-							🤸
+						<div className="platform-icon">
+							{businessTypeIcon("FITNESS", 18)}
 						</div>
 						<div className="platform-body">
 							<div className="platform-name">스튜디오 필라테스 강남점</div>
@@ -72,8 +72,8 @@ export default function UserMypageView() {
 						<span className="platform-status ps-soon">만료 임박</span>
 					</div>
 					<div className="platform-item">
-						<div className="platform-icon" style={{ background: "rgba(246,173,85,.15)" }}>
-							🎵
+						<div className="platform-icon">
+							{businessTypeIcon("ARTS", 18)}
 						</div>
 						<div className="platform-body">
 							<div className="platform-name">뮤직하우스 홍대점</div>

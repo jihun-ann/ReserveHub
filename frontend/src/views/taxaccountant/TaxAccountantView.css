@@ -1,6 +1,6 @@
 #taxaccountant-app {
-    --taxacct: #276749;
-    --taxacct-rgb: 39, 103, 73;
+    --taxacct: var(--accent-active-text);
+    --taxacct-rgb: var(--accent-rgb);
 
     .plat-dot {
         width: 8px;
@@ -100,15 +100,14 @@
     .page-label {
         font-size: 10px;
         color: var(--taxacct);
-        letter-spacing: 2px;
+        letter-spacing: 0;
         font-weight: 600;
         margin-bottom: 4px;
-        text-transform: uppercase;
     }
 
     .page-title {
         font-size: 28px;
-        font-weight: 800;
+        font-weight: 600;
         letter-spacing: -.015em;
     }
 
@@ -128,7 +127,7 @@
 
     .card-title {
         font-size: 15px;
-        font-weight: 700;
+        font-weight: 600;
         color: var(--text);
         margin-bottom: 16px;
     }
@@ -141,13 +140,12 @@
         cursor: pointer;
         font-family: inherit;
         border: none;
-        transition: all var(--tr);
+        transition: background-color var(--tr), border-color var(--tr), color var(--tr), opacity var(--tr);
     }
 
     .btn-primary {
         background: var(--cta);
-        color: white;
-        box-shadow: 0 3px 10px rgba(245, 166, 35, .3);
+        color: var(--cta-text);
     }
 
     .btn-primary:hover {
@@ -185,8 +183,7 @@
         font-size: 11px;
         color: var(--text-sub);
         margin-bottom: 6px;
-        letter-spacing: .06em;
-        text-transform: uppercase;
+        letter-spacing: 0;
     }
 
     .form-field input,
@@ -240,7 +237,7 @@
         font-size: 10px;
         color: var(--text-dim);
         margin-top: 3px;
-        letter-spacing: 1px;
+        letter-spacing: 0;
     }
 
     /* ── 뱃지 (재무 일정 상태) ── */
@@ -307,8 +304,8 @@
         align-items: center;
         gap: 16px;
         padding: 20px;
-        background: linear-gradient(135deg, rgba(var(--taxacct-rgb), .15), rgba(var(--taxacct-rgb), .05));
-        border: 1px solid rgba(var(--taxacct-rgb), .25);
+        background: var(--surface);
+        border: 1px solid var(--border);
         border-radius: var(--r);
         margin-bottom: 20px;
     }
@@ -321,8 +318,9 @@
         align-items: center;
         justify-content: center;
         font-size: 24px;
-        font-weight: 700;
-        color: white;
+        background: var(--surface2);
+        font-weight: 500;
+        color: var(--text-sub);
         flex-shrink: 0;
     }
 
@@ -332,7 +330,7 @@
 
     .hero-name {
         font-size: 18px;
-        font-weight: 700;
+        font-weight: 600;
     }
 
     .hero-email {

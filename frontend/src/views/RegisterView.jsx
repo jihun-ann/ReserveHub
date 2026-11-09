@@ -91,7 +91,7 @@ export default function RegisterView() {
 						border: "none",
 						borderRadius: "var(--radius-sm)",
 						background: "var(--cta)",
-						color: "white",
+						color: "var(--cta-text)",
 						fontWeight: 600,
 						fontSize: "14px",
 						fontFamily: "'Pretendard', sans-serif",

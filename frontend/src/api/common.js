@@ -1,3 +1,5 @@
+import { createElement } from "react";
+import { BookOpen, Building2, Dumbbell, Palette, Scissors } from "lucide-react";
 import { apiGet, apiPost, apiPatch, apiDelete, apiPostForm, API_BASE_URL, getAccessToken } from "./http.js";
 
 export const BUSINESS_TYPES = [
@@ -8,10 +10,10 @@ export const BUSINESS_TYPES = [
 	{ value: "OTHER", label: "기타" }
 ];
 
-const BUSINESS_TYPE_EMOJI = { FITNESS: "🏋️", ARTS: "🎨", EDUCATION: "📚", BEAUTY: "💆", OTHER: "🏢" };
+const BUSINESS_TYPE_ICON = { FITNESS: Dumbbell, ARTS: Palette, EDUCATION: BookOpen, BEAUTY: Scissors, OTHER: Building2 };
 
-export function businessTypeEmoji(value) {
-	return BUSINESS_TYPE_EMOJI[value] || "🏢";
+export function businessTypeIcon(value, size = 16) {
+	return createElement(BUSINESS_TYPE_ICON[value] || Building2, { size, strokeWidth: 1.5 });
 }
 
 export function businessTypeLabel(value) {

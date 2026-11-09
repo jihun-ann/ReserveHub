@@ -92,15 +92,14 @@ export default function ManagerCalendarView({ platformId }) {
 		<>
 		<div className="page" id="manager-calendar">
 			<div className="page-header">
-				<div className="page-label">CALENDAR</div>
 				<div className="page-title">캘린더</div>
-				<div className="page-subtitle">플랫폼 전체 일정을 한눈에 확인하세요</div>
+				<div className="page-subtitle">플랫폼 전체 일정</div>
 			</div>
 
-			<div style={{ display: "flex", alignItems: "center", gap: "14px", flexWrap: "wrap", padding: "10px 16px", background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "10px", marginBottom: "20px" }}>
-				<span style={{ fontSize: "10px", color: "var(--text-dim)", letterSpacing: "1px", textTransform: "uppercase" }}>범례</span>
+			<div style={{ display: "flex", alignItems: "center", gap: "16px", flexWrap: "wrap", padding: "12px 16px", background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "10px", marginBottom: "20px" }}>
+				<span style={{ fontSize: "11px", color: "var(--text-dim)" }}>범례</span>
 				{Object.entries(EVENT_TYPE_STYLE).map(([key, s]) => (
-					<div key={key} style={{ display: "flex", alignItems: "center", gap: "5px", fontSize: "11px", fontWeight: "600", color: s.color }}>
+					<div key={key} style={{ display: "flex", alignItems: "center", gap: "4px", fontSize: "11px", fontWeight: "600", color: s.color }}>
 						<span style={{ display: "inline-block", width: "10px", height: "4px", background: s.color, borderRadius: "2px" }}></span>
 						{s.label}
 					</div>
@@ -164,7 +163,7 @@ export default function ManagerCalendarView({ platformId }) {
 							selEvents.map((e) => {
 								const style = EVENT_TYPE_STYLE[e.type] || { color: "#888", label: e.type };
 								return (
-									<div key={e.id} style={{ display: "flex", alignItems: "center", gap: "10px", padding: "10px 0", borderBottom: "1px solid var(--border)" }}>
+									<div key={e.id} style={{ display: "flex", alignItems: "center", gap: "12px", padding: "12px 0", borderBottom: "1px solid var(--border)" }}>
 										<div style={{ width: "3px", height: "36px", borderRadius: "2px", background: style.color, flexShrink: 0 }}></div>
 										<div style={{ flex: 1 }}>
 											<div style={{ fontSize: "13px", fontWeight: 600 }}>{e.title}</div>

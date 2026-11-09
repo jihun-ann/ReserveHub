@@ -169,9 +169,9 @@ export default function ManagerApprovalView({ platformId }) {
 		const tierBlocked = (isLeave && !myPermissions.includes("LEAVE_APPROVE")) || (isFinancial && !myPermissions.includes("FINANCIAL_APPROVE"));
 
 		return (
-			<div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+			<div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
 				<div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "8px" }}>
-					<div style={{ fontSize: "14px", fontWeight: 700 }}>
+					<div style={{ fontSize: "14px", fontWeight: 600 }}>
 						{isFinancial ? `재무 일정 · ${FINANCIAL_REQUEST_TYPE_LABEL[r.type] || r.type}` : isLeave ? "휴가 요청" : "일정 변경 요청"}
 					</div>
 					<span className="badge" style={{ color: statusColor }}>{st}</span>
@@ -229,7 +229,7 @@ export default function ManagerApprovalView({ platformId }) {
 
 				{r.status !== "PENDING" && r.decisionMemo && (
 					<div style={{ fontSize: "12px", color: "var(--text-sub)" }}>
-						<span style={{ fontSize: "10px", color: "var(--text-dim)", letterSpacing: "1px" }}>
+						<span style={{ fontSize: "11px", color: "var(--text-dim)" }}>
 							{r.status === "REJECTED" ? "반려 사유" : "승인 메모"}
 						</span>
 						<div style={{ marginTop: "4px" }}>{r.decisionMemo}</div>
@@ -259,7 +259,7 @@ export default function ManagerApprovalView({ platformId }) {
 						</div>
 					) : (
 						<div>
-							<div style={{ fontSize: "10px", color: "var(--text-dim)", letterSpacing: "1px", marginBottom: "5px" }}>처리 메모</div>
+							<div style={{ fontSize: "11px", color: "var(--text-dim)", marginBottom: "4px" }}>처리 메모</div>
 							<textarea
 								className="req-memo"
 								placeholder="처리 사유나 특이사항을 입력하세요..."
@@ -287,16 +287,15 @@ export default function ManagerApprovalView({ platformId }) {
 		<>
 		<div className="page" id="manager-approval">
 			<div className="page-header">
-				<div className="page-label">APPROVAL</div>
 				<div className="page-title">승인 관리</div>
-				<div className="page-subtitle">일정 변경/휴가/재무 일정 요청을 검토하고 처리하세요</div>
+				<div className="page-subtitle">일정 변경, 휴가, 재무 일정 요청</div>
 			</div>
 
-			<div style={{ display: "flex", justifyContent: "flex-end", marginBottom: "14px" }}>
-				<button className="btn btn-primary btn-sm" style={{ display: "inline-flex", alignItems: "center", gap: "6px" }} onClick={openLeaveModal}><Palmtree size={14} strokeWidth={1.75} /> + 휴가 요청</button>
+			<div style={{ display: "flex", justifyContent: "flex-end", marginBottom: "16px" }}>
+				<button className="btn btn-primary btn-sm" style={{ display: "inline-flex", alignItems: "center", gap: "8px" }} onClick={openLeaveModal}><Palmtree size={14} strokeWidth={1.75} /> + 휴가 요청</button>
 			</div>
 
-			<div style={{ display: "flex", gap: "8px", marginBottom: "10px", flexWrap: "wrap" }}>
+			<div style={{ display: "flex", gap: "8px", marginBottom: "12px", flexWrap: "wrap" }}>
 				{[
 					{ v: "ALL", lbl: "전체 유형" },
 					{ v: "SCHEDULE", lbl: "일정 변경" },
@@ -326,7 +325,7 @@ export default function ManagerApprovalView({ platformId }) {
 			</div>
 
 			{loading ? (
-				<div style={{ padding: "40px", textAlign: "center", color: "var(--text-dim)" }}>불러오는 중...</div>
+				<div style={{ padding: "40px", textAlign: "center", color: "var(--text-dim)", fontSize: "13px" }}>불러오는 중...</div>
 			) : (
 				<ApprovalRequestsTable rows={rows} expandedId={expandedId} onToggle={setExpandedId} renderDetail={renderDetail} />
 			)}
@@ -339,7 +338,7 @@ export default function ManagerApprovalView({ platformId }) {
 					<button className="modal-close" onClick={() => closeModal("managerLeaveRequestModal")}>✕</button>
 				</div>
 				<div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-					<div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(160px,1fr))", gap: "10px" }}>
+					<div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(160px,1fr))", gap: "12px" }}>
 						<div className="form-field">
 							<label>시작일</label>
 							<input type="date" value={leaveStart} onChange={(e) => setLeaveStart(e.target.value)} />

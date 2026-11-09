@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { listFinancialRequestComments, addFinancialRequestComment, openFinancialRequestAttachment } from "../api/common.js";
+import { Paperclip } from "lucide-react";
 import { formatDateTime } from "../utils/formatDateTime.js";
 
 const ROLE_LABEL = { OWNER: "오너", MANAGER: "매니저", TUTOR: "강사", TAX_ACCOUNTANT: "세무사" };
@@ -55,13 +56,13 @@ export default function FinancialRequestThread({ requestId }) {
 			{loading ? (
 				<div style={{ fontSize: "12px", color: "var(--text-dim)" }}>댓글 불러오는 중...</div>
 			) : comments.length === 0 ? (
-				<div style={{ fontSize: "12px", color: "var(--text-dim)", marginBottom: "10px" }}>아직 댓글이 없습니다</div>
+				<div style={{ fontSize: "12px", color: "var(--text-dim)", marginBottom: "12px" }}>아직 댓글이 없습니다</div>
 			) : (
-				<div style={{ display: "flex", flexDirection: "column", gap: "10px", marginBottom: "12px" }}>
+				<div style={{ display: "flex", flexDirection: "column", gap: "12px", marginBottom: "12px" }}>
 					{comments.map((c) => (
 						<div key={c.id} style={{ fontSize: "12px" }}>
-							<div style={{ display: "flex", gap: "6px", alignItems: "baseline", color: "var(--text-dim)" }}>
-								<span style={{ fontWeight: 700, color: "var(--text)" }}>{c.authorName}</span>
+							<div style={{ display: "flex", gap: "8px", alignItems: "baseline", color: "var(--text-dim)" }}>
+								<span style={{ fontWeight: 600, color: "var(--text)" }}>{c.authorName}</span>
 								<span>{ROLE_LABEL[c.authorRole] || c.authorRole}</span>
 								<span>·</span>
 								<span>{formatDateTime(c.createdAt)}</span>
@@ -73,7 +74,7 @@ export default function FinancialRequestThread({ requestId }) {
 									onClick={() => openFinancialRequestAttachment(requestId, c.id)}
 									style={{ display: "inline-flex", alignItems: "center", gap: "4px", marginTop: "4px", color: "var(--accent)", background: "none", border: "none", padding: 0, cursor: "pointer", font: "inherit" }}
 								>
-									📎 {c.attachmentName} {c.attachmentSizeBytes ? `(${formatFileSize(c.attachmentSizeBytes)})` : ""}
+									<Paperclip size={14} strokeWidth={1.5} /> {c.attachmentName} {c.attachmentSizeBytes ? `(${formatFileSize(c.attachmentSizeBytes)})` : ""}
 								</button>
 							)}
 						</div>
@@ -87,7 +88,7 @@ export default function FinancialRequestThread({ requestId }) {
 					value={text}
 					onChange={(e) => setText(e.target.value)}
 					style={{
-						minHeight: "50px", padding: "8px 10px", borderRadius: "var(--rs)", border: "1px solid var(--border)",
+						minHeight: "50px", padding: "8px 12px", borderRadius: "var(--rs)", border: "1px solid var(--border)",
 						background: "var(--surface)", color: "var(--text)", fontFamily: "inherit", fontSize: "13px", resize: "vertical"
 					}}
 				/>

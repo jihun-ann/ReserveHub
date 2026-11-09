@@ -80,16 +80,15 @@ export default function TutorCalendarView() {
 	return (
 		<div id="tutor-calendar" className="page active">
 			<div className="page-header">
-				<div className="page-label">Tutor / Calendar</div>
 				<div className="page-title">내 캘린더</div>
-				<div className="page-subtitle">내 레슨 일정과 플랫폼 공지를 확인하세요</div>
+				<div className="page-subtitle">레슨 일정과 플랫폼 공지</div>
 			</div>
 
-			<div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "20px", flexWrap: "wrap", padding: "10px 14px", background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "10px" }}>
-				<span style={{ fontSize: "10px", color: "var(--text-dim)", letterSpacing: "1px", textTransform: "uppercase", fontFamily: "'DM Mono',monospace", flexShrink: 0 }}>내 소속</span>
+			<div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "20px", flexWrap: "wrap", padding: "12px 16px", background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "10px" }}>
+				<span style={{ fontSize: "11px", color: "var(--text-dim)", fontFamily: "var(--mono)", flexShrink: 0 }}>내 소속</span>
 				{platforms.length === 0 && <span style={{ fontSize: "12px", color: "var(--text-dim)" }}>소속된 플랫폼이 없습니다</span>}
 				{platforms.map((p) => (
-					<div key={p.id} style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "12px", fontWeight: 600, color: p.colorHex }}>
+					<div key={p.id} style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "12px", fontWeight: 600, color: p.colorHex }}>
 						<span style={{ display: "inline-block", width: "10px", height: "10px", background: p.colorHex, borderRadius: "2px" }}></span>
 						{p.name}
 					</div>
@@ -98,15 +97,15 @@ export default function TutorCalendarView() {
 
 			<div className="today-summary">
 				<div className="summary-cell">
-					<div className="summary-val" style={{ color: "var(--accent2)" }}>{loading ? "-" : todayLessonCount}</div>
+					<div className="summary-val">{loading ? "-" : todayLessonCount}</div>
 					<div className="summary-key">오늘 레슨</div>
 				</div>
 				<div className="summary-cell">
-					<div className="summary-val" style={{ color: "var(--green)" }}>{loading ? "-" : lessons.length}</div>
+					<div className="summary-val">{loading ? "-" : lessons.length}</div>
 					<div className="summary-key">이번 달 레슨</div>
 				</div>
 				<div className="summary-cell">
-					<div className="summary-val" style={{ color: "var(--accent3)" }}>{loading ? "-" : `${monthRate}%`}</div>
+					<div className="summary-val">{loading ? "-" : `${monthRate}%`}</div>
 					<div className="summary-key">이번 달 출결률</div>
 				</div>
 			</div>
@@ -166,7 +165,7 @@ export default function TutorCalendarView() {
 							) : (
 								<>
 									{selLessons.map((l) => (
-										<div key={l.id} style={{ display: "flex", alignItems: "center", gap: "10px", padding: "10px 0", borderBottom: "1px solid var(--border)" }}>
+										<div key={l.id} style={{ display: "flex", alignItems: "center", gap: "12px", padding: "12px 0", borderBottom: "1px solid var(--border)" }}>
 											<div style={{ width: "3px", height: "36px", borderRadius: "2px", background: platformsById[l.platformId]?.colorHex || "#888", flexShrink: 0 }}></div>
 											<div style={{ flex: 1 }}>
 												<div style={{ fontSize: "13px", fontWeight: 600 }}>{l.programName}</div>
@@ -179,7 +178,7 @@ export default function TutorCalendarView() {
 									{selEvents.map((e) => {
 										const style = EVENT_TYPE_STYLE[e.type] || { color: "#888", label: e.type };
 										return (
-											<div key={e.id} style={{ display: "flex", alignItems: "center", gap: "10px", padding: "10px 0", borderBottom: "1px solid var(--border)" }}>
+											<div key={e.id} style={{ display: "flex", alignItems: "center", gap: "12px", padding: "12px 0", borderBottom: "1px solid var(--border)" }}>
 												<div style={{ width: "3px", height: "36px", borderRadius: "2px", background: style.color, flexShrink: 0 }}></div>
 												<div style={{ flex: 1 }}>
 													<div style={{ fontSize: "13px", fontWeight: 600 }}>{e.title}</div>

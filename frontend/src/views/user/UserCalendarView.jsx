@@ -103,9 +103,8 @@ export default function UserCalendarView() {
 	return (
 		<div className="user-view page active" id="page-calendar">
 			<div className="page-header">
-				<div className="page-label">CALENDAR</div>
 				<div className="page-title">내 캘린더</div>
-				<div className="page-subtitle">레슨 일정과 예약 현황을 한눈에 확인하세요</div>
+				<div className="page-subtitle">레슨 일정과 예약 현황</div>
 			</div>
 
 			<div className="cal-grid">
@@ -189,7 +188,7 @@ export default function UserCalendarView() {
 					<div className="card">
 						<div className="card-title">운동 · 연습 타이머</div>
 						<div className="timer-type-row">
-							<button className="type-btn active">🏋️ 운동</button>
+							<button className="type-btn active">운동</button>
 							{/* 등록된 플랫폼 + 플랫폼에서 제공하는 타이머 <button className="type-btn active" onClick="setTimerType(this,'운동')">🏋️ 운동</button>
                             <button className="type-btn" onClick="setTimerType(this,'스트레칭')">🧘 스트레칭</button>
                             <button className="type-btn" onClick="setTimerType(this,'연습')">🎵 연습</button>*/}
@@ -436,7 +435,7 @@ export default function UserCalendarView() {
                   <div class="lesson-name">${r.name}</div>
                   <div class="lesson-place">${r.place}</div>
                 </div>
-                <div class="lesson-tag" style="background:rgba(124,106,247,.12);color:${r.color}">예약됨</div>
+                <div class="lesson-tag" style="background:rgba(var(--accent-rgb),.12);color:${r.color}">예약됨</div>
               </div>`
 				)
 				.join("") +

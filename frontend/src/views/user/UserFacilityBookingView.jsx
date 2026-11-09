@@ -207,20 +207,19 @@ export default function UserFacilityBookingView({ platformId }) {
 		<>
 		<div className="page" id="user-facility">
 			<div className="page-header">
-				<div className="page-label">Facilities</div>
 				<div className="page-title">시설물 예약</div>
-				<div className="page-subtitle">배치도에서 연습실/레슨실/PT실 등 시설물을 눌러 예약 가능한 시간대를 확인하고 예약하세요.</div>
+				<div className="page-subtitle">배치도에서 시설물을 고르면 예약 가능한 시간대가 나옵니다</div>
 			</div>
 
 			{loading ? (
-				<div className="card" style={{ padding: "24px", textAlign: "center", color: "var(--text-dim)", marginBottom: "20px" }}>불러오는 중...</div>
+				<div className="card" style={{ padding: "24px", textAlign: "center", color: "var(--text-dim)", fontSize: "13px", marginBottom: "20px" }}>불러오는 중...</div>
 			) : facilities.length === 0 ? (
-				<div className="card" style={{ padding: "24px", textAlign: "center", color: "var(--text-dim)", marginBottom: "20px" }}>등록된 시설물이 없습니다</div>
+				<div className="card" style={{ padding: "24px", textAlign: "center", color: "var(--text-dim)", fontSize: "13px", marginBottom: "20px" }}>등록된 시설물이 없습니다</div>
 			) : (
 				<div style={{ marginBottom: "24px" }}>
-					<div className="card-title" style={{ marginBottom: "10px" }}>배치도</div>
+					<div className="card-title" style={{ marginBottom: "12px" }}>배치도</div>
 					{floors.length > 0 && (
-						<div style={{ display: "flex", gap: "8px", marginBottom: "10px", flexWrap: "wrap" }}>
+						<div style={{ display: "flex", gap: "8px", marginBottom: "12px", flexWrap: "wrap" }}>
 							{floors.map((fl) => (
 								<button
 									key={fl}
@@ -233,7 +232,7 @@ export default function UserFacilityBookingView({ platformId }) {
 						</div>
 					)}
 					{unplaced.length > 0 && (
-						<div style={{ display: "flex", flexWrap: "wrap", gap: "8px", marginBottom: "10px" }}>
+						<div style={{ display: "flex", flexWrap: "wrap", gap: "8px", marginBottom: "12px" }}>
 							{unplaced.map((f) => (
 								<div
 									key={f.id}
@@ -292,7 +291,7 @@ export default function UserFacilityBookingView({ platformId }) {
 					</div>
 
 					{selectedFacility && (
-						<div className="card" style={{ marginTop: "14px" }}>
+						<div className="card" style={{ marginTop: "16px" }}>
 							<div className="slot-panel-header">
 								<div>
 									<div className="slot-panel-date">{selectedFacility.name}</div>
@@ -342,7 +341,7 @@ export default function UserFacilityBookingView({ platformId }) {
 									<div className="confirm-row"><span>시설물</span><strong>{selectedFacility.name}</strong></div>
 									<div className="confirm-row"><span>날짜</span><strong>{selectedDay ? `${selectedDay.mon}월 ${selectedDay.day}일` : statusDate}</strong></div>
 									<div className="confirm-row"><span>시간</span><strong>{selectedSlotStatus.start}-{selectedSlotStatus.end}</strong></div>
-									<div className="confirm-row"><span>잔여 정원</span><strong style={{ color: "var(--accent2)" }}>{selectedSlotStatus.remain}명</strong></div>
+									<div className="confirm-row"><span>잔여 정원</span><strong>{selectedSlotStatus.remain}명</strong></div>
 									<div className="form-field" style={{ marginBottom: "12px" }}>
 										<label>목적 (선택)</label>
 										<input type="text" value={purpose} onChange={(e) => setPurpose(e.target.value)} placeholder="예: 개인 연습" />
@@ -356,7 +355,7 @@ export default function UserFacilityBookingView({ platformId }) {
 				</div>
 			)}
 
-			<div className="card-title" style={{ marginBottom: "10px" }}>내 예약</div>
+			<div className="card-title" style={{ marginBottom: "12px" }}>내 예약</div>
 			<div className="card" style={{ padding: "0", overflow: "hidden" }}>
 				<div style={{ overflowX: "auto" }}>
 					<table className="data-table">
@@ -372,8 +371,8 @@ export default function UserFacilityBookingView({ platformId }) {
 								sortedMyBookings.map((b) => (
 									<tr key={b.id}>
 										<td style={{ fontWeight: 600 }}>{facilitiesById[b.facilityId]?.name || "-"}</td>
-										<td style={{ fontFamily: "'DM Mono',monospace", fontSize: "12px" }}>{b.bookingDate}</td>
-										<td style={{ fontFamily: "'DM Mono',monospace" }}>{b.startTime?.slice(0, 5)}-{b.endTime?.slice(0, 5)}</td>
+										<td style={{ fontFamily: "var(--mono)", fontSize: "12px" }}>{b.bookingDate}</td>
+										<td style={{ fontFamily: "var(--mono)" }}>{b.startTime?.slice(0, 5)}-{b.endTime?.slice(0, 5)}</td>
 										<td style={{ color: "var(--text-sub)" }}>{b.purpose || "-"}</td>
 										<td><button className="btn btn-ghost btn-sm" onClick={() => cancel(b.id)}>예약 취소</button></td>
 									</tr>

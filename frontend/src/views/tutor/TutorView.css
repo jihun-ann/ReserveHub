@@ -1,7 +1,7 @@
 #tutor-app {
     /* tutor identity — blue, distinct from owner(amber)/manager(teal)/user(purple) */
-    --tutor: #2a5fcc;
-    --tutor-rgb: 42, 95, 204;
+    --tutor: var(--accent-active-text);
+    --tutor-rgb: var(--accent-rgb);
 
     .plat-dot {
         width: 8px;
@@ -70,7 +70,7 @@
         margin-left: auto;
         display: flex;
         align-items: center;
-        gap: 10px;
+        gap: 12px;
     }
 
     .notif-btn {
@@ -106,56 +106,54 @@
     }
 
     .page-label {
-        font-family: 'DM Mono', monospace;
-        font-size: 10px;
-        letter-spacing: 3px;
+        font-family: var(--mono);
+        font-size: 11px;
+        letter-spacing: 0;
         color: var(--tutor);
-        text-transform: uppercase;
-        margin-bottom: 5px;
+        margin-bottom: 4px;
     }
 
     .page-title {
         font-size: 28px;
-        font-weight: 800;
+        font-weight: 600;
         letter-spacing: -.015em;
     }
 
     .page-subtitle {
         font-size: 13px;
         color: var(--text-sub);
-        margin-top: 3px;
+        margin-top: 4px;
     }
 
     .card {
         background: var(--surface);
         border: 1px solid var(--border);
         border-radius: var(--radius);
-        padding: 22px;
+        padding: 24px;
         box-shadow: var(--shadow-card);
     }
 
     .card-title {
         font-size: 15px;
-        font-weight: 700;
+        font-weight: 600;
         color: var(--text);
         margin-bottom: 16px;
     }
 
     .btn {
-        padding: 9px 18px;
+        padding: 8px 20px;
         border-radius: var(--radius-sm);
         border: none;
         cursor: pointer;
         font-size: 13px;
         font-weight: 600;
         font-family: 'Pretendard', sans-serif;
-        transition: all 0.15s;
+        transition: background-color 0.15s, border-color 0.15s, color 0.15s, opacity 0.15s;
     }
 
     .btn-primary {
         background: var(--cta);
-        color: white;
-        box-shadow: 0 3px 10px rgba(245, 166, 35, .3);
+        color: var(--cta-text);
     }
 
     .btn-primary:hover {
@@ -184,7 +182,7 @@
     }
 
     .btn-sm {
-        padding: 6px 12px;
+        padding: 8px 12px;
         font-size: 12px;
     }
 
@@ -207,14 +205,14 @@
     .hero-avatar {
         width: 60px;
         height: 60px;
-        background: linear-gradient(135deg, var(--tutor), #6d93ff);
+        background: var(--surface2);
         border-radius: 50%;
         display: flex;
         align-items: center;
         justify-content: center;
         font-size: 24px;
-        font-weight: 700;
-        color: white;
+        font-weight: 500;
+        color: var(--text-sub);
         flex-shrink: 0;
     }
 
@@ -224,13 +222,13 @@
 
     .hero-name {
         font-size: 18px;
-        font-weight: 700;
+        font-weight: 600;
     }
 
     .hero-email {
         font-size: 12px;
         color: var(--text-sub);
-        margin-top: 3px;
+        margin-top: 4px;
     }
 
     .hero-divider {
@@ -257,16 +255,16 @@
     }
 
     .hstat-val {
-        font-family: 'DM Mono', monospace;
+        font-family: var(--mono);
         font-size: 20px;
         font-weight: 500;
         color: var(--tutor);
     }
 
     .hstat-key {
-        font-size: 10px;
+        font-size: 11px;
         color: var(--text-dim);
-        margin-top: 3px;
+        margin-top: 4px;
     }
 
     .hero-edit {
@@ -278,11 +276,11 @@
         display: flex;
         align-items: flex-start;
         gap: 12px;
-        padding: 14px;
+        padding: 16px;
         background: var(--surface2);
         border-radius: var(--radius-sm);
         border: 1px solid var(--border);
-        margin-bottom: 9px;
+        margin-bottom: 8px;
     }
 
     .platform-item:last-child {
@@ -297,7 +295,7 @@
         display: flex;
         align-items: center;
         justify-content: center;
-        font-size: 20px;
+        color: var(--text-sub);
         flex-shrink: 0;
     }
 
@@ -307,16 +305,16 @@
 
     .plat-name {
         font-size: 14px;
-        font-weight: 700;
+        font-weight: 600;
     }
 
     .plat-tag {
         display: inline-block;
-        font-size: 10px;
+        font-size: 11px;
         padding: 2px 8px;
         border-radius: 20px;
         font-weight: 600;
-        margin: 3px 0 5px;
+        margin: 4px 0 4px;
     }
 
     .plat-dates {
@@ -327,7 +325,7 @@
     .plat-status {
         font-size: 11px;
         font-weight: 600;
-        padding: 3px 10px;
+        padding: 4px 12px;
         border-radius: 20px;
         flex-shrink: 0;
     }
@@ -338,8 +336,8 @@
     }
 
     .res-status {
-        font-size: 10px;
-        padding: 3px 10px;
+        font-size: 11px;
+        padding: 4px 12px;
         border-radius: 20px;
         font-weight: 600;
     }
@@ -360,7 +358,7 @@
         display: inline-flex;
         align-items: center;
         gap: 4px;
-        font-size: 10px;
+        font-size: 11px;
         font-weight: 600;
         padding: 2px 8px;
         border-radius: 20px;
@@ -385,7 +383,7 @@
     }
 
     .summary-cell {
-        padding: 18px 14px;
+        padding: 20px 16px;
         text-align: center;
     }
 
@@ -394,16 +392,16 @@
     }
 
     .summary-val {
-        font-family: 'DM Mono', monospace;
+        font-family: var(--mono);
         font-size: 24px;
         font-weight: 500;
     }
 
     .summary-key {
-        font-size: 10px;
+        font-size: 11px;
         color: var(--text-dim);
-        margin-top: 3px;
-        letter-spacing: 1px;
+        margin-top: 4px;
+        letter-spacing: 0;
     }
 
     .tutor-cal-layout {
@@ -417,17 +415,17 @@
         display: flex;
         align-items: center;
         justify-content: space-between;
-        margin-bottom: 18px;
+        margin-bottom: 20px;
     }
 
     .cal-month {
         font-size: 19px;
-        font-weight: 700;
+        font-weight: 600;
     }
 
     .cal-nav {
         display: flex;
-        gap: 7px;
+        gap: 8px;
     }
 
     .cal-btn {
@@ -442,7 +440,7 @@
         justify-content: center;
         color: var(--text-sub);
         font-size: 14px;
-        transition: all 0.15s;
+        transition: background-color 0.15s, border-color 0.15s, color 0.15s, opacity 0.15s;
     }
 
     .cal-btn:hover {
@@ -453,22 +451,22 @@
     .cal-days-header {
         display: grid;
         grid-template-columns: repeat(7, 1fr);
-        margin-bottom: 5px;
+        margin-bottom: 4px;
     }
 
     .cal-day-label {
         text-align: center;
-        font-size: 10px;
+        font-size: 11px;
         font-weight: 600;
         color: var(--text-dim);
-        padding: 5px 0;
-        letter-spacing: 1px;
+        padding: 4px 0;
+        letter-spacing: 0;
     }
 
     .cal-days {
         display: grid;
         grid-template-columns: repeat(7, 1fr);
-        gap: 3px;
+        gap: 4px;
         min-height: 40px;
     }
 
@@ -483,7 +481,7 @@
         font-size: 11px;
         font-weight: 500;
         cursor: pointer;
-        transition: all var(--tr);
+        transition: background-color var(--tr), border-color var(--tr), color var(--tr), opacity var(--tr);
         position: relative;
         border: 1.5px solid transparent;
         gap: 2px;
@@ -506,12 +504,12 @@
         background: rgba(var(--tutor-rgb), .15);
         border-color: var(--tutor);
         color: var(--tutor);
-        font-weight: 700;
+        font-weight: 600;
     }
 
     .cal-cell.selected {
         background: var(--tutor);
-        color: #fff;
+        color: var(--on-accent);
         border-color: var(--tutor);
     }
 
@@ -523,8 +521,8 @@
     }
 
     .day-detail {
-        margin-top: 18px;
-        padding-top: 18px;
+        margin-top: 20px;
+        padding-top: 20px;
         border-top: 1px solid var(--border);
     }
 
@@ -537,11 +535,11 @@
 
     .day-detail-title {
         font-size: 14px;
-        font-weight: 700;
+        font-weight: 600;
     }
 
     .day-detail-date {
-        font-family: 'DM Mono', monospace;
+        font-family: var(--mono);
         font-size: 11px;
         color: var(--text-sub);
     }
@@ -549,13 +547,13 @@
     .day-events {
         display: flex;
         flex-direction: column;
-        gap: 7px;
+        gap: 8px;
     }
 
     .tutor-cal-right {
         display: flex;
         flex-direction: column;
-        gap: 18px;
+        gap: 20px;
     }
 
     /* ═══════════════════════════════════════════════
@@ -570,7 +568,7 @@
     }
 
     .filter-chip {
-        padding: 6px 14px;
+        padding: 8px 16px;
         border-radius: 20px;
         border: 1px solid var(--border);
         background: none;
@@ -579,7 +577,7 @@
         font-weight: 500;
         cursor: pointer;
         font-family: 'Pretendard', sans-serif;
-        transition: all 0.15s;
+        transition: background-color 0.15s, border-color 0.15s, color 0.15s, opacity 0.15s;
     }
 
     .filter-chip.active {
@@ -598,8 +596,7 @@
         font-size: 11px;
         font-weight: 600;
         color: var(--text-sub);
-        text-transform: uppercase;
-        letter-spacing: 1px;
+        letter-spacing: 0;
         padding: 8px 12px;
         text-align: left;
         border-bottom: 1px solid var(--border);
@@ -621,7 +618,7 @@
     }
 
     .atbtn {
-        padding: 5px 11px;
+        padding: 4px 12px;
         border-radius: 6px;
         border: 1px solid var(--border);
         background: none;
@@ -630,7 +627,7 @@
         font-weight: 600;
         cursor: pointer;
         font-family: 'Pretendard', sans-serif;
-        transition: all 0.15s;
+        transition: background-color 0.15s, border-color 0.15s, color 0.15s, opacity 0.15s;
     }
 
     .atbtn.present {
@@ -664,7 +661,7 @@
         display: flex;
         align-items: stretch;
         justify-content: center;
-        gap: 14px;
+        gap: 16px;
         margin-bottom: 28px;
     }
 
@@ -678,7 +675,7 @@
         flex-direction: column;
         align-items: center;
         justify-content: center;
-        gap: 6px;
+        gap: 8px;
         border-radius: var(--radius);
         border: 1.5px solid var(--border);
         background: var(--surface);
@@ -705,7 +702,7 @@
     }
 
     .hist-nav-btn:active {
-        transform: scale(.94);
+        transform: scale(.97);
     }
 
     .month-stamp-wrap {
@@ -718,7 +715,7 @@
         align-items: center;
         gap: 2px;
         width: 180px;
-        padding: 14px 0 12px;
+        padding: 16px 0 12px;
         border-radius: var(--radius);
         border: 1.5px solid var(--border);
         background: var(--surface);
@@ -731,16 +728,16 @@
     }
 
     .month-stamp-year {
-        font-family: 'DM Mono', monospace;
+        font-family: var(--mono);
         font-size: 13px;
         color: var(--text-dim);
         letter-spacing: .5px;
     }
 
     .month-stamp-num {
-        font-family: 'DM Mono', monospace;
+        font-family: var(--mono);
         font-size: 36px;
-        font-weight: 700;
+        font-weight: 600;
         line-height: 1.15;
         color: var(--tutor);
     }
@@ -749,7 +746,7 @@
         font-size: 11px;
         font-weight: 600;
         color: var(--text-dim);
-        letter-spacing: 1.5px;
+        letter-spacing: 0;
     }
 
     .month-picker {
@@ -772,7 +769,7 @@
         justify-content: center;
         gap: 16px;
         font-size: 14px;
-        font-weight: 700;
+        font-weight: 600;
         margin-bottom: 12px;
     }
 
@@ -783,16 +780,16 @@
     }
 
     .month-picker-cell {
-        padding: 11px 0;
+        padding: 12px 0;
         border-radius: var(--radius-sm);
         border: 1px solid transparent;
         background: var(--surface2);
         color: var(--text-sub);
-        font-family: 'DM Mono', monospace;
+        font-family: var(--mono);
         font-size: 14px;
         font-weight: 600;
         cursor: pointer;
-        transition: all .15s;
+        transition: background-color .15s, border-color .15s, color .15s, opacity .15s;
     }
 
     .month-picker-cell:hover {
@@ -803,7 +800,7 @@
     .month-picker-cell.active {
         background: var(--tutor);
         border-color: var(--tutor);
-        color: #fff;
+        color: var(--on-accent);
     }
 
     .ledger-table {
@@ -815,15 +812,14 @@
         font-size: 11px;
         font-weight: 600;
         color: var(--text-sub);
-        text-transform: uppercase;
-        letter-spacing: 1px;
-        padding: 10px 14px;
+        letter-spacing: 0;
+        padding: 12px 16px;
         text-align: left;
         border-bottom: 1px solid var(--border);
     }
 
     .ledger-table td {
-        padding: 10px 14px;
+        padding: 12px 16px;
         border-bottom: 1px solid var(--border);
         vertical-align: middle;
     }
@@ -850,22 +846,22 @@
         align-items: center;
         justify-content: center;
         gap: 1px;
-        padding: 5px 0;
+        padding: 4px 0;
         border-radius: var(--radius-sm);
         border: 1.5px solid var(--border);
         background: var(--surface2);
     }
 
     .stamp-day {
-        font-family: 'DM Mono', monospace;
+        font-family: var(--mono);
         font-size: 15px;
-        font-weight: 700;
+        font-weight: 600;
         line-height: 1;
         color: var(--tutor);
     }
 
     .stamp-dow {
-        font-size: 9px;
+        font-size: 11px;
         font-weight: 600;
         color: var(--text-dim);
         letter-spacing: .5px;
@@ -886,12 +882,12 @@
     .ledger-attend {
         display: flex;
         align-items: center;
-        gap: 10px;
+        gap: 12px;
         min-width: 200px;
     }
 
     .ledger-attend-frac {
-        font-family: 'DM Mono', monospace;
+        font-family: var(--mono);
         font-size: 12px;
         color: var(--text-sub);
         flex-shrink: 0;
@@ -924,7 +920,7 @@
     }
 
     .ledger-attend-pct {
-        font-family: 'DM Mono', monospace;
+        font-family: var(--mono);
         font-size: 13px;
         font-weight: 600;
         flex-shrink: 0;
@@ -952,16 +948,15 @@
         display: block;
         font-size: 11px;
         color: var(--text-sub);
-        margin-bottom: 6px;
-        letter-spacing: 1px;
-        text-transform: uppercase;
+        margin-bottom: 8px;
+        letter-spacing: 0;
     }
 
     .form-field input,
     .form-field select,
     .form-field textarea {
         width: 100%;
-        padding: 10px 12px;
+        padding: 12px 12px;
         background: var(--surface2);
         border: 1px solid var(--border);
         border-radius: var(--radius-sm);
@@ -1039,6 +1034,6 @@
 }
 
 :root[data-theme="dark"] #tutor-app {
-    --tutor: #6d93ff;
-    --tutor-rgb: 109, 147, 255;
+    --tutor: var(--accent-active-text);
+    --tutor-rgb: var(--accent-rgb);
 }

@@ -2,8 +2,8 @@
     /* 고객용 화면은 이번 "financial dashboard" 리디자인 대상(관리자용 B2B 업무시스템)이 아니라서
        기존 보라색 정체성을 그대로 유지한다 — 공유 --accent가 놋쇠 골드로 바뀌어도 여기 새지 않도록
        다른 역할들처럼 자체 변수로 명시적으로 고정해둔다. */
-    --user: #7c6af7;
-    --user-rgb: 124, 106, 247;
+    --user: var(--accent-active-text);
+    --user-rgb: var(--accent-rgb);
 
     .plat-dot {
         width: 8px;
@@ -65,7 +65,7 @@
         margin-left: auto;
         display: flex;
         align-items: center;
-        gap: 10px;
+        gap: 12px;
     }
 
     .notif-btn {
@@ -102,16 +102,16 @@
     }
 
     .page-label {
-        font-size: 10px;
+        font-size: 11px;
         color: var(--user);
-        letter-spacing: 2px;
+        letter-spacing: 0;
         font-weight: 600;
         margin-bottom: 4px;
     }
 
     .page-title {
         font-size: 28px;
-        font-weight: 800;
+        font-weight: 600;
         letter-spacing: -.015em;
     }
 
@@ -133,7 +133,7 @@
 
     .card-title {
         font-size: 15px;
-        font-weight: 700;
+        font-weight: 600;
         color: var(--text);
         margin-bottom: 16px;
     }
@@ -149,13 +149,13 @@
         font-size: 12px;
         font-weight: 600;
         color: var(--text-dim);
-        padding: 10px 14px;
+        padding: 12px 16px;
         text-align: left;
         border-bottom: 1px solid var(--border);
     }
 
     .data-table td {
-        padding: 12px 14px;
+        padding: 12px 16px;
         border-bottom: 1px solid var(--border);
         font-size: 13px;
         vertical-align: middle;
@@ -172,7 +172,7 @@
     .plat-chip {
         font-size: 11px;
         font-weight: 600;
-        padding: 4px 10px;
+        padding: 4px 12px;
         border-radius: 20px;
         border: 1px solid var(--border);
         white-space: nowrap;
@@ -188,13 +188,12 @@
         cursor: pointer;
         font-family: inherit;
         border: none;
-        transition: all var(--tr);
+        transition: background-color var(--tr), border-color var(--tr), color var(--tr), opacity var(--tr);
     }
 
     .btn-primary {
         background: var(--cta);
-        color: white;
-        box-shadow: 0 3px 10px rgba(245, 166, 35, .3);
+        color: var(--cta-text);
     }
 
     .btn-primary:hover {
@@ -213,7 +212,7 @@
     }
 
     .btn-sm {
-        padding: 5px 12px;
+        padding: 4px 12px;
         font-size: 12px;
     }
 
@@ -238,12 +237,12 @@
 
     .cal-month-label {
         font-size: 16px;
-        font-weight: 700;
+        font-weight: 600;
     }
 
     .cal-nav-btns {
         display: flex;
-        gap: 6px;
+        gap: 8px;
     }
 
     .cal-nav-btn {
@@ -258,20 +257,20 @@
         display: flex;
         align-items: center;
         justify-content: center;
-        transition: all var(--tr);
+        transition: background-color var(--tr), border-color var(--tr), color var(--tr), opacity var(--tr);
     }
 
     .cal-nav-btn:hover {
         background: var(--user);
         border-color: var(--user);
-        color: white;
+        color: var(--on-accent);
     }
 
     .cal-dow {
         display: grid;
         grid-template-columns: repeat(7, 1fr);
         gap: 2px;
-        margin-bottom: 6px;
+        margin-bottom: 8px;
     }
 
     .cal-dow-label {
@@ -285,7 +284,7 @@
     .cal-days {
         display: grid;
         grid-template-columns: repeat(7, 1fr);
-        gap: 3px;
+        gap: 4px;
     }
 
     .cal-cell {
@@ -298,7 +297,7 @@
         font-size: 13px;
         font-weight: 500;
         cursor: pointer;
-        transition: all var(--tr);
+        transition: background-color var(--tr), border-color var(--tr), color var(--tr), opacity var(--tr);
         position: relative;
         gap: 2px;
         border: 1.5px solid transparent;
@@ -318,15 +317,15 @@
     }
 
     .cal-cell.today {
-        background: rgba(124, 106, 247, .15);
+        background: rgba(var(--accent-rgb), .15);
         border-color: var(--user);
         color: var(--user);
-        font-weight: 700;
+        font-weight: 600;
     }
 
     .cal-cell.selected {
         background: var(--user);
-        color: white;
+        color: var(--on-accent);
         border-color: var(--user);
     }
 
@@ -353,15 +352,15 @@
     .cal-legend {
         display: flex;
         gap: 16px;
-        margin-top: 14px;
-        padding-top: 14px;
+        margin-top: 16px;
+        padding-top: 16px;
         border-top: 1px solid var(--border);
     }
 
     .legend-item {
         display: flex;
         align-items: center;
-        gap: 6px;
+        gap: 8px;
         font-size: 11px;
         color: var(--text-sub);
     }
@@ -385,7 +384,7 @@
     .lesson-list {
         display: flex;
         flex-direction: column;
-        gap: 10px;
+        gap: 12px;
     }
 
     .lesson-item {
@@ -399,7 +398,7 @@
     }
 
     .lesson-time {
-        font-family: 'DM Mono', monospace;
+        font-family: var(--mono);
         font-size: 14px;
         font-weight: 500;
         color: var(--user);
@@ -426,10 +425,10 @@
     }
 
     .lesson-tag {
-        font-size: 10px;
-        padding: 3px 8px;
+        font-size: 11px;
+        padding: 4px 8px;
         border-radius: 20px;
-        background: rgba(124, 106, 247, .15);
+        background: rgba(var(--accent-rgb), .15);
         color: var(--user);
         white-space: nowrap;
         font-weight: 600;
@@ -445,13 +444,13 @@
     .day-detail {
         background: var(--surface2);
         border-radius: var(--rs);
-        padding: 14px;
+        padding: 16px;
     }
 
     .day-detail-header {
         font-size: 12px;
         color: var(--text-sub);
-        margin-bottom: 10px;
+        margin-bottom: 12px;
     }
 
     .day-event-list {
@@ -463,7 +462,7 @@
     .day-event {
         display: flex;
         align-items: center;
-        gap: 10px;
+        gap: 12px;
     }
 
     .day-event-dot {
@@ -474,7 +473,7 @@
     }
 
     .day-event-time {
-        font-family: 'DM Mono', monospace;
+        font-family: var(--mono);
         font-size: 12px;
         color: var(--text-sub);
         min-width: 40px;
@@ -496,13 +495,13 @@
 
     .timer-type-row {
         display: flex;
-        gap: 6px;
+        gap: 8px;
         margin-bottom: 16px;
     }
 
     .type-btn {
         flex: 1;
-        padding: 7px 6px;
+        padding: 8px 8px;
         border-radius: var(--rs);
         background: var(--surface2);
         border: 1px solid var(--border);
@@ -511,29 +510,29 @@
         font-weight: 600;
         cursor: pointer;
         font-family: inherit;
-        transition: all var(--tr);
+        transition: background-color var(--tr), border-color var(--tr), color var(--tr), opacity var(--tr);
     }
 
     .type-btn.active {
-        background: rgba(124, 106, 247, .2);
+        background: rgba(var(--accent-rgb), .2);
         border-color: var(--user);
         color: var(--user);
     }
 
     .timer-digits {
-        font-family: 'DM Mono', monospace;
+        font-family: var(--mono);
         font-size: 38px;
         font-weight: 500;
         text-align: center;
-        letter-spacing: 2px;
+        letter-spacing: 0;
         color: var(--text);
-        margin: 4px 0 6px;
+        margin: 4px 0 8px;
     }
 
     .timer-label {
         text-align: center;
-        font-size: 10px;
-        letter-spacing: 3px;
+        font-size: 11px;
+        letter-spacing: 0;
         color: var(--text-dim);
         margin-bottom: 16px;
     }
@@ -546,14 +545,14 @@
 
     .timer-btn-row button {
         flex: 1;
-        padding: 10px;
+        padding: 12px;
         border-radius: var(--rs);
         font-size: 13px;
         font-weight: 600;
         cursor: pointer;
         font-family: inherit;
         border: none;
-        transition: all var(--tr);
+        transition: background-color var(--tr), border-color var(--tr), color var(--tr), opacity var(--tr);
     }
 
     .timer-stats {
@@ -565,21 +564,21 @@
     .timer-stat {
         background: var(--surface2);
         border-radius: var(--rs);
-        padding: 10px;
+        padding: 12px;
         text-align: center;
     }
 
     .timer-stat-val {
-        font-family: 'DM Mono', monospace;
+        font-family: var(--mono);
         font-size: 16px;
         font-weight: 500;
         color: var(--user);
     }
 
     .timer-stat-key {
-        font-size: 10px;
+        font-size: 11px;
         color: var(--text-dim);
-        margin-top: 3px;
+        margin-top: 4px;
     }
 
     /* 최근이력 */
@@ -593,8 +592,8 @@
     .history-item {
         display: flex;
         align-items: center;
-        gap: 10px;
-        padding: 10px 12px;
+        gap: 12px;
+        padding: 12px 12px;
         background: var(--surface2);
         border-radius: var(--rs);
     }
@@ -607,7 +606,7 @@
     }
 
     .history-date {
-        font-family: 'DM Mono', monospace;
+        font-family: var(--mono);
         font-size: 11px;
         color: var(--text-dim);
         min-width: 80px;
@@ -643,7 +642,7 @@
     }
 
     .filter-chip {
-        padding: 6px 14px;
+        padding: 8px 16px;
         border-radius: 20px;
         border: 1.5px solid var(--border);
         background: none;
@@ -652,7 +651,7 @@
         font-weight: 600;
         cursor: pointer;
         font-family: inherit;
-        transition: all var(--tr);
+        transition: background-color var(--tr), border-color var(--tr), color var(--tr), opacity var(--tr);
     }
 
     .filter-chip:hover {
@@ -661,7 +660,7 @@
     }
 
     .filter-chip.active {
-        background: rgba(124, 106, 247, .15);
+        background: rgba(var(--accent-rgb), .15);
         border-color: var(--user);
         color: var(--user);
     }
@@ -675,13 +674,13 @@
     .program-card {
         display: flex;
         align-items: center;
-        gap: 14px;
-        padding: 14px 16px;
+        gap: 16px;
+        padding: 16px 16px;
         background: var(--surface);
         border: 1.5px solid var(--border);
         border-radius: var(--r);
         cursor: pointer;
-        transition: all var(--tr);
+        transition: background-color var(--tr), border-color var(--tr), color var(--tr), opacity var(--tr);
     }
 
     .program-card:hover {
@@ -690,7 +689,7 @@
 
     .program-card.selected {
         border-color: var(--user);
-        background: rgba(124, 106, 247, .08);
+        background: rgba(var(--accent-rgb), .08);
     }
 
     .program-icon {
@@ -700,7 +699,10 @@
         display: flex;
         align-items: center;
         justify-content: center;
-        font-size: 20px;
+        background: var(--surface2);
+        color: var(--text-sub);
+        font-size: 15px;
+        font-weight: 500;
         flex-shrink: 0;
     }
 
@@ -711,18 +713,18 @@
 
     .program-name {
         font-size: 14px;
-        font-weight: 700;
+        font-weight: 600;
     }
 
     .program-meta {
         font-size: 11px;
         color: var(--text-sub);
-        margin-top: 3px;
+        margin-top: 4px;
     }
 
     .prog-badge {
-        font-size: 10px;
-        padding: 3px 9px;
+        font-size: 11px;
+        padding: 4px 8px;
         border-radius: 20px;
         font-weight: 600;
         white-space: nowrap;
@@ -730,18 +732,18 @@
     }
 
     .badge-group {
-        background: rgba(124, 106, 247, .15);
-        color: var(--user);
+        background: var(--surface2);
+        color: var(--text-sub);
     }
 
     .badge-private {
-        background: rgba(79, 209, 197, .15);
-        color: var(--accent2);
+        background: var(--surface2);
+        color: var(--text-sub);
     }
 
     .badge-room {
-        background: rgba(var(--accent3-rgb), .15);
-        color: var(--accent3);
+        background: var(--surface2);
+        color: var(--text-sub);
     }
 
     /* 슬롯 패널 */
@@ -750,12 +752,12 @@
         display: flex;
         align-items: center;
         justify-content: space-between;
-        margin-bottom: 14px;
+        margin-bottom: 16px;
     }
 
     .slot-panel-date {
         font-size: 14px;
-        font-weight: 700;
+        font-weight: 600;
     }
 
     .slot-panel-sub {
@@ -765,13 +767,13 @@
 
     .slot-nav-row {
         display: flex;
-        gap: 6px;
-        margin-bottom: 14px;
+        gap: 8px;
+        margin-bottom: 16px;
     }
 
     .slot-nav-btn {
         flex: 1;
-        padding: 7px;
+        padding: 8px;
         background: var(--surface2);
         border: 1px solid var(--border);
         border-radius: var(--rs);
@@ -780,12 +782,12 @@
         font-weight: 600;
         cursor: pointer;
         font-family: inherit;
-        transition: all var(--tr);
+        transition: background-color var(--tr), border-color var(--tr), color var(--tr), opacity var(--tr);
         text-align: center;
     }
 
     .slot-nav-btn.active {
-        background: rgba(124, 106, 247, .15);
+        background: rgba(var(--accent-rgb), .15);
         border-color: var(--user);
         color: var(--user);
     }
@@ -800,13 +802,13 @@
     .slot-item {
         display: flex;
         align-items: center;
-        gap: 10px;
-        padding: 12px 14px;
+        gap: 12px;
+        padding: 12px 16px;
         background: var(--surface2);
         border: 1.5px solid transparent;
         border-radius: var(--rs);
         cursor: pointer;
-        transition: all var(--tr);
+        transition: background-color var(--tr), border-color var(--tr), color var(--tr), opacity var(--tr);
     }
 
     .slot-item:hover:not(.full) {
@@ -815,7 +817,7 @@
 
     .slot-item.selected-slot {
         border-color: var(--user);
-        background: rgba(124, 106, 247, .1);
+        background: rgba(var(--accent-rgb), .1);
     }
 
     .slot-item.full {
@@ -824,7 +826,7 @@
     }
 
     .slot-time {
-        font-family: 'DM Mono', monospace;
+        font-family: var(--mono);
         font-size: 13px;
         min-width: 90px;
     }
@@ -850,13 +852,13 @@
     .slot-count {
         font-size: 11px;
         color: var(--text-dim);
-        margin-top: 3px;
+        margin-top: 4px;
     }
 
     .slot-status {
         font-size: 11px;
         font-weight: 600;
-        padding: 3px 9px;
+        padding: 4px 8px;
         border-radius: 20px;
         white-space: nowrap;
     }
@@ -880,7 +882,7 @@
 
     .confirm-box {
         border-top: 1px solid var(--border);
-        padding-top: 14px;
+        padding-top: 16px;
         margin-top: 4px;
     }
 
@@ -902,11 +904,11 @@
         padding: 12px;
         margin-top: 12px;
         border-radius: var(--r);
-        background: linear-gradient(135deg, var(--user), #a78bfa);
+        background: var(--user);
         border: none;
-        color: white;
+        color: var(--on-accent);
         font-size: 14px;
-        font-weight: 700;
+        font-weight: 600;
         cursor: pointer;
         font-family: inherit;
         transition: opacity var(--tr);
@@ -930,8 +932,8 @@
         align-items: center;
         gap: 16px;
         padding: 20px;
-        background: linear-gradient(135deg, rgba(124, 106, 247, .15), rgba(79, 209, 197, .08));
-        border: 1px solid rgba(124, 106, 247, .25);
+        background: var(--surface);
+        border: 1px solid var(--border);
         border-radius: var(--r);
         margin-bottom: 20px;
     }
@@ -940,12 +942,13 @@
         width: 56px;
         height: 56px;
         border-radius: 50%;
-        background: linear-gradient(135deg, var(--user), #a78bfa);
+        background: var(--surface2);
         display: flex;
         align-items: center;
         justify-content: center;
         font-size: 24px;
-        font-weight: 700;
+        font-weight: 500;
+        color: var(--text-sub);
         flex-shrink: 0;
     }
 
@@ -955,7 +958,7 @@
 
     .mypage-name {
         font-size: 18px;
-        font-weight: 700;
+        font-weight: 600;
     }
 
     .mypage-email {
@@ -966,16 +969,16 @@
 
     .mypage-tags {
         display: flex;
-        gap: 6px;
+        gap: 8px;
         margin-top: 8px;
         flex-wrap: wrap;
     }
 
     .mypage-tag {
         font-size: 11px;
-        padding: 3px 10px;
+        padding: 4px 12px;
         border-radius: 20px;
-        background: rgba(124, 106, 247, .12);
+        background: rgba(var(--accent-rgb), .12);
         color: var(--user);
         font-weight: 600;
     }
@@ -995,7 +998,7 @@
     }
 
     .mypage-stat-val {
-        font-family: 'DM Mono', monospace;
+        font-family: var(--mono);
         font-size: 28px;
         font-weight: 500;
         color: var(--user);
@@ -1010,7 +1013,7 @@
     .platform-list {
         display: flex;
         flex-direction: column;
-        gap: 10px;
+        gap: 12px;
         margin-bottom: 20px;
     }
 
@@ -1018,7 +1021,7 @@
         display: flex;
         align-items: center;
         gap: 12px;
-        padding: 14px 16px;
+        padding: 16px 16px;
         background: var(--surface);
         border: 1px solid var(--border);
         border-radius: var(--r);
@@ -1031,7 +1034,10 @@
         display: flex;
         align-items: center;
         justify-content: center;
-        font-size: 18px;
+        background: var(--surface2);
+        color: var(--text-sub);
+        font-size: 15px;
+        font-weight: 500;
         flex-shrink: 0;
     }
 
@@ -1052,7 +1058,7 @@
     }
 
     .platform-remain {
-        font-family: 'DM Mono', monospace;
+        font-family: var(--mono);
         text-align: right;
     }
 
@@ -1063,13 +1069,13 @@
     }
 
     .platform-remain-label {
-        font-size: 10px;
+        font-size: 11px;
         color: var(--text-dim);
     }
 
     .platform-status {
         font-size: 11px;
-        padding: 3px 9px;
+        padding: 4px 8px;
         border-radius: 20px;
         font-weight: 600;
     }
@@ -1092,14 +1098,14 @@
     .res-list {
         display: flex;
         flex-direction: column;
-        gap: 10px;
+        gap: 12px;
     }
 
     .res-item {
         display: flex;
         align-items: center;
-        gap: 14px;
-        padding: 14px 16px;
+        gap: 16px;
+        padding: 16px 16px;
         background: var(--surface);
         border: 1px solid var(--border);
         border-radius: var(--r);
@@ -1111,7 +1117,7 @@
     }
 
     .res-day {
-        font-family: 'DM Mono', monospace;
+        font-family: var(--mono);
         font-size: 18px;
         font-weight: 600;
         color: var(--user);
@@ -1119,7 +1125,7 @@
     }
 
     .res-mon {
-        font-size: 10px;
+        font-size: 11px;
         color: var(--text-sub);
     }
 
@@ -1141,19 +1147,19 @@
     .res-time {
         font-size: 11px;
         color: var(--text-sub);
-        margin-top: 3px;
+        margin-top: 4px;
     }
 
     .res-status {
         font-size: 11px;
-        padding: 3px 9px;
+        padding: 4px 8px;
         border-radius: 20px;
         font-weight: 600;
         white-space: nowrap;
     }
 
     .rs-upcoming {
-        background: rgba(124, 106, 247, .12);
+        background: rgba(var(--accent-rgb), .12);
         color: var(--user);
     }
 
@@ -1248,7 +1254,7 @@
         background: var(--surface);
         border: 1px solid var(--user);
         border-radius: var(--r);
-        padding: 14px 24px;
+        padding: 16px 24px;
         font-size: 14px;
         font-weight: 600;
         color: var(--user);
@@ -1269,14 +1275,13 @@
         display: block;
         font-size: 11px;
         color: var(--text-sub);
-        margin-bottom: 6px;
-        letter-spacing: .06em;
-        text-transform: uppercase;
+        margin-bottom: 8px;
+        letter-spacing: 0;
     }
 
     .form-field input {
         width: 100%;
-        padding: 10px 12px;
+        padding: 12px 12px;
         background: var(--surface2);
         border: 1px solid var(--border);
         border-radius: var(--rs);

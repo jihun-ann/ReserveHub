@@ -7,9 +7,9 @@
 	/* owner brand — also doubles as the "awaiting you" signal.
 	   everything else (bg/surface/border/text/radius/green/red) now
 	   comes from the shared tokens in index.css. */
-	--owner: #a15a1d;
-	--owner-soft: #d9822f;
-	--owner-rgb: 161, 90, 29;
+	--owner: var(--accent-active-text);
+	--owner-soft: var(--accent);
+	--owner-rgb: var(--accent-rgb);
 
 	background: var(--bg);
 	color: var(--text);
@@ -52,17 +52,17 @@
 		flex-shrink: 0;
 		display: flex;
 		align-items: center;
-		gap: 14px;
+		gap: 16px;
 		min-height: 65px;
 		box-sizing: border-box;
-		padding: 18px 40px;
+		padding: 20px 40px;
 		border-bottom: 1px solid var(--border);
 		background: var(--surface);
 	}
 
 	.topbar-title {
 		font-size: 16px;
-		font-weight: 700;
+		font-weight: 600;
 	}
 
 	.topbar-plat {
@@ -78,7 +78,7 @@
 		margin-left: auto;
 		display: flex;
 		align-items: center;
-		gap: 10px;
+		gap: 12px;
 	}
 
 	.notif-btn {
@@ -113,7 +113,7 @@
 	}
 
 	.page {
-		animation: owner-page-in .25s ease;
+		animation: owner-page-in .3s var(--ease);
 	}
 
 	/* ── shared page furniture ── */
@@ -124,16 +124,15 @@
 
 	.page-label {
 		font-family: 'DM Mono', monospace;
-		font-size: 10px;
+		font-size: 11px;
 		letter-spacing: .18em;
 		color: var(--owner);
-		text-transform: uppercase;
-		margin-bottom: 6px;
+		margin-bottom: 8px;
 	}
 
 	.page-title {
 		font-size: 28px;
-		font-weight: 800;
+		font-weight: 600;
 		letter-spacing: -.015em;
 	}
 
@@ -147,32 +146,31 @@
 		background: var(--surface);
 		border: 1px solid var(--border);
 		border-radius: var(--radius);
-		padding: 22px;
+		padding: 24px;
 		box-shadow: var(--shadow-card);
 	}
 
 	.card-title {
 		font-size: 15px;
-		font-weight: 700;
+		font-weight: 600;
 		color: var(--text);
 		margin-bottom: 16px;
 	}
 
 	.btn {
-		padding: 9px 18px;
+		padding: 8px 20px;
 		border-radius: var(--radius-sm);
 		border: none;
 		cursor: pointer;
 		font-size: 13px;
 		font-weight: 600;
 		font-family: inherit;
-		transition: all .15s;
+		transition: background-color .15s, border-color .15s, color .15s, opacity .15s;
 	}
 
 	.btn-primary {
 		background: var(--cta);
-		color: #fff;
-		box-shadow: 0 3px 10px rgba(245, 166, 35, .3);
+		color: var(--cta-text);
 	}
 
 	.btn-primary:hover {
@@ -201,7 +199,7 @@
 	}
 
 	.btn-sm {
-		padding: 6px 12px;
+		padding: 8px 12px;
 		font-size: 12px;
 	}
 
@@ -214,17 +212,17 @@
 		display: flex;
 		align-items: center;
 		justify-content: space-between;
-		margin-bottom: 14px;
+		margin-bottom: 16px;
 	}
 
 	.cal-month-lbl {
 		font-size: 15px;
-		font-weight: 700;
+		font-weight: 600;
 	}
 
 	.cal-nav-btns {
 		display: flex;
-		gap: 6px;
+		gap: 8px;
 	}
 
 	.cal-nav-btn {
@@ -239,13 +237,13 @@
 		display: flex;
 		align-items: center;
 		justify-content: center;
-		transition: all var(--tr);
+		transition: background-color var(--tr), border-color var(--tr), color var(--tr), opacity var(--tr);
 	}
 
 	.cal-nav-btn:hover {
 		background: var(--owner);
 		border-color: var(--owner);
-		color: #fff;
+		color: var(--on-accent);
 	}
 
 	.cal-dow {
@@ -257,10 +255,10 @@
 
 	.cal-dow-lbl {
 		text-align: center;
-		font-size: 10px;
+		font-size: 11px;
 		color: var(--text-dim);
 		font-weight: 600;
-		padding: 3px 0;
+		padding: 4px 0;
 	}
 
 	.cal-grid-7 {
@@ -280,7 +278,7 @@
 		font-size: 11px;
 		font-weight: 500;
 		cursor: pointer;
-		transition: all var(--tr);
+		transition: background-color var(--tr), border-color var(--tr), color var(--tr), opacity var(--tr);
 		position: relative;
 		border: 1.5px solid transparent;
 		gap: 2px;
@@ -303,12 +301,12 @@
 		background: rgba(var(--owner-rgb), .15);
 		border-color: var(--owner);
 		color: var(--owner);
-		font-weight: 700;
+		font-weight: 600;
 	}
 
 	.cal-cell.selected {
 		background: var(--owner);
-		color: #fff;
+		color: var(--on-accent);
 		border-color: var(--owner);
 	}
 
@@ -337,7 +335,7 @@
 		background: var(--surface);
 		border: 1px solid var(--border);
 		border-radius: var(--radius);
-		padding: 26px 28px;
+		padding: 28px 28px;
 		display: flex;
 		align-items: center;
 		gap: 24px;
@@ -348,13 +346,13 @@
 		width: 60px;
 		height: 60px;
 		border-radius: 50%;
-		background: linear-gradient(135deg, var(--owner-soft), var(--owner));
+		background: var(--surface2);
 		display: flex;
 		align-items: center;
 		justify-content: center;
 		font-size: 24px;
-		font-weight: 700;
-		color: #fff;
+		font-weight: 500;
+		color: var(--text-sub);
 		flex-shrink: 0;
 	}
 
@@ -365,13 +363,13 @@
 
 	.hero-name {
 		font-size: 18px;
-		font-weight: 700;
+		font-weight: 600;
 	}
 
 	.hero-email {
 		font-size: 12px;
 		color: var(--text-sub);
-		margin-top: 3px;
+		margin-top: 4px;
 	}
 
 	.hero-divider {
@@ -405,7 +403,7 @@
 	}
 
 	.hstat-key {
-		font-size: 10px;
+		font-size: 11px;
 		color: var(--text-dim);
 		margin-top: 4px;
 	}
@@ -414,10 +412,10 @@
 		display: flex;
 		align-items: flex-start;
 		gap: 12px;
-		padding: 14px;
+		padding: 16px;
 		background: var(--surface2);
 		border-radius: var(--radius-sm);
-		margin-bottom: 9px;
+		margin-bottom: 8px;
 	}
 
 	.platform-item:last-child {
@@ -432,7 +430,7 @@
 		display: flex;
 		align-items: center;
 		justify-content: center;
-		font-size: 20px;
+		color: var(--text-sub);
 		flex-shrink: 0;
 	}
 
@@ -442,12 +440,12 @@
 
 	.plat-name {
 		font-size: 14px;
-		font-weight: 700;
+		font-weight: 600;
 	}
 
 	.plat-tag {
 		display: inline-block;
-		font-size: 10px;
+		font-size: 11px;
 		padding: 2px 8px;
 		border-radius: 20px;
 		font-weight: 600;
@@ -459,7 +457,7 @@
 	.plat-status {
 		font-size: 11px;
 		font-weight: 600;
-		padding: 3px 10px;
+		padding: 4px 12px;
 		border-radius: 20px;
 		flex-shrink: 0;
 	}
@@ -485,7 +483,7 @@
 		font-size: 12px;
 		font-weight: 600;
 		color: var(--text-dim);
-		padding: 10px 12px;
+		padding: 12px 12px;
 		text-align: left;
 		border-bottom: 1px solid var(--border);
 	}
@@ -509,7 +507,7 @@
 		display: inline-flex;
 		align-items: center;
 		gap: 4px;
-		font-size: 10px;
+		font-size: 11px;
 		font-weight: 600;
 		padding: 2px 8px;
 		border-radius: 20px;
@@ -520,7 +518,7 @@
 	/* ── approval queue ── */
 
 	.filter-chip {
-		padding: 7px 15px;
+		padding: 8px 16px;
 		border-radius: 20px;
 		border: 1px solid var(--border);
 		background: none;
@@ -529,7 +527,7 @@
 		font-weight: 500;
 		cursor: pointer;
 		font-family: inherit;
-		transition: all .15s;
+		transition: background-color .15s, border-color .15s, color .15s, opacity .15s;
 	}
 
 	.filter-chip:hover {
@@ -543,8 +541,8 @@
 	}
 
 	.res-status {
-		font-size: 10px;
-		padding: 3px 10px;
+		font-size: 11px;
+		padding: 4px 12px;
 		border-radius: 20px;
 		font-weight: 600;
 	}
@@ -570,7 +568,7 @@
 	}
 
 	.plat-tab {
-		padding: 11px 18px;
+		padding: 12px 20px;
 		border: none;
 		background: none;
 		color: var(--text-sub);
@@ -580,7 +578,7 @@
 		font-family: inherit;
 		border-bottom: 2px solid transparent;
 		white-space: nowrap;
-		transition: all .15s;
+		transition: background-color .15s, border-color .15s, color .15s, opacity .15s;
 		flex-shrink: 0;
 	}
 
@@ -597,16 +595,15 @@
 		display: block;
 		font-size: 11px;
 		color: var(--text-sub);
-		margin-bottom: 6px;
-		letter-spacing: .06em;
-		text-transform: uppercase;
+		margin-bottom: 8px;
+		letter-spacing: 0;
 	}
 
 	.form-field input,
 	.form-field select,
 	.form-field textarea {
 		width: 100%;
-		padding: 10px 12px;
+		padding: 12px 12px;
 		background: var(--surface2);
 		border: 1px solid var(--border);
 		border-radius: var(--radius-sm);
@@ -714,7 +711,7 @@
 
 /* dark theme: brighten the owner accent for contrast on a near-black surface */
 :root[data-theme="dark"] #owner-app {
-	--owner: #f0a352;
-	--owner-soft: #f6c088;
-	--owner-rgb: 240, 163, 82;
+	--owner: var(--accent-active-text);
+	--owner-soft: var(--accent);
+	--owner-rgb: var(--accent-rgb);
 }

@@ -97,20 +97,19 @@ export default function OwnerFacilityView({ platformId }) {
 		<>
 		<div className="page" id="owner-facility">
 			<div className="page-header">
-				<div className="page-label">Facilities</div>
 				<div className="page-title">시설물 관리</div>
-				<div className="page-subtitle">연습실 등 예약 가능한 시설물을 등록하세요. 사용자는 등록된 시설물을 시간대별로 예약합니다.</div>
+				<div className="page-subtitle">회원이 시간대별로 예약할 수 있는 시설물</div>
 			</div>
 
-			<div style={{ display: "flex", justifyContent: "flex-end", marginBottom: "14px" }}>
+			<div style={{ display: "flex", justifyContent: "flex-end", marginBottom: "16px" }}>
 				<button className="btn btn-primary btn-sm" onClick={openCreate}>+ 시설물 추가</button>
 			</div>
 
 			{!loading && facilities.length > 0 && (
 				<div style={{ marginBottom: "20px" }}>
-					<div className="card-title" style={{ marginBottom: "10px" }}>배치도</div>
+					<div className="card-title" style={{ marginBottom: "12px" }}>배치도</div>
 					{floors.length > 0 && (
-						<div style={{ display: "flex", gap: "8px", marginBottom: "10px", flexWrap: "wrap" }}>
+						<div style={{ display: "flex", gap: "8px", marginBottom: "12px", flexWrap: "wrap" }}>
 							{floors.map((fl) => (
 								<button
 									key={fl}
@@ -123,7 +122,7 @@ export default function OwnerFacilityView({ platformId }) {
 						</div>
 					)}
 					{unplaced.length > 0 && (
-						<div style={{ display: "flex", flexWrap: "wrap", gap: "8px", marginBottom: "10px" }}>
+						<div style={{ display: "flex", flexWrap: "wrap", gap: "8px", marginBottom: "12px" }}>
 							{unplaced.map((f) => (
 								<div
 									key={f.id}
@@ -203,7 +202,7 @@ export default function OwnerFacilityView({ platformId }) {
 										</td>
 										<td style={{ color: "var(--text-sub)" }}>{f.description || "-"}</td>
 										<td>
-											<span className={`badge ${f.isActive ? "bs-active" : "bs-expired"}`} style={{ fontSize: "10px" }}>
+											<span className={`badge ${f.isActive ? "bs-active" : "bs-expired"}`} style={{ fontSize: "11px" }}>
 												{f.isActive ? "사용중" : "폐쇄"}
 											</span>
 										</td>
@@ -233,7 +232,7 @@ export default function OwnerFacilityView({ platformId }) {
 						<label>시설물명</label>
 						<input type="text" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="예: 2층 연습실" />
 					</div>
-					<div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(160px,1fr))", gap: "10px" }}>
+					<div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(160px,1fr))", gap: "12px" }}>
 						<div className="form-field">
 							<label>층 (선택)</label>
 							<input type="text" value={form.floor} onChange={(e) => setForm({ ...form, floor: e.target.value })} placeholder="예: 1층, 지하1층" />
@@ -243,7 +242,7 @@ export default function OwnerFacilityView({ platformId }) {
 							<input type="number" min="1" value={form.capacity} onChange={(e) => setForm({ ...form, capacity: e.target.value })} />
 						</div>
 					</div>
-					<div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(160px,1fr))", gap: "10px" }}>
+					<div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(160px,1fr))", gap: "12px" }}>
 						<div className="form-field">
 							<label>이용 시작 시간 (선택)</label>
 							<input type="time" value={form.openTime} onChange={(e) => setForm({ ...form, openTime: e.target.value })} />

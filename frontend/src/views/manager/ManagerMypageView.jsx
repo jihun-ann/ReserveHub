@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { openModal, closeModal } from "../default.js";
 import { getCurrentUser, displayName, changePassword, updateProfile, updateBankInfo } from "../../api/http.js";
-import { listMembers, listStaff, businessTypeEmoji } from "../../api/common.js";
+import { listMembers, listStaff, businessTypeIcon } from "../../api/common.js";
 
 export default function ManagerMypageView({ platformId, currentPlatform }) {
 	const user = getCurrentUser();
@@ -104,9 +104,8 @@ export default function ManagerMypageView({ platformId, currentPlatform }) {
 		<>
 		<div className="page" id="manager-mypage">
 			<div className="page-header">
-				<div className="page-label">MY PAGE</div>
 				<div className="page-title">내 정보</div>
-				<div className="page-subtitle">계정 정보와 담당 플랫폼 현황을 확인하세요</div>
+				<div className="page-subtitle">계정 정보와 담당 플랫폼</div>
 			</div>
 
 			<div className="hero">
@@ -123,18 +122,18 @@ export default function ManagerMypageView({ platformId, currentPlatform }) {
 						<div className="hstat-key">담당 플랫폼</div>
 					</div>
 					<div className="hstat">
-						<div className="hstat-val" style={{ color: "var(--green)" }}>{loading ? "-" : memberCount}</div>
+						<div className="hstat-val">{loading ? "-" : memberCount}</div>
 						<div className="hstat-key">전체 회원</div>
 					</div>
 					<div className="hstat">
-						<div className="hstat-val" style={{ color: "var(--accent3)" }}>{loading ? "-" : tutorCount}</div>
+						<div className="hstat-val">{loading ? "-" : tutorCount}</div>
 						<div className="hstat-key">소속 강사</div>
 					</div>
 				</div>
-				<div style={{ display: "flex", flexDirection: "column", gap: "6px", marginLeft: "auto" }}>
-					<button className="btn btn-ghost btn-sm" onClick={() => openModal("managerAccountModal")}>✏️ 계정 정보</button>
-					<button className="btn btn-ghost btn-sm" onClick={() => openModal("managerBankModal")}>🏦 정산 계좌</button>
-					<button className="btn btn-ghost btn-sm" onClick={() => openModal("managerPasswordModal")}>🔒 비밀번호 변경</button>
+				<div style={{ display: "flex", flexDirection: "column", gap: "8px", marginLeft: "auto" }}>
+					<button className="btn btn-ghost btn-sm" onClick={() => openModal("managerAccountModal")}>계정 정보</button>
+					<button className="btn btn-ghost btn-sm" onClick={() => openModal("managerBankModal")}>정산 계좌</button>
+					<button className="btn btn-ghost btn-sm" onClick={() => openModal("managerPasswordModal")}>비밀번호 변경</button>
 				</div>
 			</div>
 
@@ -143,17 +142,17 @@ export default function ManagerMypageView({ platformId, currentPlatform }) {
 				{!currentPlatform ? (
 					<div style={{ fontSize: "12px", color: "var(--text-dim)", padding: "8px 0" }}>배정된 플랫폼이 없습니다</div>
 				) : (
-					<div style={{ display: "flex", alignItems: "center", gap: "12px", padding: "14px 0" }}>
-						<div style={{ width: "38px", height: "38px", borderRadius: "10px", background: "rgba(var(--manager-rgb),.12)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "18px", flexShrink: "0" }}>
-							{businessTypeEmoji(currentPlatform.businessType)}
+					<div style={{ display: "flex", alignItems: "center", gap: "12px", padding: "16px 0" }}>
+						<div style={{ width: "38px", height: "38px", borderRadius: "10px", background: "var(--surface2)", color: "var(--text-sub)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: "0" }}>
+							{businessTypeIcon(currentPlatform.businessType)}
 						</div>
 						<div style={{ flex: "1" }}>
 							<div style={{ fontSize: "14px", fontWeight: "600" }}>{currentPlatform.name}</div>
-							<div style={{ fontSize: "11px", color: "var(--text-sub)", marginTop: "3px" }}>
+							<div style={{ fontSize: "11px", color: "var(--text-sub)", marginTop: "4px" }}>
 								회원 {loading ? "-" : memberCount}명 · 강사 {loading ? "-" : tutorCount}명
 							</div>
 						</div>
-						<span className="badge bs-active" style={{ fontSize: "10px" }}>담당 중</span>
+						<span className="badge bs-active" style={{ fontSize: "11px" }}>담당 중</span>
 					</div>
 				)}
 			</div>

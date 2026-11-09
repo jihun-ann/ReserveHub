@@ -21,7 +21,8 @@ const EMPTY_PASS_FORM = {
 };
 const EMPTY_DISCOUNT_FORM = { name: "", type: "LONG_TERM", rate: "", conditionValue: "" };
 
-export default function ManagerPaymentView({ platformId }) {
+// embedded: 오너 플랫폼 관리 탭 안에 넣을 때 — 탭 이름이 제목 역할을 하므로 페이지 헤더를 숨긴다
+export default function ManagerPaymentView({ platformId, embedded = false }) {
 	const [activeTab, setActiveTab] = useState("pass");
 	const [loading, setLoading] = useState(true);
 
@@ -172,11 +173,12 @@ export default function ManagerPaymentView({ platformId }) {
 	return (
 		<>
 		<div className="page" id="manager-payment">
+			{!embedded && (
 			<div className="page-header">
-				<div className="page-label">Payment</div>
 				<div className="page-title">수강권 / 결제 정책</div>
-				<div className="page-subtitle">수강권과 할인 정책을 관리하세요</div>
+				<div className="page-subtitle">수강권과 할인 정책</div>
 			</div>
+			)}
 			<div className="tab-row">
 				<button className={`tab-btn ${activeTab === "pass" ? "active" : ""}`} onClick={() => setActiveTab("pass")}>수강권 목록</button>
 				<button className={`tab-btn ${activeTab === "discount" ? "active" : ""}`} onClick={() => setActiveTab("discount")}>할인 정책</button>
@@ -184,7 +186,7 @@ export default function ManagerPaymentView({ platformId }) {
 
 			{/* 수강권 목록 */}
 			<div className={`tab-pane ${activeTab === "pass" ? "active" : ""}`}>
-				<div style={{ display: "flex", justifyContent: "flex-end", marginBottom: "14px" }}>
+				<div style={{ display: "flex", justifyContent: "flex-end", marginBottom: "16px" }}>
 					<button className="btn btn-primary btn-sm" onClick={openCreatePassModal}>+ 수강권 추가</button>
 				</div>
 				<div className="card" style={{ padding: "0", overflow: "hidden" }}>
@@ -204,7 +206,7 @@ export default function ManagerPaymentView({ platformId }) {
 										return (
 										<tr key={p.id}>
 											<td style={{ fontWeight: 600 }}>{p.name}</td>
-											<td style={{ fontFamily: "'DM Mono',monospace", color: "var(--manager)" }}>{p.price.toLocaleString()}원</td>
+											<td style={{ fontFamily: "var(--mono)", color: "var(--text)" }}>{p.price.toLocaleString()}원</td>
 											<td>{p.validDays}일{p.sessionCount ? ` / ${p.sessionCount}회` : ""}</td>
 											<td style={{ fontSize: "12px" }}>
 												{program ? (
@@ -219,7 +221,7 @@ export default function ManagerPaymentView({ platformId }) {
 											</td>
 											<td>{subscriberCounts[p.name] || 0}명</td>
 											<td>
-												<span className={`badge ${p.isActive ? "bs-active" : "bs-expired"}`} style={{ fontSize: "10px" }}>
+												<span className={`badge ${p.isActive ? "bs-active" : "bs-expired"}`} style={{ fontSize: "11px" }}>
 													{p.isActive ? "판매중" : "중단"}
 												</span>
 											</td>
@@ -241,14 +243,14 @@ export default function ManagerPaymentView({ platformId }) {
 
 			{/* 할인 정책 */}
 			<div className={`tab-pane ${activeTab === "discount" ? "active" : ""}`}>
-				<div style={{ display: "flex", justifyContent: "flex-end", marginBottom: "14px" }}>
+				<div style={{ display: "flex", justifyContent: "flex-end", marginBottom: "16px" }}>
 					<button className="btn btn-primary btn-sm" onClick={openCreateDiscountModal}>+ 할인 정책 추가</button>
 				</div>
 				<div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
 					{loading ? (
-						<div style={{ padding: "24px", textAlign: "center", color: "var(--text-dim)" }}>불러오는 중...</div>
+						<div style={{ padding: "24px", textAlign: "center", color: "var(--text-dim)", fontSize: "13px" }}>불러오는 중...</div>
 					) : discounts.length === 0 ? (
-						<div className="card" style={{ padding: "24px", textAlign: "center", color: "var(--text-dim)" }}>등록된 할인 정책이 없습니다</div>
+						<div className="card" style={{ padding: "24px", textAlign: "center", color: "var(--text-dim)", fontSize: "13px" }}>등록된 할인 정책이 없습니다</div>
 					) : (
 						discounts.map((d) => (
 							<div className="card" key={d.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
@@ -302,7 +304,7 @@ export default function ManagerPaymentView({ platformId }) {
 						<input type="number" value={passForm.validDays} onChange={(e) => setPassForm({ ...passForm, validDays: e.target.value })} placeholder="30" />
 					</div>
 					<div style={{ borderTop: "1px solid var(--border)", paddingTop: "12px", marginTop: "4px" }}>
-						<div style={{ fontSize: "11px", color: "var(--text-dim)", marginBottom: "10px" }}>
+						<div style={{ fontSize: "11px", color: "var(--text-dim)", marginBottom: "12px" }}>
 							이 수강권으로 듣는 수업 — "수업 관리" 메뉴에서 강사 배정에 사용됩니다.
 						</div>
 						<div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>

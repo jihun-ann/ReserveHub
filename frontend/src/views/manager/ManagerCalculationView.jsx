@@ -106,9 +106,9 @@ export default function ManagerCalculationView({ platformId, platformName }) {
 		const text = previewText();
 		try {
 			await navigator.clipboard.writeText(text);
-			setToast("📋 클립보드에 복사되었습니다!");
+			setToast("클립보드에 복사했습니다");
 		} catch {
-			setToast("📋 복사 완료!");
+			setToast("복사했습니다");
 		}
 		setHistory((prev) => [
 			{ id: crypto.randomUUID(), passesLabel: chosenPasses.map((p) => `${p.name}×${p.qty}`).join(", ") || "—", final: fmt(final), ts: timestamp() },
@@ -120,31 +120,30 @@ export default function ManagerCalculationView({ platformId, platformName }) {
 	return (
 		<div className="page" id="manager-calc">
 			<div className="page-header">
-				<div className="page-label">CALCULATOR</div>
 				<div className="page-title">상담 계산툴</div>
-				<div className="page-subtitle">수강권을 선택하고 할인을 적용해 최종 견적을 계산하세요</div>
+				<div className="page-subtitle">수강권에 할인을 적용한 최종 견적</div>
 			</div>
 
 			<div className="grid-2col-even" style={{ gap: "20px" }}>
-				<div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
+				<div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
 					<div className="card">
 						<div className="card-title" style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
 							<span>① 수강권 선택</span>
 							<span style={{ fontSize: "11px", color: "var(--text-sub)", fontWeight: "400" }}>복수 선택 가능</span>
 						</div>
-						<div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+						<div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
 							{passes.length === 0 && (
 								<div style={{ fontSize: "12px", color: "var(--text-dim)", padding: "8px 0" }}>등록된 수강권이 없습니다</div>
 							)}
 							{passes.map((p) => (
-								<div key={p.id} className={`calc-pass-row ${selectedPasses[p.id] ? "checked" : ""}`} style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+								<div key={p.id} className={`calc-pass-row ${selectedPasses[p.id] ? "checked" : ""}`} style={{ display: "flex", alignItems: "center", gap: "12px" }}>
 									<input type="checkbox" checked={!!selectedPasses[p.id]} onChange={() => togglePass(p.id)} style={{ width: "16px", height: "16px", cursor: "pointer", flexShrink: 0 }} />
 									<div style={{ flex: 1 }} onClick={() => togglePass(p.id)}>
 										<div style={{ fontSize: "13px", fontWeight: 600 }}>{p.name}</div>
 										<div style={{ fontSize: "11px", color: "var(--text-sub)" }}>{p.price.toLocaleString()}원 · {p.validDays}일</div>
 									</div>
 									{selectedPasses[p.id] && (
-										<div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+										<div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
 											<button className="btn btn-ghost btn-sm" onClick={() => setQty(p.id, selectedPasses[p.id] - 1)}>-</button>
 											<span className="qty-val" style={{ minWidth: "16px", textAlign: "center" }}>{selectedPasses[p.id]}</span>
 											<button className="btn btn-ghost btn-sm" onClick={() => setQty(p.id, selectedPasses[p.id] + 1)}>+</button>
@@ -157,12 +156,12 @@ export default function ManagerCalculationView({ platformId, platformName }) {
 
 					<div className="card">
 						<div className="card-title">② 할인 적용</div>
-						<div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+						<div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
 							{discounts.length === 0 && (
 								<div style={{ fontSize: "12px", color: "var(--text-dim)", padding: "8px 0" }}>등록된 할인 정책이 없습니다</div>
 							)}
 							{discounts.map((d) => (
-								<div key={d.id} className="calc-disc-row" style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+								<div key={d.id} className="calc-disc-row" style={{ display: "flex", alignItems: "center", gap: "12px" }}>
 									<input type="checkbox" checked={!!selectedDiscounts[d.id]} onChange={() => toggleDiscount(d.id)} style={{ width: "16px", height: "16px", cursor: "pointer", flexShrink: 0 }} />
 									<div style={{ flex: 1 }} onClick={() => toggleDiscount(d.id)}>
 										<div style={{ fontSize: "13px", fontWeight: 600 }}>{d.name}</div>
@@ -170,17 +169,17 @@ export default function ManagerCalculationView({ platformId, platformName }) {
 									</div>
 								</div>
 							))}
-							<div className="calc-disc-row" style={{ marginTop: "6px", gap: "10px", display: "flex", alignItems: "center" }}>
+							<div className="calc-disc-row" style={{ marginTop: "8px", gap: "12px", display: "flex", alignItems: "center" }}>
 								<input type="checkbox" checked={customDiscOn} onChange={(e) => setCustomDiscOn(e.target.checked)} style={{ width: "16px", height: "16px", cursor: "pointer", flexShrink: 0 }} />
 								<div style={{ flex: 1 }}>
 									<div style={{ fontSize: "13px", fontWeight: 600 }}>직접 할인 입력</div>
 									<div style={{ fontSize: "11px", color: "var(--text-sub)" }}>임의 할인율 적용</div>
 								</div>
-								<div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+								<div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
 									<input
 										type="number" min="0" max="100" value={customDiscVal}
 										onChange={(e) => setCustomDiscVal(Number(e.target.value) || 0)}
-										style={{ width: "60px", padding: "4px 8px", background: "var(--surface2)", border: "1px solid var(--border)", borderRadius: "var(--rs)", color: "var(--text)", fontSize: "13px", fontFamily: "'DM Mono',monospace", outline: "none", textAlign: "center" }}
+										style={{ width: "60px", padding: "4px 8px", background: "var(--surface2)", border: "1px solid var(--border)", borderRadius: "var(--rs)", color: "var(--text)", fontSize: "13px", fontFamily: "var(--mono)", outline: "none", textAlign: "center" }}
 									/>
 									<span style={{ fontSize: "13px", color: "var(--text-sub)" }}>%</span>
 								</div>
@@ -193,81 +192,81 @@ export default function ManagerCalculationView({ platformId, platformName }) {
 						<textarea
 							value={memo} onChange={(e) => setMemo(e.target.value)}
 							placeholder="고객 특이사항이나 메모를 입력하세요..."
-							style={{ width: "100%", minHeight: "72px", padding: "10px 12px", background: "var(--surface2)", border: "1px solid var(--border)", borderRadius: "var(--rs)", color: "var(--text)", fontSize: "13px", fontFamily: "'Pretendard',sans-serif", outline: "none", resize: "vertical" }}
+							style={{ width: "100%", minHeight: "72px", padding: "12px 12px", background: "var(--surface2)", border: "1px solid var(--border)", borderRadius: "var(--rs)", color: "var(--text)", fontSize: "13px", fontFamily: "'Pretendard',sans-serif", outline: "none", resize: "vertical" }}
 						></textarea>
 					</div>
 				</div>
 
-				<div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
+				<div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
 					<div className="card">
 						<div className="card-title" style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-							<span style={{ display: "flex", alignItems: "center", gap: "6px" }}><Wallet size={15} strokeWidth={1.75} /> 견적서</span>
-							<span style={{ fontFamily: "'DM Mono',monospace", fontSize: "10px", color: "var(--text-dim)" }}>{timestamp()}</span>
+							<span style={{ display: "flex", alignItems: "center", gap: "8px" }}><Wallet size={15} strokeWidth={1.75} /> 견적서</span>
+							<span style={{ fontFamily: "var(--mono)", fontSize: "11px", color: "var(--text-dim)" }}>{timestamp()}</span>
 						</div>
-						<div style={{ fontSize: "11px", color: "var(--text-sub)", marginBottom: "6px", letterSpacing: ".5px" }}>수강권</div>
+						<div style={{ fontSize: "11px", color: "var(--text-sub)", marginBottom: "8px" }}>수강권</div>
 						<div style={{ display: "flex", flexDirection: "column", gap: "4px", marginBottom: "12px" }}>
 							{chosenPasses.length === 0 ? (
-								<div className="quote-row"><span style={{ fontSize: "12px", color: "var(--text-sub)" }}>수강권을 선택하세요</span><span style={{ fontFamily: "'DM Mono',monospace", fontSize: "12px", color: "var(--text-dim)" }}>0원</span></div>
+								<div className="quote-row"><span style={{ fontSize: "12px", color: "var(--text-sub)" }}>수강권을 선택하세요</span><span style={{ fontFamily: "var(--mono)", fontSize: "12px", color: "var(--text-dim)" }}>0원</span></div>
 							) : (
 								chosenPasses.map((p) => (
 									<div className="quote-row" key={p.id}>
 										<span style={{ fontSize: "12px" }}>{p.name} × {p.qty}</span>
-										<span style={{ fontFamily: "'DM Mono',monospace", fontSize: "12px", color: "var(--manager)" }}>{fmt(p.lineTotal)}</span>
+										<span style={{ fontFamily: "var(--mono)", fontSize: "12px", color: "var(--text)" }}>{fmt(p.lineTotal)}</span>
 									</div>
 								))
 							)}
 						</div>
-						<div style={{ display: "flex", justifyContent: "space-between", marginBottom: "12px", padding: "8px 10px", background: "var(--surface2)", borderRadius: "var(--rs)" }}>
+						<div style={{ display: "flex", justifyContent: "space-between", marginBottom: "12px", padding: "8px 12px", background: "var(--surface2)", borderRadius: "var(--rs)" }}>
 							<span style={{ fontSize: "12px", color: "var(--text-sub)" }}>소계</span>
-							<span style={{ fontFamily: "'DM Mono',monospace", fontSize: "13px", fontWeight: "600" }}>{fmt(subtotal)}</span>
+							<span style={{ fontFamily: "var(--mono)", fontSize: "13px", fontWeight: "600" }}>{fmt(subtotal)}</span>
 						</div>
-						<div style={{ fontSize: "11px", color: "var(--text-sub)", marginBottom: "6px", letterSpacing: ".5px" }}>할인 내역 (순차 적용)</div>
+						<div style={{ fontSize: "11px", color: "var(--text-sub)", marginBottom: "8px" }}>할인 내역 (순차 적용)</div>
 						<div style={{ display: "flex", flexDirection: "column", gap: "4px", marginBottom: "12px" }}>
 							{steps.length === 0 ? (
-								<div className="quote-row"><span style={{ fontSize: "12px", color: "var(--text-sub)" }}>할인 없음</span><span style={{ fontFamily: "'DM Mono',monospace", fontSize: "12px", color: "var(--text-dim)" }}>0원</span></div>
+								<div className="quote-row"><span style={{ fontSize: "12px", color: "var(--text-sub)" }}>할인 없음</span><span style={{ fontFamily: "var(--mono)", fontSize: "12px", color: "var(--text-dim)" }}>0원</span></div>
 							) : (
 								steps.map((d, i) => (
 									<div className="quote-disc-row" key={i}>
-										<div style={{ display: "flex", justifyContent: "space-between", marginBottom: "3px" }}>
-											<span style={{ fontSize: "12px", fontWeight: 600, color: "var(--accent2)" }}>{i + 1}. {d.name} ({d.rate}%)</span>
-											<span style={{ fontFamily: "'DM Mono',monospace", fontSize: "12px", color: "var(--red)" }}>— {fmt(d.amt)}</span>
+										<div style={{ display: "flex", justifyContent: "space-between", marginBottom: "4px" }}>
+											<span style={{ fontSize: "12px", fontWeight: 500, color: "var(--text-sub)" }}>{i + 1}. {d.name} ({d.rate}%)</span>
+											<span style={{ fontFamily: "var(--mono)", fontSize: "12px", color: "var(--red)" }}>— {fmt(d.amt)}</span>
 										</div>
-										<div style={{ fontSize: "10px", color: "var(--text-dim)" }}>{fmt(d.before)} × {d.rate}% → {fmt(d.after)}</div>
+										<div style={{ fontSize: "11px", color: "var(--text-dim)" }}>{fmt(d.before)} × {d.rate}% → {fmt(d.after)}</div>
 									</div>
 								))
 							)}
 						</div>
 						<div style={{ display: "flex", justifyContent: "space-between", marginBottom: "8px" }}>
 							<span style={{ fontSize: "12px", color: "var(--text-sub)" }}>총 절약</span>
-							<span style={{ fontFamily: "'DM Mono',monospace", fontSize: "13px", color: "var(--red)" }}>— {fmt(totalSaved)}</span>
+							<span style={{ fontFamily: "var(--mono)", fontSize: "13px", color: "var(--red)" }}>— {fmt(totalSaved)}</span>
 						</div>
-						<div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "14px 16px", background: "rgba(79,209,197,.08)", border: "1px solid rgba(79,209,197,.3)", borderRadius: "var(--rs)", marginBottom: "14px" }}>
-							<span style={{ fontSize: "14px", fontWeight: "700" }}>최종 금액</span>
-							<span style={{ fontFamily: "'DM Mono',monospace", fontSize: "22px", fontWeight: "700", color: "var(--manager)" }}>{fmt(final)}</span>
+						<div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "16px 16px", background: "rgba(79,209,197,.08)", border: "1px solid rgba(79,209,197,.3)", borderRadius: "var(--rs)", marginBottom: "16px" }}>
+							<span style={{ fontSize: "14px", fontWeight: 600 }}>최종 금액</span>
+							<span style={{ fontFamily: "var(--mono)", fontSize: "22px", fontWeight: 600, color: "var(--accent-active-text)" }}>{fmt(final)}</span>
 						</div>
 						<textarea
 							readOnly value={previewText()}
-							style={{ width: "100%", minHeight: "120px", padding: "10px 12px", background: "var(--surface2)", border: "1px solid var(--border)", borderRadius: "var(--rs)", color: "var(--text-sub)", fontSize: "11px", fontFamily: "'DM Mono',monospace", resize: "none", outline: "none", lineHeight: "1.6" }}
+							style={{ width: "100%", minHeight: "120px", padding: "12px 12px", background: "var(--surface2)", border: "1px solid var(--border)", borderRadius: "var(--rs)", color: "var(--text-sub)", fontSize: "11px", fontFamily: "var(--mono)", resize: "none", outline: "none", lineHeight: "1.6" }}
 						></textarea>
-						{toast && <div style={{ fontSize: "12px", color: "var(--green)", marginTop: "6px" }}>{toast}</div>}
-						<div style={{ display: "flex", gap: "8px", marginTop: "10px" }}>
-							<button className="btn btn-primary" style={{ flex: "1", display: "flex", alignItems: "center", justifyContent: "center", gap: "6px" }} onClick={copyQuote}><Copy size={15} strokeWidth={1.75} /> 복사해서 전송</button>
+						{toast && <div style={{ fontSize: "12px", color: "var(--green)", marginTop: "8px" }}>{toast}</div>}
+						<div style={{ display: "flex", gap: "8px", marginTop: "12px" }}>
+							<button className="btn btn-primary" style={{ flex: "1", display: "flex", alignItems: "center", justifyContent: "center", gap: "8px" }} onClick={copyQuote}><Copy size={15} strokeWidth={1.75} /> 복사해서 전송</button>
 							<button className="btn btn-ghost" onClick={reset}>초기화</button>
 						</div>
 					</div>
 
 					<div className="card">
 						<div className="card-title">상담 이력</div>
-						<div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+						<div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
 							{history.length === 0 ? (
 								<div style={{ fontSize: "12px", color: "var(--text-dim)", textAlign: "center", padding: "12px 0" }}>복사 시 자동 기록됩니다</div>
 							) : (
 								history.map((h) => (
-									<div key={h.id} style={{ display: "flex", justifyContent: "space-between", padding: "9px 12px", background: "rgba(79,209,197,.06)", border: "1px solid rgba(79,209,197,.2)", borderRadius: "var(--rs)" }}>
+									<div key={h.id} style={{ display: "flex", justifyContent: "space-between", padding: "8px 12px", background: "rgba(79,209,197,.06)", border: "1px solid rgba(79,209,197,.2)", borderRadius: "var(--rs)" }}>
 										<div style={{ fontSize: "12px", fontWeight: 600 }}>{h.passesLabel}</div>
 										<div style={{ textAlign: "right" }}>
-											<div style={{ fontFamily: "'DM Mono',monospace", fontSize: "13px", color: "var(--manager)" }}>{h.final}</div>
-											<div style={{ fontFamily: "'DM Mono',monospace", fontSize: "10px", color: "var(--text-dim)" }}>{h.ts}</div>
+											<div style={{ fontFamily: "var(--mono)", fontSize: "13px", color: "var(--text)" }}>{h.final}</div>
+											<div style={{ fontFamily: "var(--mono)", fontSize: "11px", color: "var(--text-dim)" }}>{h.ts}</div>
 										</div>
 									</div>
 								))

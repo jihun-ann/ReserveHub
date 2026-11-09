@@ -77,7 +77,6 @@ export default function TaxAccountantRevenueView({ platformId, platformName }) {
 	return (
 		<div className="page" id="taxacct-revenue">
 			<div className="page-header">
-				<div className="page-label">Tax Accountant / Revenue</div>
 				<div className="page-title">매출 자료</div>
 				<div className="page-subtitle">{platformName ? `${platformName}의 ` : ""}월별 매출과 학생별 결제 내역을 확인하세요</div>
 			</div>

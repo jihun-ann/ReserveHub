@@ -178,14 +178,13 @@ export default function TutorScheduleRequestView({ platformId }) {
 		<>
 		<div id="tutor-request" className="page">
 			<div className="page-header">
-				<div className="page-label">Tutor / Schedule Request</div>
 				<div className="page-title">일정 변경 요청</div>
-				<div className="page-subtitle">수강생의 일정 변경을 요청하고 처리 현황을 확인하세요</div>
+				<div className="page-subtitle">수강생 일정 변경 요청과 처리 현황</div>
 			</div>
 
 			<div className="card" style={{ marginBottom: "24px" }}>
-				<div className="card-title">📝 새 변경 요청 작성</div>
-				<div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(200px,1fr))", gap: "14px", marginBottom: "14px" }}>
+				<div className="card-title">새 변경 요청 작성</div>
+				<div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(200px,1fr))", gap: "16px", marginBottom: "16px" }}>
 					<div className="form-field">
 						<label>어떤 수업</label>
 						<select value={selectedSlotId} onChange={(e) => pickSlot(e.target.value)}>
@@ -199,7 +198,7 @@ export default function TutorScheduleRequestView({ platformId }) {
 					</div>
 					<div className="form-field">
 						<label>일자</label>
-						<div style={{ display: "flex", gap: "6px" }}>
+						<div style={{ display: "flex", gap: "8px" }}>
 							<select value={selectedYear} onChange={(e) => pickYear(e.target.value)} disabled={!selectedSlotId}>
 								<option value="">년도</option>
 								{availableYears.map((y) => <option key={y} value={y}>{y}년</option>)}
@@ -237,7 +236,7 @@ export default function TutorScheduleRequestView({ platformId }) {
 						<input type="date" value={requestedDate} onChange={(e) => setRequestedDate(e.target.value)} />
 					</div>
 				</div>
-				<div className="form-field" style={{ marginBottom: "14px" }}>
+				<div className="form-field" style={{ marginBottom: "16px" }}>
 					<label>변경 사유</label>
 					<textarea value={reason} onChange={(e) => setReason(e.target.value)} placeholder="변경이 필요한 이유를 상세히 작성해주세요..."></textarea>
 				</div>
@@ -254,12 +253,12 @@ export default function TutorScheduleRequestView({ platformId }) {
 				</div>
 			</div>
 
-			<div className="card-title" style={{ marginBottom: "14px" }}>요청 이력</div>
+			<div className="card-title" style={{ marginBottom: "16px" }}>요청 이력</div>
 
 			{loading ? (
-				<div style={{ padding: "24px", textAlign: "center", color: "var(--text-dim)" }}>불러오는 중...</div>
+				<div style={{ padding: "24px", textAlign: "center", color: "var(--text-dim)", fontSize: "13px" }}>불러오는 중...</div>
 			) : requests.length === 0 ? (
-				<div className="card" style={{ padding: "24px", textAlign: "center", color: "var(--text-dim)" }}>
+				<div className="card" style={{ padding: "24px", textAlign: "center", color: "var(--text-dim)", fontSize: "13px" }}>
 					제출한 일정 변경 요청이 없습니다
 				</div>
 			) : (
@@ -269,32 +268,32 @@ export default function TutorScheduleRequestView({ platformId }) {
 						return (
 							<div className="card" key={r.id}>
 								<div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "12px" }}>
-									<div style={{ fontSize: "14px", fontWeight: 700 }}>{r.reason || "일정 변경 요청"}</div>
+									<div style={{ fontSize: "14px", fontWeight: 600 }}>{r.reason || "일정 변경 요청"}</div>
 									{st.className ? (
 										<span className={st.className}>{st.label}</span>
 									) : (
 										<span className="res-status" style={{ background: st.background, color: st.color }}>{st.label}</span>
 									)}
 								</div>
-								<div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(160px,1fr))", gap: "10px", marginBottom: "12px" }}>
-									<div style={{ background: "var(--surface2)", borderRadius: "var(--radius-sm)", padding: "10px 12px" }}>
-										<div style={{ fontSize: "10px", color: "var(--text-dim)", marginBottom: "4px", letterSpacing: "1px" }}>기존 일정</div>
+								<div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(160px,1fr))", gap: "12px", marginBottom: "12px" }}>
+									<div style={{ background: "var(--surface2)", borderRadius: "var(--radius-sm)", padding: "12px 12px" }}>
+										<div style={{ fontSize: "11px", color: "var(--text-dim)", marginBottom: "4px" }}>기존 일정</div>
 										<div style={{ fontSize: "13px", fontWeight: 600 }}>{r.originalDate}</div>
 									</div>
-									<div style={{ background: "var(--surface2)", borderRadius: "var(--radius-sm)", padding: "10px 12px" }}>
-										<div style={{ fontSize: "10px", color: "var(--text-dim)", marginBottom: "4px", letterSpacing: "1px" }}>변경 희망</div>
+									<div style={{ background: "var(--surface2)", borderRadius: "var(--radius-sm)", padding: "12px 12px" }}>
+										<div style={{ fontSize: "11px", color: "var(--text-dim)", marginBottom: "4px" }}>변경 희망</div>
 										<div style={{ fontSize: "13px", fontWeight: 600 }}>{r.requestedDate}</div>
 									</div>
 								</div>
 								{r.status !== "PENDING" && r.decisionMemo && (
-									<div style={{ marginBottom: "10px", fontSize: "12px", color: "var(--text-sub)" }}>
-										<span style={{ fontSize: "10px", color: "var(--text-dim)", letterSpacing: "1px" }}>
+									<div style={{ marginBottom: "12px", fontSize: "12px", color: "var(--text-sub)" }}>
+										<span style={{ fontSize: "11px", color: "var(--text-dim)" }}>
 											{r.status === "REJECTED" ? "반려 사유" : "승인 메모"}
 										</span>
 										<div style={{ marginTop: "4px" }}>{r.decisionMemo}</div>
 									</div>
 								)}
-								<div style={{ fontSize: "11px", color: "var(--text-dim)", fontFamily: "'DM Mono',monospace" }}>
+								<div style={{ fontSize: "11px", color: "var(--text-dim)", fontFamily: "var(--mono)" }}>
 									{platformsById[r.platformId] || "-"} · 신청일시 {r.createdAt ? new Date(r.createdAt).toLocaleString("ko-KR") : "-"}
 								</div>
 							</div>
@@ -303,15 +302,15 @@ export default function TutorScheduleRequestView({ platformId }) {
 				</div>
 			)}
 
-			<div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", margin: "24px 0 14px" }}>
-				<div className="card-title" style={{ marginBottom: 0, display: "flex", alignItems: "center", gap: "6px" }}><Palmtree size={15} strokeWidth={1.75} /> 휴가 요청</div>
+			<div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", margin: "24px 0 16px" }}>
+				<div className="card-title" style={{ marginBottom: 0, display: "flex", alignItems: "center", gap: "8px" }}><Palmtree size={15} strokeWidth={1.75} /> 휴가 요청</div>
 				<button className="btn btn-primary btn-sm" style={{ background: "var(--accent2)", color: "#0f0f13" }} onClick={openLeaveModal}>
 					+ 휴가 요청
 				</button>
 			</div>
 
 			{leaveRequests.length === 0 ? (
-				<div className="card" style={{ padding: "24px", textAlign: "center", color: "var(--text-dim)" }}>
+				<div className="card" style={{ padding: "24px", textAlign: "center", color: "var(--text-dim)", fontSize: "13px" }}>
 					제출한 휴가 요청이 없습니다
 				</div>
 			) : (
@@ -320,8 +319,8 @@ export default function TutorScheduleRequestView({ platformId }) {
 						const st = STATUS_STYLE[r.status];
 						return (
 							<div className="card" key={r.id}>
-								<div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "10px" }}>
-									<div style={{ fontSize: "14px", fontWeight: 700 }}>{r.startDate} ~ {r.endDate} 휴가</div>
+								<div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "12px" }}>
+									<div style={{ fontSize: "14px", fontWeight: 600 }}>{r.startDate} ~ {r.endDate} 휴가</div>
 									{st.className ? (
 										<span className={st.className}>{st.label}</span>
 									) : (
@@ -331,13 +330,13 @@ export default function TutorScheduleRequestView({ platformId }) {
 								{r.reason && <div style={{ fontSize: "13px", color: "var(--text-sub)", marginBottom: "8px" }}>{r.reason}</div>}
 								{r.status !== "PENDING" && r.decisionMemo && (
 									<div style={{ marginBottom: "8px", fontSize: "12px", color: "var(--text-sub)" }}>
-										<span style={{ fontSize: "10px", color: "var(--text-dim)", letterSpacing: "1px" }}>
+										<span style={{ fontSize: "11px", color: "var(--text-dim)" }}>
 											{r.status === "REJECTED" ? "반려 사유" : "승인 메모"}
 										</span>
 										<div style={{ marginTop: "4px" }}>{r.decisionMemo}</div>
 									</div>
 								)}
-								<div style={{ fontSize: "11px", color: "var(--text-dim)", fontFamily: "'DM Mono',monospace" }}>
+								<div style={{ fontSize: "11px", color: "var(--text-dim)", fontFamily: "var(--mono)" }}>
 									{platformsById[r.platformId] || "-"} · 신청일시 {r.createdAt ? new Date(r.createdAt).toLocaleString("ko-KR") : "-"}
 								</div>
 							</div>
@@ -354,7 +353,7 @@ export default function TutorScheduleRequestView({ platformId }) {
 					<button className="modal-close" onClick={() => closeModal("leaveRequestModal")}>✕</button>
 				</div>
 				<div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-					<div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(160px,1fr))", gap: "10px" }}>
+					<div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(160px,1fr))", gap: "12px" }}>
 						<div className="form-field">
 							<label>시작일</label>
 							<input type="date" value={leaveStart} onChange={(e) => setLeaveStart(e.target.value)} />

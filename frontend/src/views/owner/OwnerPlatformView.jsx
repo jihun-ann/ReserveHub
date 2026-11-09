@@ -3,7 +3,7 @@ import { apiGet } from "../../api/http.js";
 import {
 	BUSINESS_TYPES,
 	businessTypeLabel,
-	businessTypeEmoji,
+	businessTypeIcon,
 	createPlatform,
 	cancelStaffInvitation,
 	removeStaff,
@@ -28,6 +28,11 @@ import {
 } from "../../api/common.js";
 import { formatDateTime } from "../../utils/formatDateTime.js";
 import ManagerAdminPanel from "../../components/ManagerAdminPanel.jsx";
+import ManagerLessonManageView from "../manager/ManagerLessonManageView.jsx";
+import ManagerPaymentView from "../manager/ManagerPaymentView.jsx";
+import ManagerMemberManageView from "../manager/ManagerMemberManageView.jsx";
+import ManagerPaymentHistoryView from "../manager/ManagerPaymentHistoryView.jsx";
+import ManagerStudyHistoryView from "../manager/ManagerStudyHistoryView.jsx";
 
 const TABS = [
 	{ key: "info", label: "기본 정보" },
@@ -38,10 +43,10 @@ const TABS = [
 	{ key: "billing", label: "수강권/결제" },
 	{ key: "stats", label: "수익/통계" },
 	{ key: "taxaccountants", label: "세무사" },
-	{ key: "activityLog", label: "활동 이력" }
+	{ key: "history", label: "이력" }
 ];
 
-const NOT_CONNECTED_TABS = { members: true, billing: true, stats: true };
+const NOT_CONNECTED_TABS = { stats: true };
 
 const EMPTY_FORM = { name: "", businessType: "FITNESS", phone: "", address: "", description: "" };
 const EMPTY_TAX_FORM = { username: "", email: "", password: "", name: "", phone: "" };
@@ -72,6 +77,7 @@ export default function OwnerPlatformView({ platforms, currentPlatformId, onSele
 	const [staffError, setStaffError] = useState("");
 	const [invitations, setInvitations] = useState([]);
 	const [staffSubTab, setStaffSubTab] = useState("registered"); // registered | pending
+	const [historySubTab, setHistorySubTab] = useState("activity"); // activity | payment | lesson
 	const [contract, setContract] = useState(null); // 계약 설정 모달 대상: { s, incomeType, sessionRate }
 	const [contractError, setContractError] = useState("");
 	const [notice, setNotice] = useState(""); // 저장/삭제 같은 작업이 끝났을 때 잠깐 보여주는 알림
@@ -116,6 +122,12 @@ export default function OwnerPlatformView({ platforms, currentPlatformId, onSele
 		refreshTaxAccountants(plat.id);
 		listActionLogs(plat.id).then(setActivityLogs).catch(() => setActivityLogs([]));
 	}, [plat?.id]);
+
+	// "수강권/결제" 탭에서 프로그램을 추가한 뒤 돌아오면 목록이 바로 보이도록 탭을 열 때마다 다시 읽는다
+	useEffect(() => {
+		if (!plat || activeTab !== "programs") return;
+		listPrograms(plat.id).then(setPrograms).catch(() => setPrograms([]));
+	}, [plat?.id, activeTab]);
 
 	function refreshTaxAccountants(platformId) {
 		listTaxAccountants(platformId).then(setTaxAccountants).catch(() => setTaxAccountants([]));
@@ -209,7 +221,7 @@ export default function OwnerPlatformView({ platforms, currentPlatformId, onSele
 			<input
 				type="text" placeholder="이메일/이름 검색" value={staffQuery}
 				onChange={(e) => { setStaffQuery(e.target.value); setStaffPage(0); }}
-				style={{ padding: "8px 14px", background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "20px", color: "var(--text)", fontSize: "13px", outline: "none" }}
+				style={{ padding: "8px 16px", background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "20px", color: "var(--text)", fontSize: "13px", outline: "none" }}
 			/>
 		);
 	}
@@ -219,7 +231,7 @@ export default function OwnerPlatformView({ platforms, currentPlatformId, onSele
 		if (pages <= 1) return null;
 		const page = Math.min(staffPage, pages - 1);
 		return (
-			<div style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: "10px", fontSize: "12px" }}>
+			<div style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: "12px", fontSize: "12px" }}>
 				<button className="btn btn-sm btn-ghost" disabled={page === 0} onClick={() => setStaffPage(page - 1)}>이전</button>
 				<span>{page + 1} / {pages}</span>
 				<button className="btn btn-sm btn-ghost" disabled={page >= pages - 1} onClick={() => setStaffPage(page + 1)}>다음</button>
@@ -233,7 +245,7 @@ export default function OwnerPlatformView({ platforms, currentPlatformId, onSele
 			pending: invitations.filter((i) => i.staffRole === role).length
 		};
 		return (
-			<div style={{ display: "flex", gap: "6px" }}>
+			<div style={{ display: "flex", gap: "8px" }}>
 				{[["registered", "등록됨"], ["pending", "초대 중"]].map(([key, label]) => (
 					<button
 						key={key} type="button"
@@ -251,7 +263,7 @@ export default function OwnerPlatformView({ platforms, currentPlatformId, onSele
 		return (
 			<>
 				{pending.map((i) => (
-					<div key={i.id} style={{ background: "var(--surface2)", border: "1px dashed var(--border)", borderRadius: "var(--radius-sm)", padding: "12px 14px", display: "flex", alignItems: "center", gap: "12px" }}>
+					<div key={i.id} style={{ background: "var(--surface2)", border: "1px dashed var(--border)", borderRadius: "var(--radius-sm)", padding: "12px 16px", display: "flex", alignItems: "center", gap: "12px" }}>
 						<div style={{ flex: 1, fontSize: "13px" }}>
 							{[i.email, i.phone].filter(Boolean).join(" / ")}
 							<div style={{ fontSize: "11px", color: "var(--text-dim)" }}>수락 대기 · {formatDateTime(i.expiresAt)}까지</div>
@@ -264,8 +276,8 @@ export default function OwnerPlatformView({ platforms, currentPlatformId, onSele
 					+ {role === "MANAGER" ? "매니저" : "강사"} 초대
 				</button>
 				{showStaffForm && (
-					<form onSubmit={(e) => submitInvite(e, role)} className="card" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(160px,1fr))", gap: "10px" }}>
-						<div style={{ gridColumn: "1/-1", display: "flex", gap: "6px" }}>
+					<form onSubmit={(e) => submitInvite(e, role)} className="card" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(160px,1fr))", gap: "12px" }}>
+						<div style={{ gridColumn: "1/-1", display: "flex", gap: "8px" }}>
 							{[["email", "이메일"], ["phone", "연락처"]].map(([m, label]) => (
 								<button
 									key={m} type="button"
@@ -360,9 +372,8 @@ export default function OwnerPlatformView({ platforms, currentPlatformId, onSele
 	return (
 		<div id="owner-platforms" className="page">
 			<div className="page-header">
-				<div className="page-label">Owner Admin / Platforms</div>
 				<div className="page-title">플랫폼 관리</div>
-				<div className="page-subtitle">플랫폼을 선택해 상세 정보를 관리하세요</div>
+				<div className="page-subtitle">플랫폼별 상세 정보와 구성원</div>
 			</div>
 
 			<div className="grid-side-main" style={{ gap: "20px", "--side-w": "260px" }}>
@@ -370,9 +381,9 @@ export default function OwnerPlatformView({ platforms, currentPlatformId, onSele
 				{/* 플랫폼 목록 */}
 				<div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
 					<div className="card" style={{ padding: 0, overflow: "hidden" }}>
-						<div style={{ padding: "14px 16px", borderBottom: "1px solid var(--border)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-							<span style={{ fontSize: "11px", fontWeight: 600, color: "var(--text-sub)", letterSpacing: "1px", textTransform: "uppercase" }}>플랫폼 목록</span>
-							<button className="btn btn-sm btn-primary" style={{ padding: "5px 10px", fontSize: "11px" }} onClick={() => setShowCreate((v) => !v)}>+ 추가</button>
+						<div style={{ padding: "16px 16px", borderBottom: "1px solid var(--border)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+							<span style={{ fontSize: "11px", fontWeight: 600, color: "var(--text-sub)" }}>플랫폼 목록</span>
+							<button className="btn btn-sm btn-primary" style={{ padding: "4px 12px", fontSize: "11px" }} onClick={() => setShowCreate((v) => !v)}>+ 추가</button>
 						</div>
 						{platforms.map((p) => (
 							<div
@@ -382,20 +393,20 @@ export default function OwnerPlatformView({ platforms, currentPlatformId, onSele
 								style={{
 									display: "flex",
 									alignItems: "center",
-									gap: "10px",
-									padding: "14px 16px",
+									gap: "12px",
+									padding: "16px 16px",
 									cursor: "pointer",
 									borderBottom: "1px solid var(--border)",
 									background: currentPlatformId === p.id ? hexAlpha(p.colorHex, 0.08) : "transparent",
 									borderLeft: `3px solid ${currentPlatformId === p.id ? p.colorHex : "transparent"}`
 								}}
 							>
-								<span style={{ fontSize: "18px" }}>{businessTypeEmoji(p.businessType)}</span>
+								<span style={{ display: "inline-flex", color: "var(--text-dim)" }}>{businessTypeIcon(p.businessType, 18)}</span>
 								<div style={{ flex: 1, minWidth: 0 }}>
-									<div style={{ fontSize: "13px", fontWeight: 700 }}>{p.name}</div>
+									<div style={{ fontSize: "13px", fontWeight: 600 }}>{p.name}</div>
 									<div style={{ fontSize: "11px", color: "var(--text-sub)" }}>{businessTypeLabel(p.businessType)}</div>
 								</div>
-								<span className={`plat-status ${p.status === "ACTIVE" ? "ps-active" : "ps-expired"}`} style={{ fontSize: "10px", flexShrink: 0 }}>{p.status === "ACTIVE" ? "운영" : p.status}</span>
+								<span className={`plat-status ${p.status === "ACTIVE" ? "ps-active" : "ps-expired"}`} style={{ fontSize: "11px", flexShrink: 0 }}>{p.status === "ACTIVE" ? "운영" : p.status}</span>
 							</div>
 						))}
 						{platforms.length === 0 && (
@@ -404,7 +415,7 @@ export default function OwnerPlatformView({ platforms, currentPlatformId, onSele
 					</div>
 
 					{showCreate && (
-						<form onSubmit={submitCreate} className="card" style={{ marginTop: "12px", display: "flex", flexDirection: "column", gap: "10px" }}>
+						<form onSubmit={submitCreate} className="card" style={{ marginTop: "12px", display: "flex", flexDirection: "column", gap: "12px" }}>
 							<div className="form-field"><label>플랫폼명</label><input required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} /></div>
 							<div className="form-field">
 								<label>업종</label>
@@ -425,11 +436,11 @@ export default function OwnerPlatformView({ platforms, currentPlatformId, onSele
 					<div className="card" style={{ textAlign: "center", padding: "40px", color: "var(--text-dim)" }}>플랫폼을 선택하거나 새로 추가하세요</div>
 				) : (
 					<div className="card" style={{ padding: 0, overflow: "hidden" }}>
-						<div style={{ padding: "18px 20px", borderBottom: "1px solid var(--border)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-							<div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-								<span style={{ fontSize: "22px" }}>{businessTypeEmoji(plat.businessType)}</span>
+						<div style={{ padding: "20px 20px", borderBottom: "1px solid var(--border)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+							<div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+								<span style={{ display: "inline-flex", color: "var(--text-dim)" }}>{businessTypeIcon(plat.businessType, 20)}</span>
 								<div>
-									<div style={{ fontSize: "16px", fontWeight: 700 }}>{plat.name}</div>
+									<div style={{ fontSize: "16px", fontWeight: 600 }}>{plat.name}</div>
 									<div style={{ fontSize: "11px", color: "var(--text-sub)" }}>ID {plat.code} · {businessTypeLabel(plat.businessType)}{plat.address ? ` · ${plat.address}` : ""}</div>
 								</div>
 							</div>
@@ -445,8 +456,8 @@ export default function OwnerPlatformView({ platforms, currentPlatformId, onSele
 						<div style={{ padding: "20px" }}>
 
 							{activeTab === "info" && (
-								<div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(160px,1fr))", gap: "14px" }}>
-									<div className="form-field"><label>플랫폼 ID</label><input readOnly value={plat.code} style={{ fontFamily: "'DM Mono',monospace", letterSpacing: "1px" }} /></div>
+								<div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(160px,1fr))", gap: "16px" }}>
+									<div className="form-field"><label>플랫폼 ID</label><input readOnly value={plat.code} style={{ fontFamily: "var(--mono)" }} /></div>
 									<div className="form-field"><label>플랫폼명</label><input readOnly value={plat.name} /></div>
 									<div className="form-field"><label>업종</label><input readOnly value={businessTypeLabel(plat.businessType)} /></div>
 									<div className="form-field"><label>대표 전화</label><input readOnly value={plat.phone || "-"} /></div>
@@ -458,8 +469,8 @@ export default function OwnerPlatformView({ platforms, currentPlatformId, onSele
 
 							{activeTab === "programs" && (
 								<div>
-									<div style={{ fontSize: "12px", color: "var(--text-dim)", marginBottom: "14px" }}>
-										수업 종류는 매니저의 "수강권/결제" 메뉴에서 수강권과 함께 등록합니다. 여기서는 조회만 가능합니다.
+									<div style={{ fontSize: "12px", color: "var(--text-dim)", marginBottom: "16px" }}>
+										새 프로그램은 "수강권/결제" 탭에서 수강권과 함께 등록합니다. 슬롯은 아래 주간 시간표에서 추가합니다.
 									</div>
 									<div style={{ overflowX: "auto" }}>
 										<table className="data-table">
@@ -476,7 +487,7 @@ export default function OwnerPlatformView({ platforms, currentPlatformId, onSele
 													</td>
 													<td>{pr.capacity}명</td>
 													<td>{pr.durationMin}분</td>
-													<td><span className={`plat-status ${pr.isActive ? "ps-active" : "ps-expired"}`} style={{ fontSize: "10px" }}>{pr.isActive ? "운영" : "중단"}</span></td>
+													<td><span className={`plat-status ${pr.isActive ? "ps-active" : "ps-expired"}`} style={{ fontSize: "11px" }}>{pr.isActive ? "운영" : "중단"}</span></td>
 												</tr>
 											))}
 											{programs.length === 0 && (
@@ -485,19 +496,35 @@ export default function OwnerPlatformView({ platforms, currentPlatformId, onSele
 											</tbody>
 										</table>
 									</div>
+									{/* 매니저 화면을 그대로 재사용 — 스타일이 #manager-app 범위에만 있어서 감싸준다(최상위 규칙은 색 변수뿐이라 안전) */}
+									<div id="manager-app" style={{ marginTop: "24px" }}>
+										<ManagerLessonManageView key={plat.id} platformId={plat.id} embedded />
+									</div>
+								</div>
+							)}
+
+							{activeTab === "members" && (
+								<div id="manager-app">
+									<ManagerMemberManageView key={plat.id} platformId={plat.id} embedded />
+								</div>
+							)}
+
+							{activeTab === "billing" && (
+								<div id="manager-app">
+									<ManagerPaymentView key={plat.id} platformId={plat.id} embedded />
 								</div>
 							)}
 
 							{activeTab === "instructors" && (
-								<div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+								<div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
 									{staffSubTabsUi("TUTOR")}
 									{staffSubTab === "registered" && staffToolbarUi()}
 									{staffSubTab === "registered" && pageOf(registeredStaff("TUTOR")).map((s) => (
-										<div key={s.id} style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
-											<div style={{ background: "var(--surface2)", border: "1px solid var(--border)", borderRadius: "var(--radius-sm)", padding: "14px", display: "flex", alignItems: "center", gap: "14px" }}>
-												<div className="avatar" style={{ background: "linear-gradient(135deg,var(--accent2),#667eea)", width: "38px", height: "38px", fontSize: "15px" }}>{s.email?.[0]?.toUpperCase() || "?"}</div>
+										<div key={s.id} style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+											<div style={{ background: "var(--surface2)", border: "1px solid var(--border)", borderRadius: "var(--radius-sm)", padding: "16px", display: "flex", alignItems: "center", gap: "16px" }}>
+												<div className="avatar" style={{ width: "38px", height: "38px", fontSize: "15px" }}>{s.email?.[0]?.toUpperCase() || "?"}</div>
 												<div style={{ flex: 1 }}>
-													<div style={{ fontSize: "14px", fontWeight: 700 }}>{s.email}</div>
+													<div style={{ fontSize: "14px", fontWeight: 600 }}>{s.email}</div>
 													{s.name && <div style={{ fontSize: "11px", color: "var(--text-dim)" }}>{s.name}</div>}
 												</div>
 												<div style={{ fontSize: "12px", color: "var(--text-sub)", textAlign: "right" }}>
@@ -508,11 +535,11 @@ export default function OwnerPlatformView({ platforms, currentPlatformId, onSele
 													className="btn btn-sm"
 													onClick={() => { setContractError(""); setContract(contract?.s.id === s.id ? null : { s, incomeType: s.incomeType || "", sessionRate: s.sessionRate ?? "" }); }}
 												>계약 설정</button>
-												<span className="plat-status ps-active" style={{ fontSize: "10px" }}>재직</span>
+												<span className="plat-status ps-active" style={{ fontSize: "11px" }}>재직</span>
 												<button className="btn btn-sm btn-danger" onClick={() => removeStaffMember(s)}>삭제</button>
 											</div>
 											{contract?.s.id === s.id && (
-												<form onSubmit={saveContract} className="card" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(160px,1fr))", gap: "10px" }}>
+												<form onSubmit={saveContract} className="card" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(160px,1fr))", gap: "12px" }}>
 													<div className="form-field">
 														<label>소득유형</label>
 														<select required value={contract.incomeType} onChange={(e) => setContract({ ...contract, incomeType: e.target.value })}>
@@ -545,15 +572,15 @@ export default function OwnerPlatformView({ platforms, currentPlatformId, onSele
 
 							{activeTab === "taxaccountants" && (
 								<div>
-									<div style={{ fontSize: "12px", color: "var(--text-dim)", marginBottom: "14px" }}>
+									<div style={{ fontSize: "12px", color: "var(--text-dim)", marginBottom: "16px" }}>
 										초대한 세무사만 이 플랫폼의 매출 집계와 강사·매니저 정산 계좌를 볼 수 있습니다.
 									</div>
-									<div style={{ display: "flex", flexDirection: "column", gap: "10px", marginBottom: "16px" }}>
+									<div style={{ display: "flex", flexDirection: "column", gap: "12px", marginBottom: "16px" }}>
 										{taxAccountants.map((a) => (
-											<div key={a.id} style={{ background: "var(--surface2)", border: "1px solid var(--border)", borderRadius: "var(--radius-sm)", padding: "14px", display: "flex", alignItems: "center", gap: "14px" }}>
-												<div className="avatar" style={{ background: "linear-gradient(135deg,var(--owner),var(--owner-soft))", width: "38px", height: "38px", fontSize: "15px" }}>{a.name?.[0] || "?"}</div>
+											<div key={a.id} style={{ background: "var(--surface2)", border: "1px solid var(--border)", borderRadius: "var(--radius-sm)", padding: "16px", display: "flex", alignItems: "center", gap: "16px" }}>
+												<div className="avatar" style={{ width: "38px", height: "38px", fontSize: "15px" }}>{a.name?.[0] || "?"}</div>
 												<div style={{ flex: 1 }}>
-													<div style={{ fontSize: "14px", fontWeight: 700 }}>{a.name}</div>
+													<div style={{ fontSize: "14px", fontWeight: 600 }}>{a.name}</div>
 													<div style={{ fontSize: "11px", color: "var(--text-sub)" }}>{a.email}</div>
 												</div>
 												<select
@@ -574,7 +601,7 @@ export default function OwnerPlatformView({ platforms, currentPlatformId, onSele
 
 									<button className="btn btn-primary btn-sm" onClick={() => setShowTaxForm((v) => !v)}>+ 세무사 초대</button>
 									{showTaxForm && (
-										<form onSubmit={submitTaxAccountant} className="card" style={{ marginTop: "12px", display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(160px,1fr))", gap: "10px" }}>
+										<form onSubmit={submitTaxAccountant} className="card" style={{ marginTop: "12px", display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(160px,1fr))", gap: "12px" }}>
 											<div className="form-field"><label>아이디</label><input required value={taxForm.username} onChange={(e) => setTaxForm({ ...taxForm, username: e.target.value })} /></div>
 											<div className="form-field"><label>이메일</label><input type="email" required value={taxForm.email} onChange={(e) => setTaxForm({ ...taxForm, email: e.target.value })} /></div>
 											<div className="form-field"><label>이름</label><input required value={taxForm.name} onChange={(e) => setTaxForm({ ...taxForm, name: e.target.value })} /></div>
@@ -595,7 +622,31 @@ export default function OwnerPlatformView({ platforms, currentPlatformId, onSele
 								</div>
 							)}
 
-							{activeTab === "activityLog" && (
+							{activeTab === "history" && (
+								<div style={{ display: "flex", gap: "8px", marginBottom: "16px" }}>
+									{[["activity", "활동"], ["payment", "결제"], ["lesson", "수업"]].map(([key, label]) => (
+										<button
+											key={key} type="button"
+											className={`btn btn-sm ${historySubTab === key ? "btn-primary" : "btn-ghost"}`}
+											onClick={() => setHistorySubTab(key)}
+										>{label}</button>
+									))}
+								</div>
+							)}
+
+							{activeTab === "history" && historySubTab === "payment" && (
+								<div id="manager-app">
+									<ManagerPaymentHistoryView key={plat.id} platformId={plat.id} embedded />
+								</div>
+							)}
+
+							{activeTab === "history" && historySubTab === "lesson" && (
+								<div id="manager-app">
+									<ManagerStudyHistoryView key={plat.id} platformId={plat.id} embedded />
+								</div>
+							)}
+
+							{activeTab === "history" && historySubTab === "activity" && (
 								<div style={{ overflowX: "auto" }}>
 									<table className="data-table">
 										<thead><tr><th>일시</th><th>처리자</th><th>항목</th><th>작업</th><th>메모</th></tr></thead>
@@ -605,7 +656,7 @@ export default function OwnerPlatformView({ platforms, currentPlatformId, onSele
 											) : (
 												activityLogs.map((l) => (
 													<tr key={l.id}>
-														<td style={{ fontFamily: "'DM Mono',monospace", fontSize: "12px" }}>{formatDateTime(l.createdAt)}</td>
+														<td style={{ fontFamily: "var(--mono)", fontSize: "12px" }}>{formatDateTime(l.createdAt)}</td>
 														<td>{l.actorName || "-"}</td>
 														<td>{ACTION_TARGET_LABEL[l.targetType] || l.targetType}</td>
 														<td>{ACTION_LABEL[l.action] || l.action}</td>

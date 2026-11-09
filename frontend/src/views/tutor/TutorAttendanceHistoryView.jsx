@@ -68,9 +68,8 @@ export default function TutorAttendanceHistoryView({ platformId }) {
 	return (
 		<div className="page" id="tutor-attend-history">
 			<div className="page-header">
-				<div className="page-label">Tutor / Attendance History</div>
 				<div className="page-title">출석 이력</div>
-				<div className="page-subtitle">지난 수업의 출결 현황을 확인하세요</div>
+				<div className="page-subtitle">지난 수업 출결</div>
 			</div>
 
 			<div className="hist-nav">
@@ -122,15 +121,15 @@ export default function TutorAttendanceHistoryView({ platformId }) {
 
 			<div className="today-summary" style={{ marginBottom: "20px" }}>
 				<div className="summary-cell">
-					<div className="summary-val" style={{ color: "var(--accent2)" }}>{loading ? "-" : totalLessons}</div>
+					<div className="summary-val">{loading ? "-" : totalLessons}</div>
 					<div className="summary-key">총 수업</div>
 				</div>
 				<div className="summary-cell">
-					<div className="summary-val" style={{ color: "var(--green)" }}>{loading ? "-" : totalStudents}</div>
+					<div className="summary-val">{loading ? "-" : totalStudents}</div>
 					<div className="summary-key">수강 인원</div>
 				</div>
 				<div className="summary-cell">
-					<div className="summary-val" style={{ color: "var(--accent3)" }}>{loading ? "-" : `${attendRate}%`}</div>
+					<div className="summary-val">{loading ? "-" : `${attendRate}%`}</div>
 					<div className="summary-key">출결률</div>
 				</div>
 			</div>

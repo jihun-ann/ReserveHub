@@ -1,4 +1,4 @@
-import { businessTypeLabel, businessTypeEmoji } from "../../api/common.js";
+import { businessTypeLabel, businessTypeIcon } from "../../api/common.js";
 
 export default function OwnerMypageView({ user, platforms }) {
 	const activeCount = platforms.filter((p) => p.status === "ACTIVE").length;
@@ -6,9 +6,8 @@ export default function OwnerMypageView({ user, platforms }) {
 	return (
 		<div id="owner-mypage" className="page">
 			<div className="page-header">
-				<div className="page-label">Owner Admin / My Page</div>
 				<div className="page-title">내 정보</div>
-				<div className="page-subtitle">오너 계정 정보를 확인하세요</div>
+				<div className="page-subtitle">이름, 연락처, 비밀번호</div>
 			</div>
 
 			<div className="mypage-hero" style={{ marginBottom: "24px" }}>
@@ -39,7 +38,7 @@ export default function OwnerMypageView({ user, platforms }) {
 				)}
 				{platforms.map((p) => (
 					<div className="platform-item" key={p.id}>
-						<div className="plat-emoji">{businessTypeEmoji(p.businessType)}</div>
+						<div className="plat-emoji">{businessTypeIcon(p.businessType)}</div>
 						<div className="plat-detail">
 							<div className="plat-name">{p.name}</div>
 							<span className="plat-tag">{businessTypeLabel(p.businessType)}</span>

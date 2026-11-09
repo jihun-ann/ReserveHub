@@ -82,9 +82,8 @@ export default function ManagerTutorManageView({ platformId }) {
 		<>
 		<div className="page" id="manager-instructors">
 			<div className="page-header">
-				<div className="page-label">INSTRUCTORS</div>
 				<div className="page-title">강사 관리</div>
-				<div className="page-subtitle">소속 강사를 초대하고 관리하세요</div>
+				<div className="page-subtitle">소속 강사 초대와 관리</div>
 			</div>
 
 			<div style={{ display: "flex", gap: "8px", marginBottom: "16px", flexWrap: "wrap", alignItems: "center" }}>
@@ -96,7 +95,7 @@ export default function ManagerTutorManageView({ platformId }) {
 					style={{
 						flex: "1",
 						minWidth: "160px",
-						padding: "8px 14px",
+						padding: "8px 16px",
 						background: "var(--surface)",
 						border: "1px solid var(--border)",
 						borderRadius: "20px",
@@ -144,10 +143,10 @@ export default function ManagerTutorManageView({ platformId }) {
 										<>
 										<tr key={t.id} onClick={() => setExpandedId(isOpen ? null : t.id)} style={{ cursor: "pointer" }}>
 											<td style={{ fontWeight: 600 }}>{t.name}</td>
-											<td style={{ fontFamily: "'DM Mono',monospace", fontSize: "12px" }}>{t.phone || "-"}</td>
+											<td style={{ fontFamily: "var(--mono)", fontSize: "12px" }}>{t.phone || "-"}</td>
 											<td>{t.email}</td>
 											<td>
-												<span className={`badge ${t.isActive ? "bs-active" : "bs-expired"}`} style={{ fontSize: "10px" }}>
+												<span className={`badge ${t.isActive ? "bs-active" : "bs-expired"}`} style={{ fontSize: "11px" }}>
 													{t.isActive ? "활성" : "비활성"}
 												</span>
 											</td>
@@ -182,7 +181,7 @@ export default function ManagerTutorManageView({ platformId }) {
 
 		{invitations.length > 0 && (
 			<div className="card" style={{ margin: "16px 0", padding: "12px 16px" }}>
-				<div style={{ fontSize: "12px", fontWeight: 700, marginBottom: "8px" }}>수락 대기 중인 초대</div>
+				<div style={{ fontSize: "12px", fontWeight: 600, marginBottom: "8px" }}>수락 대기 중인 초대</div>
 				{invitations.map((i) => (
 					<div key={i.id} style={{ display: "flex", alignItems: "center", gap: "8px", padding: "4px 0", fontSize: "13px" }}>
 						<span style={{ flex: 1 }}>{[i.email, i.phone].filter(Boolean).join(" / ")}</span>
@@ -200,7 +199,7 @@ export default function ManagerTutorManageView({ platformId }) {
 					<button className="modal-close" onClick={() => closeModal("addInstructorModal")}>✕</button>
 				</div>
 				<div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-					<div style={{ display: "flex", gap: "6px" }}>
+					<div style={{ display: "flex", gap: "8px" }}>
 						{[["email", "이메일"], ["phone", "연락처"]].map(([m, label]) => (
 							<button
 								key={m} type="button"

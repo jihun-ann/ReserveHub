@@ -90,9 +90,8 @@ export default function TutorAttendanceView({ platformId }) {
 	return (
 		<div id="tutor-attend" className="page">
 			<div className="page-header">
-				<div className="page-label">Tutor / Attendance</div>
 				<div className="page-title">출석 관리</div>
-				<div className="page-subtitle">고정된 주간 수업 계획을 확인하고 오늘 출석을 처리하세요</div>
+				<div className="page-subtitle">주간 수업 계획과 오늘 출석</div>
 			</div>
 
 			<div className="attend-layout">
@@ -112,17 +111,17 @@ export default function TutorAttendanceView({ platformId }) {
 								<tbody>
 									<tr>
 										{DAY_KEYS.map((key) => (
-											<td key={key} style={{ verticalAlign: "top", padding: "8px", background: key === todayKey ? "rgba(var(--tutor-rgb),.06)" : undefined }}>
+											<td key={key} style={{ verticalAlign: "top", padding: "8px", background: key === todayKey ? "var(--surface2)" : undefined }}>
 												{loading ? (
 													<span style={{ fontSize: "11px", color: "var(--text-dim)" }}>-</span>
 												) : (slotsByDay[key] || []).length === 0 ? (
 													<span style={{ fontSize: "11px", color: "var(--text-dim)" }}>수업 없음</span>
 												) : (
 													slotsByDay[key].map((s) => (
-														<div key={s.id} style={{ background: "var(--surface2)", borderRadius: "var(--radius-sm)", padding: "8px", marginBottom: "6px" }}>
-															<div style={{ fontSize: "12px", fontWeight: 700 }}>{s.programName}</div>
-															<div style={{ fontSize: "10px", color: "var(--text-sub)", marginTop: "2px" }}>{platformsById[s.platformId]}</div>
-															<div style={{ fontSize: "11px", fontFamily: "'DM Mono',monospace", color: "var(--tutor)", marginTop: "4px" }}>
+														<div key={s.id} style={{ background: "var(--surface2)", borderRadius: "var(--radius-sm)", padding: "8px", marginBottom: "8px" }}>
+															<div style={{ fontSize: "12px", fontWeight: 600 }}>{s.programName}</div>
+															<div style={{ fontSize: "11px", color: "var(--text-sub)", marginTop: "2px" }}>{platformsById[s.platformId]}</div>
+															<div style={{ fontSize: "11px", fontFamily: "var(--mono)", color: "var(--text)", marginTop: "4px" }}>
 																{s.startTime?.slice(0, 5)}-{s.endTime?.slice(0, 5)}
 															</div>
 														</div>
@@ -138,9 +137,9 @@ export default function TutorAttendanceView({ platformId }) {
 
 					<div className="card-title" style={{ marginBottom: "12px" }}>오늘 출석 처리</div>
 					{loading ? (
-						<div className="card" style={{ padding: "24px", textAlign: "center", color: "var(--text-dim)" }}>불러오는 중...</div>
+						<div className="card" style={{ padding: "24px", textAlign: "center", color: "var(--text-dim)", fontSize: "13px" }}>불러오는 중...</div>
 					) : todayLessons.length === 0 ? (
-						<div className="card" style={{ padding: "24px", textAlign: "center", color: "var(--text-dim)" }}>오늘 예정된 수업이 없습니다</div>
+						<div className="card" style={{ padding: "24px", textAlign: "center", color: "var(--text-dim)", fontSize: "13px" }}>오늘 예정된 수업이 없습니다</div>
 					) : (
 						todayLessons.map((lesson) => {
 							const members = membersByPlatform[lesson.platformId] || [];
@@ -148,9 +147,9 @@ export default function TutorAttendanceView({ platformId }) {
 							const recordedByUser = Object.fromEntries(recorded.map((a) => [a.userId, a.status]));
 							return (
 								<div className="card" key={lesson.id} style={{ padding: 0, overflow: "hidden", marginBottom: "16px" }}>
-									<div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "14px 16px", borderBottom: "1px solid var(--border)" }}>
+									<div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "16px 16px", borderBottom: "1px solid var(--border)" }}>
 										<div>
-											<div style={{ fontWeight: 700, fontSize: "14px" }}>{lesson.programName}</div>
+											<div style={{ fontWeight: 600, fontSize: "14px" }}>{lesson.programName}</div>
 											<div style={{ fontSize: "11px", color: "var(--text-sub)" }}>{platformsById[lesson.platformId]}</div>
 										</div>
 										{!lesson.startedAt ? (
@@ -203,27 +202,27 @@ export default function TutorAttendanceView({ platformId }) {
 					<div className="card">
 						<div className="card-title">오늘 출결 현황</div>
 						<div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
-							<div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 0", borderBottom: "1px solid var(--border)" }}>
+							<div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 0", borderBottom: "1px solid var(--border)" }}>
 								<span style={{ fontSize: "13px", color: "var(--text-sub)" }}>출석</span>
-								<span style={{ fontFamily: "'DM Mono',monospace", fontSize: "14px", fontWeight: 500, color: "var(--green)" }}>{countByStatus("PRESENT")}명</span>
+								<span style={{ fontFamily: "var(--mono)", fontSize: "14px", fontWeight: 500, color: "var(--green)" }}>{countByStatus("PRESENT")}명</span>
 							</div>
-							<div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 0", borderBottom: "1px solid var(--border)" }}>
+							<div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 0", borderBottom: "1px solid var(--border)" }}>
 								<span style={{ fontSize: "13px", color: "var(--text-sub)" }}>지각</span>
-								<span style={{ fontFamily: "'DM Mono',monospace", fontSize: "14px", fontWeight: 500, color: "var(--accent3)" }}>{countByStatus("LATE")}명</span>
+								<span style={{ fontFamily: "var(--mono)", fontSize: "14px", fontWeight: 500, color: "var(--accent3)" }}>{countByStatus("LATE")}명</span>
 							</div>
-							<div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 0" }}>
+							<div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 0" }}>
 								<span style={{ fontSize: "13px", color: "var(--text-sub)" }}>결석</span>
-								<span style={{ fontFamily: "'DM Mono',monospace", fontSize: "14px", fontWeight: 500, color: "var(--red)" }}>{countByStatus("ABSENT")}명</span>
+								<span style={{ fontFamily: "var(--mono)", fontSize: "14px", fontWeight: 500, color: "var(--red)" }}>{countByStatus("ABSENT")}명</span>
 							</div>
 						</div>
 					</div>
 					<div className="card">
 						<div className="card-title">이번 달 출결률</div>
-						<div style={{ textAlign: "center", padding: "14px 0" }}>
-							<div style={{ fontFamily: "'DM Mono',monospace", fontSize: "36px", fontWeight: 500, color: "var(--accent2)" }}>
+						<div style={{ textAlign: "center", padding: "16px 0" }}>
+							<div style={{ fontFamily: "var(--mono)", fontSize: "36px", fontWeight: 500, color: "var(--text)" }}>
 								{loading ? "-" : monthRate}<span style={{ fontSize: "18px", color: "var(--text-sub)" }}>%</span>
 							</div>
-							<div style={{ fontSize: "10px", color: "var(--text-dim)", marginTop: "4px", letterSpacing: "1px" }}>ATTENDANCE RATE</div>
+							<div style={{ fontSize: "11px", color: "var(--text-dim)", marginTop: "4px" }}>ATTENDANCE RATE</div>
 						</div>
 						<div style={{ height: "6px", background: "var(--border)", borderRadius: "3px", overflow: "hidden" }}>
 							<div style={{ width: `${monthRate}%`, height: "100%", background: "var(--accent2)", borderRadius: "3px" }}></div>

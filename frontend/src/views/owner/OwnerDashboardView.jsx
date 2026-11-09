@@ -1,6 +1,6 @@
 import { useState } from "react";
 import {
-	approveScheduleRequest, rejectScheduleRequest, approveLeaveRequest, rejectLeaveRequest, hexAlpha, businessTypeLabel, businessTypeEmoji
+	approveScheduleRequest, rejectScheduleRequest, approveLeaveRequest, rejectLeaveRequest, hexAlpha, businessTypeLabel, businessTypeIcon
 } from "../../api/common.js";
 
 export default function OwnerDashboardView({ platforms, requests, onDecided, onNavigate }) {
@@ -26,21 +26,19 @@ export default function OwnerDashboardView({ platforms, requests, onDecided, onN
 	return (
 		<div id="owner-dashboard" className="page active">
 			<div className="page-header">
-				<div className="page-label">Owner Admin / Dashboard</div>
 				<div className="page-title">대시보드</div>
-				<div className="page-subtitle">전체 플랫폼 현황을 한눈에 확인하세요</div>
+				<div className="page-subtitle">운영 중인 플랫폼과 처리할 승인 요청</div>
 			</div>
 
 			{/* KPI 2칸 (매출/회원 집계는 아직 백엔드 미지원) */}
-			<div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(160px,1fr))", gap: "16px", marginBottom: "24px" }}>
-				<div className="card" style={{ padding: "20px", textAlign: "center" }}>
-					<div style={{ fontSize: "11px", color: "var(--text-dim)", letterSpacing: "1px", textTransform: "uppercase", marginBottom: "8px" }}>활성 플랫폼</div>
-					<div style={{ fontFamily: "'DM Mono',monospace", fontSize: "32px", fontWeight: 500, color: "var(--owner)", lineHeight: 1 }}>{platforms.length}</div>
+			<div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(200px,240px))", gap: "16px", marginBottom: "24px" }}>
+				<div className="card" style={{ padding: "20px" }}>
+					<div style={{ fontSize: "13px", color: "var(--text-sub)", marginBottom: "8px" }}>활성 플랫폼</div>
+					<div className="stat-figure">{platforms.length}</div>
 				</div>
-				<div className="card" style={{ padding: "20px", textAlign: "center" }}>
-					<div style={{ fontSize: "11px", color: "var(--text-dim)", letterSpacing: "1px", textTransform: "uppercase", marginBottom: "8px" }}>대기 승인</div>
-					<div style={{ fontFamily: "'DM Mono',monospace", fontSize: "32px", fontWeight: 500, color: "var(--owner)", lineHeight: 1 }}>{pending.length}</div>
-					<div style={{ fontSize: "11px", color: "var(--owner)", marginTop: "6px" }}>처리 필요</div>
+				<div className="card" style={{ padding: "20px" }}>
+					<div style={{ fontSize: "13px", color: "var(--text-sub)", marginBottom: "8px" }}>승인 대기</div>
+					<div className="stat-figure" style={pending.length > 0 ? { color: "var(--accent-active-text)" } : undefined}>{pending.length}</div>
 				</div>
 			</div>
 
@@ -64,11 +62,11 @@ export default function OwnerDashboardView({ platforms, requests, onDecided, onN
 									<td>
 										<div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
 											<span style={{ display: "inline-block", width: "10px", height: "10px", background: p.colorHex, borderRadius: "2px", flexShrink: 0 }}></span>
-											<div style={{ fontWeight: 700, fontSize: "13px" }}>{p.name}</div>
+											<div style={{ fontWeight: 600, fontSize: "13px" }}>{p.name}</div>
 										</div>
 									</td>
 									<td>{businessTypeLabel(p.businessType)}</td>
-									<td><span className={`plat-status ${p.status === "ACTIVE" ? "ps-active" : "ps-expired"}`} style={{ fontSize: "10px" }}>{p.status === "ACTIVE" ? "운영 중" : p.status}</span></td>
+									<td><span className={`plat-status ${p.status === "ACTIVE" ? "ps-active" : "ps-expired"}`} style={{ fontSize: "11px" }}>{p.status === "ACTIVE" ? "운영 중" : p.status}</span></td>
 								</tr>
 							))}
 							{platforms.length === 0 && (
@@ -83,35 +81,35 @@ export default function OwnerDashboardView({ platforms, requests, onDecided, onN
 				<div className="card">
 					<div className="card-title" style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
 						<span>승인 대기</span>
-						<span style={{ background: "rgba(var(--owner-rgb),0.15)", color: "var(--owner)", fontSize: "10px", padding: "2px 8px", borderRadius: "20px", fontWeight: 600 }}>{pending.length}건</span>
+						<span style={{ fontFamily: "var(--mono)", fontSize: "12px", fontWeight: 400, color: "var(--text-dim)" }}>{pending.length}건</span>
 					</div>
-					<div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+					<div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
 						{pending.length === 0 && (
 							<div style={{ fontSize: "12px", color: "var(--text-dim)", textAlign: "center", padding: "16px 0" }}>처리할 승인 요청이 없습니다</div>
 						)}
 						{pending.map((r) => (
-							<div key={r.id} style={{ background: "var(--surface2)", borderRadius: "var(--radius-sm)", border: "1px solid var(--border)", padding: "14px" }}>
+							<div key={r.id} style={{ background: "var(--surface2)", borderRadius: "var(--radius-sm)", border: "1px solid var(--border)", padding: "16px" }}>
 								<div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "8px", marginBottom: "8px" }}>
 									<div>
 										{r.requestType === "LEAVE" ? (
 											<>
-												<div style={{ fontSize: "13px", fontWeight: 700 }}>{r.startDate} ~ {r.endDate} 휴가 요청</div>
+												<div style={{ fontSize: "13px", fontWeight: 600 }}>{r.startDate} ~ {r.endDate} 휴가 요청</div>
 												{r.reason && <div style={{ fontSize: "11px", color: "var(--text-sub)", marginTop: "2px" }}>{r.reason}</div>}
 											</>
 										) : (
 											<>
-												<div style={{ fontSize: "13px", fontWeight: 700 }}>{r.requestedDate} 일정 변경 요청</div>
+												<div style={{ fontSize: "13px", fontWeight: 600 }}>{r.requestedDate} 일정 변경 요청</div>
 												<div style={{ fontSize: "11px", color: "var(--text-sub)", marginTop: "2px" }}>{r.originalDate} → {r.requestedDate}</div>
 											</>
 										)}
 										<div style={{ marginTop: "4px" }}>
 											<span className="plat-chip" style={{ background: hexAlpha(r.platform.colorHex, 0.12), color: r.platform.colorHex, borderColor: hexAlpha(r.platform.colorHex, 0.3) }}>
-												{businessTypeEmoji(r.platform.businessType)} {r.platform.name}
+												{businessTypeIcon(r.platform.businessType, 12)} {r.platform.name}
 											</span>
 										</div>
 									</div>
 								</div>
-								<div style={{ display: "flex", gap: "6px" }}>
+								<div style={{ display: "flex", gap: "8px" }}>
 									<button
 										className="btn btn-sm"
 										disabled={busyId === r.id}

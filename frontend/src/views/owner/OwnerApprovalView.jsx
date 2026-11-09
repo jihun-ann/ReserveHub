@@ -68,41 +68,41 @@ export default function OwnerApprovalView({ requests, onDecided }) {
 
 		return (
 			<div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-				<div style={{ fontSize: "14px", fontWeight: 700 }}>
+				<div style={{ fontSize: "14px", fontWeight: 600 }}>
 					{isLeave ? `${r.startDate} ~ ${r.endDate} 휴가 요청` : `${r.requestedDate} 일정 변경 요청`}
 				</div>
 
 				{isLeave ? (
-					<div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(160px,1fr))", gap: "10px" }}>
-						<div style={{ background: "var(--surface)", borderRadius: "var(--radius-sm)", padding: "10px 12px" }}>
-							<div style={{ fontSize: "10px", color: "var(--text-dim)", marginBottom: "4px", letterSpacing: "1px" }}>시작일</div>
+					<div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(160px,1fr))", gap: "12px" }}>
+						<div style={{ background: "var(--surface)", borderRadius: "var(--radius-sm)", padding: "12px 12px" }}>
+							<div style={{ fontSize: "11px", color: "var(--text-dim)", marginBottom: "4px" }}>시작일</div>
 							<div style={{ fontSize: "13px", fontWeight: 600 }}>{r.startDate}</div>
 						</div>
-						<div style={{ background: "var(--surface)", borderRadius: "var(--radius-sm)", padding: "10px 12px" }}>
-							<div style={{ fontSize: "10px", color: "var(--text-dim)", marginBottom: "4px", letterSpacing: "1px" }}>종료일</div>
+						<div style={{ background: "var(--surface)", borderRadius: "var(--radius-sm)", padding: "12px 12px" }}>
+							<div style={{ fontSize: "11px", color: "var(--text-dim)", marginBottom: "4px" }}>종료일</div>
 							<div style={{ fontSize: "13px", fontWeight: 600, color: "var(--owner)" }}>{r.endDate}</div>
 						</div>
 					</div>
 				) : (
-					<div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(160px,1fr))", gap: "10px" }}>
-						<div style={{ background: "var(--surface)", borderRadius: "var(--radius-sm)", padding: "10px 12px" }}>
-							<div style={{ fontSize: "10px", color: "var(--text-dim)", marginBottom: "4px", letterSpacing: "1px" }}>기존 일정</div>
+					<div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(160px,1fr))", gap: "12px" }}>
+						<div style={{ background: "var(--surface)", borderRadius: "var(--radius-sm)", padding: "12px 12px" }}>
+							<div style={{ fontSize: "11px", color: "var(--text-dim)", marginBottom: "4px" }}>기존 일정</div>
 							<div style={{ fontSize: "13px", fontWeight: 600 }}>{r.originalDate}</div>
 						</div>
-						<div style={{ background: "var(--surface)", borderRadius: "var(--radius-sm)", padding: "10px 12px" }}>
-							<div style={{ fontSize: "10px", color: "var(--text-dim)", marginBottom: "4px", letterSpacing: "1px" }}>변경 희망</div>
+						<div style={{ background: "var(--surface)", borderRadius: "var(--radius-sm)", padding: "12px 12px" }}>
+							<div style={{ fontSize: "11px", color: "var(--text-dim)", marginBottom: "4px" }}>변경 희망</div>
 							<div style={{ fontSize: "13px", fontWeight: 600, color: "var(--owner)" }}>{r.requestedDate}</div>
 						</div>
 					</div>
 				)}
 
 				{r.reason && (
-					<div style={{ background: "var(--surface)", borderRadius: "var(--radius-sm)", padding: "10px 12px", fontSize: "13px", color: "var(--text-sub)", lineHeight: 1.5 }}>{r.reason}</div>
+					<div style={{ background: "var(--surface)", borderRadius: "var(--radius-sm)", padding: "12px 12px", fontSize: "13px", color: "var(--text-sub)", lineHeight: 1.5 }}>{r.reason}</div>
 				)}
 
 				{r.status !== "PENDING" && r.decisionMemo && (
 					<div style={{ fontSize: "12px", color: "var(--text-sub)" }}>
-						<span style={{ fontSize: "10px", color: "var(--text-dim)", letterSpacing: "1px" }}>
+						<span style={{ fontSize: "11px", color: "var(--text-dim)" }}>
 							{r.status === "REJECTED" ? "반려 사유" : "승인 메모"}
 						</span>
 						<div style={{ marginTop: "4px" }}>{r.decisionMemo}</div>
@@ -140,9 +140,8 @@ export default function OwnerApprovalView({ requests, onDecided }) {
 	return (
 		<div id="owner-approval" className="page">
 			<div className="page-header">
-				<div className="page-label">Owner Admin / Approval</div>
 				<div className="page-title">승인 관리</div>
-				<div className="page-subtitle">일정 변경 요청과 휴가 요청을 검토하고 승인하세요</div>
+				<div className="page-subtitle">일정 변경과 휴가 요청</div>
 			</div>
 
 			<div style={{ display: "flex", gap: "8px", marginBottom: "20px", flexWrap: "wrap" }}>

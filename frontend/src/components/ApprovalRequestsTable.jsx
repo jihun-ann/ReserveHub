@@ -23,7 +23,7 @@ export default function ApprovalRequestsTable({ rows, expandedId, onToggle, rend
 
 	return (
 		<div>
-			<div className="form-field" style={{ maxWidth: "280px", marginBottom: "14px" }}>
+			<div className="form-field" style={{ maxWidth: "280px", marginBottom: "16px" }}>
 				<input
 					type="text"
 					value={search}

@@ -55,17 +55,16 @@ export default function TutorFacilityReportView({ platformId }) {
 		<>
 		<div className="page" id="tutor-facility-report">
 			<div className="page-header">
-				<div className="page-label">Facilities</div>
 				<div className="page-title">시설물 고장 신고</div>
-				<div className="page-subtitle">시설물에 문제가 있으면 신고하세요. 관리자/오너가 확인 후 처리합니다.</div>
+				<div className="page-subtitle">고장 난 시설물 신고. 매니저나 오너가 확인 후 처리합니다.</div>
 			</div>
 
 			{loading ? (
-				<div className="card" style={{ padding: "24px", textAlign: "center", color: "var(--text-dim)" }}>불러오는 중...</div>
+				<div className="card" style={{ padding: "24px", textAlign: "center", color: "var(--text-dim)", fontSize: "13px" }}>불러오는 중...</div>
 			) : facilities.length === 0 ? (
-				<div className="card" style={{ padding: "24px", textAlign: "center", color: "var(--text-dim)" }}>등록된 시설물이 없습니다</div>
+				<div className="card" style={{ padding: "24px", textAlign: "center", color: "var(--text-dim)", fontSize: "13px" }}>등록된 시설물이 없습니다</div>
 			) : (
-				<div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+				<div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
 					{facilities.map((f) => (
 						<div className="card" key={f.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
 							<div>

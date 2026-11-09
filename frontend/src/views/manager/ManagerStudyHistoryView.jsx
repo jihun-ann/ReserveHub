@@ -4,7 +4,8 @@ import { listLessonHistory, PROGRAM_TYPE_LABEL } from "../../api/common.js";
 const today0 = new Date();
 const YEARS = [today0.getFullYear(), today0.getFullYear() - 1, today0.getFullYear() - 2];
 
-export default function ManagerStudyHistoryView({ platformId }) {
+// embedded: 오너 플랫폼 관리 탭 안에 넣을 때 — 탭 이름이 제목 역할을 하므로 페이지 헤더를 숨긴다
+export default function ManagerStudyHistoryView({ platformId, embedded = false }) {
 	const [year, setYear] = useState(today0.getFullYear());
 	const [month, setMonth] = useState(0); // 0 = all
 	const [instructor, setInstructor] = useState("all");
@@ -49,19 +50,20 @@ export default function ManagerStudyHistoryView({ platformId }) {
 	const maxByInstructor = Math.max(1, ...Object.values(byInstructor));
 
 	const selectStyle = {
-		padding: "7px 12px", background: "var(--surface)", border: "1px solid var(--border)",
+		padding: "8px 12px", background: "var(--surface)", border: "1px solid var(--border)",
 		borderRadius: "var(--rs)", color: "var(--text)", fontSize: "13px", outline: "none"
 	};
 
 	return (
 		<div className="page" id="manager-history">
+			{!embedded && (
 			<div className="page-header">
-				<div className="page-label">HISTORY</div>
 				<div className="page-title">수업 이력</div>
-				<div className="page-subtitle">강사별·기간별 수업 현황을 분석하세요</div>
+				<div className="page-subtitle">강사별·기간별 수업 횟수</div>
 			</div>
+			)}
 
-			<div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap", marginBottom: "20px" }}>
+			<div style={{ display: "flex", alignItems: "center", gap: "12px", flexWrap: "wrap", marginBottom: "20px" }}>
 				<select value={year} onChange={(e) => setYear(Number(e.target.value))} style={selectStyle}>
 					{YEARS.map((y) => <option key={y} value={y}>{y}년</option>)}
 				</select>
@@ -82,31 +84,31 @@ export default function ManagerStudyHistoryView({ platformId }) {
 
 			<div className="hist-kpi">
 				<div className="kpi-card">
-					<div className="kpi-val" style={{ color: "var(--accent2)" }}>{loading ? "-" : totalLessons}</div>
+					<div className="kpi-val">{loading ? "-" : totalLessons}</div>
 					<div className="kpi-key">총 수업</div>
 				</div>
 				<div className="kpi-card">
-					<div className="kpi-val" style={{ color: "var(--manager)" }}>{loading ? "-" : groupCount}</div>
+					<div className="kpi-val">{loading ? "-" : groupCount}</div>
 					<div className="kpi-key">그룹 레슨</div>
 				</div>
 				<div className="kpi-card">
-					<div className="kpi-val" style={{ color: "var(--accent3)" }}>{loading ? "-" : privateCount}</div>
+					<div className="kpi-val">{loading ? "-" : privateCount}</div>
 					<div className="kpi-key">개인 레슨</div>
 				</div>
 				<div className="kpi-card">
-					<div className="kpi-val" style={{ color: "var(--green)" }}>{loading ? "-" : totalStudents}</div>
+					<div className="kpi-val">{loading ? "-" : totalStudents}</div>
 					<div className="kpi-key">수강 인원</div>
 				</div>
 				<div className="kpi-card">
-					<div className="kpi-val" style={{ color: "var(--green)" }}>{loading ? "-" : `${attendRate}%`}</div>
+					<div className="kpi-val">{loading ? "-" : `${attendRate}%`}</div>
 					<div className="kpi-key">출결률</div>
 				</div>
 			</div>
 
-			<div className="grid-main-side" style={{ gap: "18px", "--side-w": "2fr" }}>
+			<div className="grid-main-side" style={{ gap: "20px", "--side-w": "2fr" }}>
 				<div className="card">
 					<div className="card-title">강사별 수업 수</div>
-					<div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
+					<div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
 						{Object.keys(byInstructor).length === 0 ? (
 							<div style={{ fontSize: "12px", color: "var(--text-dim)" }}>데이터가 없습니다</div>
 						) : (
@@ -114,7 +116,7 @@ export default function ManagerStudyHistoryView({ platformId }) {
 								<div key={name}>
 									<div style={{ display: "flex", justifyContent: "space-between", fontSize: "12px", marginBottom: "4px" }}>
 										<span>{name}</span>
-										<span style={{ fontFamily: "'DM Mono',monospace", color: "var(--manager)" }}>{count}</span>
+										<span style={{ fontFamily: "var(--mono)", color: "var(--text)" }}>{count}</span>
 									</div>
 									<div style={{ height: "6px", background: "var(--surface2)", borderRadius: "3px", overflow: "hidden" }}>
 										<div style={{ width: `${(count / maxByInstructor) * 100}%`, height: "100%", background: "var(--manager)" }}></div>
@@ -140,7 +142,7 @@ export default function ManagerStudyHistoryView({ platformId }) {
 										const rate = l.totalAttendance === 0 ? 0 : Math.round((l.presentCount / l.totalAttendance) * 100);
 										return (
 											<tr key={l.id}>
-												<td style={{ fontFamily: "'DM Mono',monospace", fontSize: "12px" }}>{l.lessonDate}</td>
+												<td style={{ fontFamily: "var(--mono)", fontSize: "12px" }}>{l.lessonDate}</td>
 												<td>{l.instructorEmail}</td>
 												<td>{PROGRAM_TYPE_LABEL[l.programType] || l.programType}</td>
 												<td>{l.programName}</td>

@@ -29,6 +29,7 @@ public class StaffInvitationService {
     private final PlatformRepository platformRepository;
     private final PlatformService platformService;
     private final PlatformAccessGuard platformAccessGuard;
+    private final ManagerGroupRepository managerGroupRepository;
     private final ActionLogRepository actionLogRepository;
     private final UserService userService;
     private final boolean requireVerifiedContact;
@@ -36,6 +37,7 @@ public class StaffInvitationService {
     public StaffInvitationService(
             StaffInvitationRepository invitationRepository, PlatformRepository platformRepository,
             PlatformService platformService, PlatformAccessGuard platformAccessGuard,
+            ManagerGroupRepository managerGroupRepository,
             ActionLogRepository actionLogRepository, UserService userService,
             @Value("${app.invitation.require-verified-contact:false}") boolean requireVerifiedContact
     ) {
@@ -43,6 +45,7 @@ public class StaffInvitationService {
         this.platformRepository = platformRepository;
         this.platformService = platformService;
         this.platformAccessGuard = platformAccessGuard;
+        this.managerGroupRepository = managerGroupRepository;
         this.actionLogRepository = actionLogRepository;
         this.userService = userService;
         this.requireVerifiedContact = requireVerifiedContact;
@@ -55,7 +58,7 @@ public class StaffInvitationService {
 
     @Transactional
     public StaffInvitation create(
-            UUID platformId, AuthenticatedUser actor, StaffRole role, @Nullable ManagerTier tier,
+            UUID platformId, AuthenticatedUser actor, StaffRole role, @Nullable ManagerTier tier, @Nullable UUID managerGroupId,
             @Nullable String email, @Nullable String phone
     ) {
         verifyCanManage(platformId, actor, role);
@@ -64,8 +67,16 @@ public class StaffInvitationService {
         if (normEmail == null && normPhone == null) {
             throw new IllegalArgumentException("이메일 또는 연락처 중 하나는 필요합니다.");
         }
+        UUID groupId = role == StaffRole.MANAGER ? managerGroupId : null;
+        if (groupId != null) {
+            ManagerGroup group = managerGroupRepository.findById(groupId)
+                    .orElseThrow(() -> new IllegalArgumentException("그룹을 찾을 수 없습니다."));
+            if (!group.getPlatformId().equals(platformId)) {
+                throw new IllegalArgumentException("이 플랫폼의 그룹이 아닙니다.");
+            }
+        }
         StaffInvitation invitation = invitationRepository.save(new StaffInvitation(
-                platformId, role, role == StaffRole.MANAGER ? (tier != null ? tier : ManagerTier.LOW) : null,
+                platformId, role, role == StaffRole.MANAGER ? (tier != null ? tier : ManagerTier.LOW) : null, groupId,
                 normEmail, normPhone, actor.getId(), Instant.now().plus(VALID_FOR)
         ));
         actionLogRepository.save(ActionLog.of(
@@ -132,6 +143,10 @@ public class StaffInvitationService {
                 invitation.getPlatformId(), invitation.getCreatedBy(), user.getId(),
                 invitation.getStaffRole(), invitation.getManagerTier()
         );
+        // 초대에 정해둔 그룹이 아직 있으면 바로 넣는다 — 그 사이 그룹이 지워졌으면 그룹 없이 배정되고 나중에 지정한다
+        if (invitation.getManagerGroupId() != null) {
+            managerGroupRepository.findById(invitation.getManagerGroupId()).ifPresent(staff::assignGroup);
+        }
         invitation.accept();
         actionLogRepository.save(ActionLog.of(
                 invitation.getPlatformId(), actor.getId(), ActionTarget.STAFF_CHANGE, invitation.getId(), "INVITE_ACCEPT",

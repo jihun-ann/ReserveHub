@@ -19,67 +19,55 @@ export default function UserReservationView() {
 		{
 			id: "p1",
 			cat: "pilates",
-			icon: "🤸",
 			name: "필라테스 그룹반 A",
 			meta: "스튜디오 필라테스 강남 · 60분 · 최대 8명",
 			badge: "그룹 레슨",
 			badgeCls: "badge-group",
-			bg: "rgba(124,106,247,.15)",
 			maxSlots: 8
 		},
 		{
 			id: "p2",
 			cat: "pilates",
-			icon: "🤸",
 			name: "필라테스 1:1 개인레슨",
 			meta: "스튜디오 필라테스 강남 · 50분 · 개인",
 			badge: "개인 레슨",
 			badgeCls: "badge-private",
-			bg: "rgba(79,209,197,.15)",
 			maxSlots: 1
 		},
 		{
 			id: "p3",
 			cat: "yoga",
-			icon: "🧘",
 			name: "요가 기초반",
 			meta: "요가라운지 홍대 · 60분 · 최대 10명",
 			badge: "그룹 레슨",
 			badgeCls: "badge-group",
-			bg: "rgba(124,106,247,.15)",
 			maxSlots: 10
 		},
 		{
 			id: "p4",
 			cat: "music",
-			icon: "🎵",
 			name: "1번 연습실",
 			meta: "뮤직하우스 홍대 · 60분 단위 · 개인/팀",
 			badge: "공간 예약",
 			badgeCls: "badge-room",
-			bg: "rgba(246,173,85,.15)",
 			maxSlots: 1
 		},
 		{
 			id: "p5",
 			cat: "music",
-			icon: "🎸",
 			name: "2번 연습실 (드럼)",
 			meta: "뮤직하우스 홍대 · 60분 단위 · 개인/팀",
 			badge: "공간 예약",
 			badgeCls: "badge-room",
-			bg: "rgba(246,173,85,.15)",
 			maxSlots: 1
 		},
 		{
 			id: "p6",
 			cat: "fitness",
-			icon: "🏋️",
 			name: "헬스장 자유이용",
 			meta: "피트니스 클럽 서초 · 시간 자유 · 개인",
 			badge: "자유이용",
 			badgeCls: "badge-room",
-			bg: "rgba(246,173,85,.15)",
 			maxSlots: 20
 		}
 	];
@@ -89,9 +77,8 @@ export default function UserReservationView() {
 	return (
 		<div className="page" id="page-reservation">
 			<div className="page-header">
-				<div className="page-label">RESERVATION</div>
 				<div className="page-title">수업 예약</div>
-				<div className="page-subtitle">원하는 프로그램과 시간을 선택하세요</div>
+				<div className="page-subtitle">프로그램과 시간 선택</div>
 			</div>
 
 			<div className="res-grid">
@@ -108,25 +95,25 @@ export default function UserReservationView() {
 							className={`filter-chip ${currentFilter === "pilates" ? "active" : ""}`}
 							onClick={() => filterChip("pilates")}
 						>
-							🤸 필라테스
+							필라테스
 						</button>
 						<button
 							className={`filter-chip ${currentFilter === "yoga" ? "active" : ""}`}
 							onClick={() => filterChip("yoga")}
 						>
-							🧘 요가
+							요가
 						</button>
 						<button
 							className={`filter-chip ${currentFilter === "music" ? "active" : ""}`}
 							onClick={() => filterChip("music")}
 						>
-							🎵 음악
+							음악
 						</button>
 						<button
 							className={`filter-chip ${currentFilter === "fitness" ? "active" : ""}`}
 							onClick={() => filterChip("fitness")}
 						>
-							🏋️ 헬스
+							헬스
 						</button>
 					</div>
 
@@ -173,7 +160,7 @@ export default function UserReservationView() {
 							</div>
 							<div className="confirm-row">
 								<span>잔여석</span>
-								<strong id="confirmRemain" style={{ color: "var(--accent2)" }}>
+								<strong id="confirmRemain">
 									—
 								</strong>
 							</div>
@@ -223,7 +210,7 @@ export default function UserReservationView() {
 				(p) => `
         <div class="program-card${selectedProg && selectedProg.id === p.id ? " selected" : ""}"
              onclick="selectProgram('${p.id}')">
-          <div class="program-icon" style="background:${p.bg}">${p.icon}</div>
+          <div class="program-icon">${p.name[0]}</div>
           <div class="program-body">
             <div class="program-name">${p.name}</div>
             <div class="program-meta">${p.meta}</div>
@@ -238,7 +225,7 @@ export default function UserReservationView() {
 		if (!selectedProg || selectedSlotIdx === null) return;
 		const slots = getSlots(selectedProg, selectedDateOffset);
 		const slot = slots[selectedSlotIdx];
-		showToast("✅ " + selectedProg.name + " " + slot.time + " 예약 완료!");
+		showToast(selectedProg.name + " " + slot.time + " 예약했습니다");
 		selectedSlotIdx = null;
 		document.getElementById("confirmBox").style.display = "none";
 		renderSlotPanel();

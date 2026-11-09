@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { openModal, closeModal } from "../default.js";
 import { getCurrentUser, displayName, changePassword, updateProfile, updateBankInfo } from "../../api/http.js";
-import { listPlatforms, listMyLessons, listMyScheduleRequests, businessTypeEmoji } from "../../api/common.js";
+import { listPlatforms, listMyLessons, listMyScheduleRequests, businessTypeIcon } from "../../api/common.js";
 
 function pad(n) {
 	return String(n).padStart(2, "0");
@@ -118,13 +118,12 @@ export default function TutorMypageView() {
 		<>
 		<div id="tutor-mypage" className="page">
 			<div className="page-header">
-				<div className="page-label">Tutor / My Page</div>
 				<div className="page-title">내 정보</div>
-				<div className="page-subtitle">내 계정 정보와 소속 플랫폼 현황을 확인하세요</div>
+				<div className="page-subtitle">계정 정보와 소속 플랫폼</div>
 			</div>
 
 			<div className="mypage-hero" style={{ marginBottom: "24px" }}>
-				<div className="hero-avatar" style={{ background: "linear-gradient(135deg,var(--accent2),#667eea)" }}>
+				<div className="hero-avatar">
 					{(user?.name || displayName(user))[0]}
 				</div>
 				<div className="hero-identity">
@@ -136,26 +135,26 @@ export default function TutorMypageView() {
 				<div className="hero-divider"></div>
 				<div className="hero-stats">
 					<div className="hero-stat">
-						<div className="hstat-val" style={{ color: "var(--accent2)" }}>{loading ? "-" : platforms.length}</div>
+						<div className="hstat-val">{loading ? "-" : platforms.length}</div>
 						<div className="hstat-key">소속 플랫폼</div>
 					</div>
 					<div className="hero-stat">
-						<div className="hstat-val" style={{ color: "var(--accent2)" }}>{loading ? "-" : lessons.length}</div>
+						<div className="hstat-val">{loading ? "-" : lessons.length}</div>
 						<div className="hstat-key">이번 달 레슨</div>
 					</div>
 					<div className="hero-stat">
-						<div className="hstat-val" style={{ color: "var(--green)" }}>{loading ? "-" : `${attendRate}%`}</div>
+						<div className="hstat-val">{loading ? "-" : `${attendRate}%`}</div>
 						<div className="hstat-key">출결률</div>
 					</div>
 					<div className="hero-stat">
-						<div className="hstat-val" style={{ color: "var(--accent3)" }}>{loading ? "-" : requestCount}</div>
+						<div className="hstat-val">{loading ? "-" : requestCount}</div>
 						<div className="hstat-key">변경 요청</div>
 					</div>
 				</div>
-				<div style={{ display: "flex", flexDirection: "column", gap: "6px", marginLeft: "auto" }}>
-					<button className="btn btn-ghost btn-sm" onClick={() => openModal("tutorAccountModal")}>✏️ 내 정보 변경</button>
-					<button className="btn btn-ghost btn-sm" onClick={() => openModal("tutorBankModal")}>🏦 정산 계좌</button>
-					<button className="btn btn-ghost btn-sm" onClick={() => openModal("tutorPasswordModal")}>🔒 비밀번호 변경</button>
+				<div style={{ display: "flex", flexDirection: "column", gap: "8px", marginLeft: "auto" }}>
+					<button className="btn btn-ghost btn-sm" onClick={() => openModal("tutorAccountModal")}>내 정보 변경</button>
+					<button className="btn btn-ghost btn-sm" onClick={() => openModal("tutorBankModal")}>정산 계좌</button>
+					<button className="btn btn-ghost btn-sm" onClick={() => openModal("tutorPasswordModal")}>비밀번호 변경</button>
 				</div>
 			</div>
 
@@ -166,10 +165,10 @@ export default function TutorMypageView() {
 				) : (
 					platforms.map((p) => (
 						<div className="platform-item" key={p.id}>
-							<div className="plat-emoji" style={{ background: "rgba(var(--tutor-rgb),0.1)" }}>{businessTypeEmoji(p.businessType)}</div>
+							<div className="plat-emoji">{businessTypeIcon(p.businessType)}</div>
 							<div className="plat-detail">
 								<div className="plat-name">{p.name}</div>
-								<span className="plat-tag" style={{ background: "rgba(var(--tutor-rgb),0.15)", color: "var(--tutor)" }}>
+								<span className="plat-tag" style={{ background: "var(--surface2)", color: "var(--text-sub)" }}>
 									{p.businessType}
 								</span>
 							</div>

@@ -7,7 +7,8 @@ import {
 
 const STATUS_CLS = { PENDING: "bs-pending", PARTIAL: "bs-soon", PAID: "bs-active", CANCELLED: "bs-expired", REFUNDED: "bs-expired" };
 
-export default function ManagerPaymentHistoryView({ platformId }) {
+// embedded: 오너 플랫폼 관리 탭 안에 넣을 때 — 탭 이름이 제목 역할을 하므로 페이지 헤더를 숨긴다
+export default function ManagerPaymentHistoryView({ platformId, embedded = false }) {
 	const [loading, setLoading] = useState(true);
 	const [orders, setOrders] = useState([]);
 	const [passes, setPasses] = useState([]);
@@ -82,11 +83,12 @@ export default function ManagerPaymentHistoryView({ platformId }) {
 	return (
 		<>
 		<div className="page" id="manager-payment-history">
+			{!embedded && (
 			<div className="page-header">
-				<div className="page-label">Payment History</div>
 				<div className="page-title">결제 이력</div>
-				<div className="page-subtitle">행을 클릭하면 상세 내역을 볼 수 있습니다</div>
+				<div className="page-subtitle">행을 누르면 상세 내역이 열립니다</div>
 			</div>
+			)}
 			<div className="card" style={{ padding: "0", overflow: "hidden" }}>
 				<div style={{ overflowX: "auto" }}>
 					<table className="data-table">
@@ -120,29 +122,29 @@ export default function ManagerPaymentHistoryView({ platformId }) {
 											onClick={() => setExpandedId(expanded ? null : o.id)}
 											style={{ cursor: "pointer", background: expanded ? "var(--surface-alt, rgba(var(--manager-rgb),0.06))" : undefined }}
 										>
-											<td style={{ fontFamily: "'DM Mono',monospace", fontSize: "12px" }}>
+											<td style={{ fontFamily: "var(--mono)", fontSize: "12px" }}>
 												{o.paidAt ? new Date(o.paidAt).toLocaleDateString() : "-"}
 											</td>
 											<td style={{ fontWeight: 600 }}>{buyer?.name || buyer?.email || "-"}</td>
-											<td style={{ fontFamily: "'DM Mono',monospace", color: "var(--manager)" }}>{o.paidAmount.toLocaleString()}원</td>
+											<td style={{ fontFamily: "var(--mono)", color: "var(--text)" }}>{o.paidAmount.toLocaleString()}원</td>
 											<td>{o.paymentMethod ? PAYMENT_METHOD_LABEL[o.paymentMethod] : "-"}</td>
 											<td>{processor?.name || processor?.email || "-"}</td>
-											<td><span className={`badge ${cls}`} style={{ fontSize: "10px" }}>{statusLabel}</span></td>
+											<td><span className={`badge ${cls}`} style={{ fontSize: "11px" }}>{statusLabel}</span></td>
 										</tr>
 										{expanded && (
 											<tr>
 												<td colSpan={6} style={{ padding: "16px 20px", background: "var(--bg)" }}>
-													<div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))", gap: "10px 24px", marginBottom: "16px" }}>
+													<div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))", gap: "12px 24px", marginBottom: "16px" }}>
 														<div><span style={{ color: "var(--text-dim)", fontSize: "12px" }}>연락처</span><div>{buyer?.phone || "-"}</div></div>
 														<div><span style={{ color: "var(--text-dim)", fontSize: "12px" }}>보호자</span><div>{buyer?.guardianName ? `${buyer.guardianName}${buyer.guardianPhone ? " / " + buyer.guardianPhone : ""}` : "-"}</div></div>
 														<div><span style={{ color: "var(--text-dim)", fontSize: "12px" }}>수강권</span><div>{passNames}</div></div>
 														<div><span style={{ color: "var(--text-dim)", fontSize: "12px" }}>과목/반</span><div>{programNames}</div></div>
 														<div><span style={{ color: "var(--text-dim)", fontSize: "12px" }}>수강기간</span><div>{period}</div></div>
-														<div><span style={{ color: "var(--text-dim)", fontSize: "12px" }}>원금</span><div style={{ fontFamily: "'DM Mono',monospace" }}>{o.originalAmount.toLocaleString()}원</div></div>
-														<div><span style={{ color: "var(--text-dim)", fontSize: "12px" }}>할인</span><div style={{ fontFamily: "'DM Mono',monospace", color: "var(--accent3)" }}>-{o.discountAmount.toLocaleString()}원</div></div>
+														<div><span style={{ color: "var(--text-dim)", fontSize: "12px" }}>원금</span><div style={{ fontFamily: "var(--mono)" }}>{o.originalAmount.toLocaleString()}원</div></div>
+														<div><span style={{ color: "var(--text-dim)", fontSize: "12px" }}>할인</span><div style={{ fontFamily: "var(--mono)", color: "var(--text)" }}>-{o.discountAmount.toLocaleString()}원</div></div>
 														<div><span style={{ color: "var(--text-dim)", fontSize: "12px" }}>현금영수증</span><div>{CASH_RECEIPT_STATUS_LABEL[o.cashReceiptStatus] || "-"}</div></div>
-														<div><span style={{ color: "var(--text-dim)", fontSize: "12px" }}>증빙번호</span><div style={{ fontFamily: "'DM Mono',monospace" }}>{o.receiptNumber || "-"}</div></div>
-														<div><span style={{ color: "var(--text-dim)", fontSize: "12px" }}>환불금액</span><div style={{ fontFamily: "'DM Mono',monospace" }}>{o.refundAmount ? o.refundAmount.toLocaleString() + "원" : "-"}</div></div>
+														<div><span style={{ color: "var(--text-dim)", fontSize: "12px" }}>증빙번호</span><div style={{ fontFamily: "var(--mono)" }}>{o.receiptNumber || "-"}</div></div>
+														<div><span style={{ color: "var(--text-dim)", fontSize: "12px" }}>환불금액</span><div style={{ fontFamily: "var(--mono)" }}>{o.refundAmount ? o.refundAmount.toLocaleString() + "원" : "-"}</div></div>
 														<div><span style={{ color: "var(--text-dim)", fontSize: "12px" }}>환불일</span><div>{o.refundedAt ? new Date(o.refundedAt).toLocaleDateString() : "-"}</div></div>
 													</div>
 													<div style={{ display: "flex", gap: "8px" }}>

@@ -38,13 +38,12 @@ export default function TaxAccountantMypageView() {
 		<>
 		<div className="page" id="taxacct-mypage">
 			<div className="page-header">
-				<div className="page-label">Tax Accountant / My Page</div>
 				<div className="page-title">내 정보</div>
 				<div className="page-subtitle">계정 정보를 확인하세요</div>
 			</div>
 
 			<div className="mypage-hero">
-				<div className="hero-avatar" style={{ background: "linear-gradient(135deg,var(--taxacct),#4a9d76)" }}>
+				<div className="hero-avatar">
 					{(user?.name || displayName(user))[0]}
 				</div>
 				<div className="hero-identity">
@@ -53,7 +52,7 @@ export default function TaxAccountantMypageView() {
 					{user?.phone && <div className="hero-email" style={{ marginTop: "2px" }}>{user.phone}</div>}
 				</div>
 				<button className="btn btn-ghost btn-sm" style={{ marginLeft: "auto" }} onClick={() => openModal("taxAcctPasswordModal")}>
-					🔒 비밀번호 변경
+					비밀번호 변경
 				</button>
 			</div>
 

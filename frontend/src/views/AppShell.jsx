@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom";
 import {
 	LayoutDashboard, CheckSquare, Users, GraduationCap, Pin, Warehouse, ClipboardCheck,
 	CreditCard, Receipt, Calculator, ClipboardList, History, CalendarClock, Wrench, Target,
-	Wallet, CalendarDays, Calendar, User, Building2, Moon, Sun, Bell, LogOut, UserCog, Search
+	Wallet, CalendarDays, Calendar, User, Building2, Moon, Sun, Bell, LogOut, UserCog, Search, Menu
 } from "lucide-react";
 import { closeSidebar, toggleCollapse, openSidebar } from "./default.js";
 import { getTheme, toggleTheme } from "../theme.js";
@@ -409,7 +409,7 @@ export default function AppShell() {
 			<nav className="sidebar">
 				<div className="sidebar-top">
 					<div className="logo">
-						<div className="logo-icon"><CalendarDays size={18} strokeWidth={1.75} /></div>
+						<div className="logo-icon"><CalendarDays size={16} strokeWidth={1.5} /></div>
 						<span className="logo-text">ReserveHub</span>
 					</div>
 					<div className="sidebar-top-actions">
@@ -418,7 +418,7 @@ export default function AppShell() {
 							title="테마 전환"
 							onClick={() => setTheme(toggleTheme())}
 						>
-							{theme === "dark" ? <Sun size={16} strokeWidth={1.75} /> : <Moon size={16} strokeWidth={1.75} />}
+							{theme === "dark" ? <Sun size={16} strokeWidth={1.5} /> : <Moon size={16} strokeWidth={1.5} />}
 						</button>
 						<button className="collapse-btn" onClick={toggleCollapse}>
 							◀
@@ -512,18 +512,16 @@ export default function AppShell() {
 									className={`nav-item ${(noPlatform || activeRole === section.role) && shownContext === m.id ? "active" : ""}`}
 									onClick={() => (noPlatform ? setCurrentContext(m.id) : selectMenuItem(section.role, m.id))}
 								>
-									<span className="nav-icon"><m.icon size={17} strokeWidth={1.75} /></span>
+									<span className="nav-icon"><m.icon size={16} strokeWidth={1.5} /></span>
 									<span className="nav-label">{m.label}</span>
 									{m.id === "approval" && section.role === "OWNER" && pendingOwnerCount > 0 && (
 										<span
 											style={{
 												marginLeft: "auto",
-												background: "var(--owner)",
-												color: "white",
-												fontSize: "10px",
-												fontWeight: 700,
-												padding: "1px 6px",
-												borderRadius: "10px",
+												color: "var(--accent-active-text)",
+												fontSize: "12px",
+												fontWeight: 500,
+												fontVariantNumeric: "tabular-nums",
 												flexShrink: 0
 											}}
 										>
@@ -543,7 +541,7 @@ export default function AppShell() {
 									className={`nav-item ${currentContext === m.id ? "active" : ""}`}
 									onClick={() => setCurrentContext(m.id)}
 								>
-									<span className="nav-icon"><m.icon size={17} strokeWidth={1.75} /></span>
+									<span className="nav-icon"><m.icon size={16} strokeWidth={1.5} /></span>
 									<span className="nav-label">{m.label}</span>
 								</button>
 							))}
@@ -553,20 +551,18 @@ export default function AppShell() {
 
 				<div className="sidebar-bottom">
 					<button className="btn-logout" onClick={handleLogout}>
-						<LogOut size={16} strokeWidth={1.75} /> <span>로그아웃</span>
+						<LogOut size={16} strokeWidth={1.5} /> <span>로그아웃</span>
 					</button>
 				</div>
 			</nav>
 
 			<div className="main">
 				<div className="topbar">
-					<button className="hamburger" onClick={openSidebar}>
-						☰
-					</button>
+					<button className="hamburger" onClick={openSidebar}><Menu size={18} strokeWidth={1.5} /></button>
 					<div className="topbar-title">{topbarTitle}</div>
 					<div className="topbar-right">
 						<button className="notif-btn" title="알림">
-							<Bell size={17} strokeWidth={1.75} /><span className="notif-dot"></span>
+							<Bell size={16} strokeWidth={1.5} /><span className="notif-dot"></span>
 						</button>
 					</div>
 				</div>
@@ -579,7 +575,7 @@ export default function AppShell() {
 	function renderContent() {
 		if (loading)
 			return (
-				<div style={{ padding: "40px", textAlign: "center", color: "var(--text-dim)" }}>
+				<div style={{ padding: "40px", textAlign: "center", color: "var(--text-dim)", fontSize: "13px" }}>
 					불러오는 중...
 				</div>
 			);
@@ -590,7 +586,7 @@ export default function AppShell() {
 		if (currentContext === "join") return <UserJoinPlatformView />;
 		if (!activeRole)
 			return (
-				<div style={{ padding: "40px", textAlign: "center", color: "var(--text-dim)" }}>
+				<div style={{ padding: "40px", textAlign: "center", color: "var(--text-dim)", fontSize: "13px" }}>
 					배정된 플랫폼이 없습니다
 				</div>
 			);

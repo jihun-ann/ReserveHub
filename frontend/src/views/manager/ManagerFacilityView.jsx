@@ -104,13 +104,12 @@ export default function ManagerFacilityView({ platformId }) {
 		<>
 		<div className="page" id="manager-facility">
 			<div className="page-header">
-				<div className="page-label">Facilities</div>
 				<div className="page-title">시설물 현황</div>
-				<div className="page-subtitle">시설물 예약 현황과 고장 신고를 확인하고 처리하세요</div>
+				<div className="page-subtitle">시설물 예약 현황과 고장 신고</div>
 			</div>
 
-			<div className="card-title" style={{ marginBottom: "10px" }}>예약 현황</div>
-			<div className="form-field" style={{ maxWidth: "220px", marginBottom: "14px" }}>
+			<div className="card-title" style={{ marginBottom: "12px" }}>예약 현황</div>
+			<div className="form-field" style={{ maxWidth: "220px", marginBottom: "16px" }}>
 				<input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
 			</div>
 			<div className="card" style={{ padding: "0", overflow: "hidden", marginBottom: "24px" }}>
@@ -130,7 +129,7 @@ export default function ManagerFacilityView({ platformId }) {
 									return (
 										<tr key={b.id}>
 											<td style={{ fontWeight: 600 }}>{facilitiesById[b.facilityId]?.name || "-"}</td>
-											<td style={{ fontFamily: "'DM Mono',monospace" }}>{b.startTime?.slice(0, 5)}-{b.endTime?.slice(0, 5)}</td>
+											<td style={{ fontFamily: "var(--mono)" }}>{b.startTime?.slice(0, 5)}-{b.endTime?.slice(0, 5)}</td>
 											<td>{user?.name || user?.email || "-"}</td>
 											<td style={{ color: "var(--text-sub)" }}>{b.purpose || "-"}</td>
 											<td>{canManageFacility && <button className="btn btn-ghost btn-sm" onClick={() => cancel(b.id)}>예약 취소</button>}</td>
@@ -143,15 +142,15 @@ export default function ManagerFacilityView({ platformId }) {
 				</div>
 			</div>
 
-			<div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "10px" }}>
+			<div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "12px" }}>
 				<div className="card-title" style={{ marginBottom: "0" }}>고장/이상 신고</div>
 				<button className="btn btn-ghost btn-sm" onClick={openIssueModal} disabled={facilities.length === 0}>+ 고장 신고</button>
 			</div>
-			<div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+			<div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
 				{loading ? (
-					<div className="card" style={{ padding: "24px", textAlign: "center", color: "var(--text-dim)" }}>불러오는 중...</div>
+					<div className="card" style={{ padding: "24px", textAlign: "center", color: "var(--text-dim)", fontSize: "13px" }}>불러오는 중...</div>
 				) : issues.length === 0 ? (
-					<div className="card" style={{ padding: "24px", textAlign: "center", color: "var(--text-dim)" }}>신고된 문제가 없습니다</div>
+					<div className="card" style={{ padding: "24px", textAlign: "center", color: "var(--text-dim)", fontSize: "13px" }}>신고된 문제가 없습니다</div>
 				) : (
 					issues.map((issue) => {
 						const reporter = usersById[issue.reportedBy];
@@ -159,17 +158,17 @@ export default function ManagerFacilityView({ platformId }) {
 							<div className="card" key={issue.id}>
 								<div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "12px" }}>
 									<div>
-										<div style={{ fontWeight: 700 }}>{facilitiesById[issue.facilityId]?.name || "-"}</div>
+										<div style={{ fontWeight: 600 }}>{facilitiesById[issue.facilityId]?.name || "-"}</div>
 										<div style={{ fontSize: "12px", color: "var(--text-sub)", marginTop: "4px" }}>
 											신고자: {reporter?.name || reporter?.email || "-"} · {new Date(issue.createdAt).toLocaleString()}
 										</div>
 										<div style={{ marginTop: "8px" }}>{issue.description}</div>
 										{issue.resolutionMemo && (
-											<div style={{ marginTop: "6px", fontSize: "12px", color: "var(--text-dim)" }}>처리 메모: {issue.resolutionMemo}</div>
+											<div style={{ marginTop: "8px", fontSize: "12px", color: "var(--text-dim)" }}>처리 메모: {issue.resolutionMemo}</div>
 										)}
 									</div>
-									<div style={{ display: "flex", flexDirection: "column", gap: "6px", alignItems: "flex-end" }}>
-										<span className={`badge ${ISSUE_STATUS_CLS[issue.status]}`} style={{ fontSize: "10px" }}>
+									<div style={{ display: "flex", flexDirection: "column", gap: "8px", alignItems: "flex-end" }}>
+										<span className={`badge ${ISSUE_STATUS_CLS[issue.status]}`} style={{ fontSize: "11px" }}>
 											{FACILITY_ISSUE_STATUS_LABEL[issue.status] || issue.status}
 										</span>
 										{canManageFacility && issue.status === "OPEN" && (

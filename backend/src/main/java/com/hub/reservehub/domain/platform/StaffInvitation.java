@@ -35,6 +35,10 @@ public class StaffInvitation {
     @Enumerated(EnumType.STRING)
     private ManagerTier managerTier;
 
+    // MANAGER 초대에서만 의미 — 수락 시 이 그룹에 배정한다. 그룹이 지워지면 DB가 NULL로 되돌린다.
+    @Nullable
+    private UUID managerGroupId;
+
     // 이메일/연락처 중 최소 하나. 연락처는 숫자만 남긴 형태로 저장한다.
     @Nullable
     private String email;
@@ -63,12 +67,13 @@ public class StaffInvitation {
     }
 
     public StaffInvitation(
-            UUID platformId, StaffRole staffRole, @Nullable ManagerTier managerTier,
+            UUID platformId, StaffRole staffRole, @Nullable ManagerTier managerTier, @Nullable UUID managerGroupId,
             @Nullable String email, @Nullable String phone, UUID createdBy, Instant expiresAt
     ) {
         this.platformId = platformId;
         this.staffRole = staffRole;
         this.managerTier = managerTier;
+        this.managerGroupId = managerGroupId;
         this.email = email;
         this.phone = phone;
         this.createdBy = createdBy;
@@ -92,6 +97,11 @@ public class StaffInvitation {
     @Nullable
     public ManagerTier getManagerTier() {
         return managerTier;
+    }
+
+    @Nullable
+    public UUID getManagerGroupId() {
+        return managerGroupId;
     }
 
     @Nullable
