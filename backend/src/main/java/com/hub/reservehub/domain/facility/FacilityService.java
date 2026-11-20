@@ -1,8 +1,7 @@
 package com.hub.reservehub.domain.facility;
 
 import com.hub.reservehub.domain.approval.LogMemo;
-import com.hub.reservehub.domain.approval.ActionLog;
-import com.hub.reservehub.domain.approval.ActionLogRepository;
+import com.hub.reservehub.domain.approval.ActionLogger;
 import com.hub.reservehub.domain.approval.ActionTarget;
 import com.hub.reservehub.domain.platform.PlatformAccessGuard;
 import com.hub.reservehub.domain.platform.ManagerPermission;
@@ -28,18 +27,18 @@ public class FacilityService {
     private final FacilityBookingRepository facilityBookingRepository;
     private final FacilityIssueRepository facilityIssueRepository;
     private final PlatformAccessGuard platformAccessGuard;
-    private final ActionLogRepository actionLogRepository;
+    private final ActionLogger actionLogger;
 
     public FacilityService(
             FacilityRepository facilityRepository, FacilityBookingRepository facilityBookingRepository,
             FacilityIssueRepository facilityIssueRepository, PlatformAccessGuard platformAccessGuard,
-            ActionLogRepository actionLogRepository
+            ActionLogger actionLogger
     ) {
         this.facilityRepository = facilityRepository;
         this.facilityBookingRepository = facilityBookingRepository;
         this.facilityIssueRepository = facilityIssueRepository;
         this.platformAccessGuard = platformAccessGuard;
-        this.actionLogRepository = actionLogRepository;
+        this.actionLogger = actionLogger;
     }
 
     @Transactional
@@ -51,8 +50,8 @@ public class FacilityService {
         Facility facility = facilityRepository.save(
                 new Facility(platformId, name, description, floor, capacity != null ? capacity : 1, openTime, closeTime)
         );
-        actionLogRepository.save(ActionLog.of(platformId, actor.getId(), ActionTarget.FACILITY_CHANGE, facility.getId(), "CREATE",
-                "시설 등록: '" + facility.getName() + "' (정원 " + facility.getCapacity() + "명" + (floor == null || floor.isBlank() ? "" : ", " + floor) + ")"));
+        actionLogger.log(platformId, actor.getId(), ActionTarget.FACILITY_CHANGE, facility.getId(), "CREATE",
+                "시설 등록: '" + facility.getName() + "' (정원 " + facility.getCapacity() + "명" + (floor == null || floor.isBlank() ? "" : ", " + floor) + ")");
         return facility;
     }
 
@@ -61,7 +60,7 @@ public class FacilityService {
             UUID facilityId, AuthenticatedUser actor, String name, @Nullable String description, @Nullable String floor,
             @Nullable Integer capacity, @Nullable LocalTime openTime, @Nullable LocalTime closeTime
     ) {
-        Facility facility = findFacility(facilityId);
+        Facility facility = facilityRepository.getOrThrow(facilityId);
         platformAccessGuard.verify(facility.getPlatformId(), actor);
         String changes = LogMemo.changes(
                 LogMemo.change("이름", facility.getName(), name),
@@ -72,15 +71,15 @@ public class FacilityService {
                 LogMemo.change("마감 시각", facility.getCloseTime(), closeTime)
         );
         facility.update(name, description, floor, capacity != null ? capacity : 1, openTime, closeTime);
-        actionLogRepository.save(ActionLog.of(facility.getPlatformId(), actor.getId(), ActionTarget.FACILITY_CHANGE, facility.getId(), "UPDATE",
-                "시설 수정: '" + facility.getName() + "' — " + changes));
+        actionLogger.log(facility.getPlatformId(), actor.getId(), ActionTarget.FACILITY_CHANGE, facility.getId(), "UPDATE",
+                "시설 수정: '" + facility.getName() + "' — " + changes);
         return facility;
     }
 
     @Transactional
     // 배치도 드래그앤드롭으로 위치만 갱신 — 잦은 호출이라 CREATE/UPDATE 액션 로그는 남기지 않는다.
     public Facility updatePosition(UUID facilityId, AuthenticatedUser actor, int posX, int posY) {
-        Facility facility = findFacility(facilityId);
+        Facility facility = facilityRepository.getOrThrow(facilityId);
         platformAccessGuard.verify(facility.getPlatformId(), actor);
         facility.updatePosition(posX, posY);
         return facility;
@@ -88,11 +87,11 @@ public class FacilityService {
 
     @Transactional
     public void deactivate(UUID facilityId, AuthenticatedUser actor) {
-        Facility facility = findFacility(facilityId);
+        Facility facility = facilityRepository.getOrThrow(facilityId);
         platformAccessGuard.verify(facility.getPlatformId(), actor);
         facility.deactivate();
-        actionLogRepository.save(ActionLog.of(facility.getPlatformId(), actor.getId(), ActionTarget.FACILITY_CHANGE, facility.getId(), "DEACTIVATE",
-                "시설 비활성화: '" + facility.getName() + "'"));
+        actionLogger.log(facility.getPlatformId(), actor.getId(), ActionTarget.FACILITY_CHANGE, facility.getId(), "DEACTIVATE",
+                "시설 비활성화: '" + facility.getName() + "'");
     }
 
     @Transactional(readOnly = true)
@@ -107,7 +106,7 @@ public class FacilityService {
             UUID facilityId, AuthenticatedUser actor, LocalDate bookingDate,
             LocalTime startTime, LocalTime endTime, @Nullable String purpose
     ) {
-        Facility facility = findFacility(facilityId);
+        Facility facility = facilityRepository.getOrThrow(facilityId);
         if (!facility.isActive()) {
             throw new IllegalStateException("Facility is not active");
         }
@@ -125,9 +124,9 @@ public class FacilityService {
         FacilityBooking booking = facilityBookingRepository.save(
                 new FacilityBooking(facilityId, facility.getPlatformId(), actor.getId(), bookingDate, startTime, endTime, purpose)
         );
-        actionLogRepository.save(ActionLog.of(facility.getPlatformId(), actor.getId(), ActionTarget.FACILITY_CHANGE, booking.getId(), "BOOK",
+        actionLogger.log(facility.getPlatformId(), actor.getId(), ActionTarget.FACILITY_CHANGE, booking.getId(), "BOOK",
                 "시설 예약: '" + facility.getName() + "' " + bookingDate + " " + startTime + "~" + endTime
-                        + (purpose == null || purpose.isBlank() ? "" : " (용도: " + LogMemo.clip(purpose, 60) + ")")));
+                        + (purpose == null || purpose.isBlank() ? "" : " (용도: " + LogMemo.clip(purpose, 60) + ")"));
         return booking;
     }
 
@@ -153,8 +152,7 @@ public class FacilityService {
 
     @Transactional
     public FacilityBooking cancelBooking(UUID bookingId, AuthenticatedUser actor) {
-        FacilityBooking booking = facilityBookingRepository.findById(bookingId)
-                .orElseThrow(() -> new IllegalArgumentException("Booking not found"));
+        FacilityBooking booking = facilityBookingRepository.getOrThrow(bookingId);
         if (!booking.getUserId().equals(actor.getId())) {
             platformAccessGuard.verifyManagerPermission(booking.getPlatformId(), actor, ManagerPermission.FACILITY_MANAGE); // 시설 예약 취소(타인): 중간 등급 이상 매니저
         }
@@ -165,10 +163,10 @@ public class FacilityService {
     @Transactional
     // 사용자/강사/매니저/오너 누구나 고장·이상을 신고할 수 있다 — 플랫폼 소속 검증 없음.
     public FacilityIssue reportIssue(UUID facilityId, AuthenticatedUser actor, String description) {
-        Facility facility = findFacility(facilityId);
+        Facility facility = facilityRepository.getOrThrow(facilityId);
         FacilityIssue issue = facilityIssueRepository.save(new FacilityIssue(facilityId, facility.getPlatformId(), actor.getId(), description));
-        actionLogRepository.save(ActionLog.of(facility.getPlatformId(), actor.getId(), ActionTarget.FACILITY_CHANGE, issue.getId(), "REPORT_ISSUE",
-                "시설 고장 신고: '" + facility.getName() + "' — " + LogMemo.clip(description, 150)));
+        actionLogger.log(facility.getPlatformId(), actor.getId(), ActionTarget.FACILITY_CHANGE, issue.getId(), "REPORT_ISSUE",
+                "시설 고장 신고: '" + facility.getName() + "' — " + LogMemo.clip(description, 150));
         return issue;
     }
 
@@ -180,35 +178,25 @@ public class FacilityService {
 
     @Transactional
     public FacilityIssue markIssueInProgress(UUID issueId, AuthenticatedUser actor) {
-        FacilityIssue issue = findIssue(issueId);
+        FacilityIssue issue = facilityIssueRepository.getOrThrow(issueId);
         platformAccessGuard.verifyManagerPermission(issue.getPlatformId(), actor, ManagerPermission.FACILITY_MANAGE); // 시설 이슈 처리: 중간 등급 이상 매니저
         issue.markInProgress();
-        actionLogRepository.save(ActionLog.of(issue.getPlatformId(), actor.getId(), ActionTarget.FACILITY_CHANGE, issue.getId(), "IN_PROGRESS",
-                "시설 이슈 처리 시작: '" + facilityName(issue.getFacilityId()) + "' — " + LogMemo.clip(issue.getDescription(), 100)));
+        actionLogger.log(issue.getPlatformId(), actor.getId(), ActionTarget.FACILITY_CHANGE, issue.getId(), "IN_PROGRESS",
+                "시설 이슈 처리 시작: '" + facilityName(issue.getFacilityId()) + "' — " + LogMemo.clip(issue.getDescription(), 100));
         return issue;
     }
 
     @Transactional
     public FacilityIssue resolveIssue(UUID issueId, AuthenticatedUser actor, @Nullable String resolutionMemo) {
-        FacilityIssue issue = findIssue(issueId);
+        FacilityIssue issue = facilityIssueRepository.getOrThrow(issueId);
         platformAccessGuard.verifyManagerPermission(issue.getPlatformId(), actor, ManagerPermission.FACILITY_MANAGE); // 시설 이슈 처리: 중간 등급 이상 매니저
         issue.resolve(actor.getId(), resolutionMemo);
-        actionLogRepository.save(ActionLog.of(issue.getPlatformId(), actor.getId(), ActionTarget.FACILITY_CHANGE, issue.getId(), "RESOLVE",
-                LogMemo.with("시설 이슈 해결: '" + facilityName(issue.getFacilityId()) + "' — " + LogMemo.clip(issue.getDescription(), 100), resolutionMemo)));
+        actionLogger.log(issue.getPlatformId(), actor.getId(), ActionTarget.FACILITY_CHANGE, issue.getId(), "RESOLVE",
+                LogMemo.with("시설 이슈 해결: '" + facilityName(issue.getFacilityId()) + "' — " + LogMemo.clip(issue.getDescription(), 100), resolutionMemo));
         return issue;
     }
 
     private String facilityName(UUID facilityId) {
         return facilityRepository.findById(facilityId).map(Facility::getName).orElse("(삭제된 시설)");
-    }
-
-    private Facility findFacility(UUID facilityId) {
-        return facilityRepository.findById(facilityId)
-                .orElseThrow(() -> new IllegalArgumentException("Facility not found"));
-    }
-
-    private FacilityIssue findIssue(UUID issueId) {
-        return facilityIssueRepository.findById(issueId)
-                .orElseThrow(() -> new IllegalArgumentException("Facility issue not found"));
     }
 }

@@ -2,8 +2,10 @@ package com.hub.reservehub.domain.approval;
 
 import java.util.List;
 import java.util.UUID;
-import org.springframework.data.jpa.repository.JpaRepository;
+import com.hub.reservehub.common.persistence.BaseRepository;
 
-public interface WorkRequestRepository extends JpaRepository<WorkRequest, UUID> {
+public interface WorkRequestRepository extends BaseRepository<WorkRequest, UUID> {
     List<WorkRequest> findByPlatformIdOrderByCreatedAtDesc(UUID platformId);
+
+    List<WorkRequest> findByPlatformIdAndAssigneeIdOrderByCreatedAtDesc(UUID platformId, UUID assigneeId);
 }

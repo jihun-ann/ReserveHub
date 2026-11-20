@@ -4,9 +4,9 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
-import org.springframework.data.jpa.repository.JpaRepository;
+import com.hub.reservehub.common.persistence.BaseRepository;
 
-public interface LessonRepository extends JpaRepository<Lesson, UUID> {
+public interface LessonRepository extends BaseRepository<Lesson, UUID> {
     Optional<Lesson> findBySlotIdAndLessonDate(UUID slotId, LocalDate lessonDate);
 
     List<Lesson> findByInstructorId(UUID instructorId);

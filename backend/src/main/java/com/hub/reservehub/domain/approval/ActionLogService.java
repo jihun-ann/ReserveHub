@@ -1,5 +1,6 @@
 package com.hub.reservehub.domain.approval;
 
+import com.hub.reservehub.common.persistence.Lookups;
 import com.hub.reservehub.domain.platform.ManagerPermission;
 import com.hub.reservehub.domain.platform.PlatformAccessGuard;
 import com.hub.reservehub.domain.platform.StaffRole;
@@ -9,8 +10,6 @@ import com.hub.reservehub.security.AuthenticatedUser;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import java.util.function.Function;
-import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -35,8 +34,7 @@ public class ActionLogService {
     public List<Entry> list(UUID platformId, AuthenticatedUser actor) {
         platformAccessGuard.verifyManagerPermission(platformId, actor, ManagerPermission.MENU_ACTIVITY_LOG);
         List<ActionLog> logs = actionLogRepository.findByPlatformIdOrderByCreatedAtDesc(platformId);
-        Map<UUID, User> actorsById = userRepository.findAllById(logs.stream().map(ActionLog::getActorId).distinct().toList())
-                .stream().collect(Collectors.toMap(User::getId, Function.identity()));
+        Map<UUID, User> actorsById = Lookups.byId(userRepository.findAllById(logs.stream().map(ActionLog::getActorId).distinct().toList()), User::getId);
         return logs.stream().map(log -> new Entry(log, actorsById.get(log.getActorId()))).toList();
     }
 

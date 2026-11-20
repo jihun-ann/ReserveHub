@@ -983,6 +983,11 @@
     /* ── 반응형 ── */
 
     @media (max-width: 768px) {
+        .tutor-cal-layout,
+        .attend-layout {
+            grid-template-columns: 1fr;
+        }
+
         .sidebar {
             position: fixed;
             left: -100%;
@@ -1002,10 +1007,6 @@
 
         .hamburger {
             display: flex;
-        }
-
-        .collapse-btn {
-            display: none;
         }
 
         .sidebar .logo-text {

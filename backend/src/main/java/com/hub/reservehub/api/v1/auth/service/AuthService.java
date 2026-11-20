@@ -78,15 +78,13 @@ public class AuthService {
 
         SecurityContextHolder.getContext().setAuthentication(authentication);
         AuthenticatedUser principal = (AuthenticatedUser) authentication.getPrincipal();
-        return userRepository.findById(principal.getId())
-                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+        return userRepository.getOrThrow(principal.getId());
     }
 
     @Transactional(readOnly = true)
     // Loads the current user entity for authenticated profile endpoints.
     // 인증된 사용자 프로필 엔드포인트에서 사용할 사용자 엔티티를 조회한다.
     public User getUser(UUID id) {
-        return userRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+        return userRepository.getOrThrow(id);
     }
 }

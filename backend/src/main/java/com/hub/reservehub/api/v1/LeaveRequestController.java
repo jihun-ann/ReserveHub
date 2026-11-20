@@ -37,7 +37,7 @@ public class LeaveRequestController {
     @PostMapping("/api/v1/platforms/{platformId}/leave-requests")
     public ResponseEntity<LeaveRequestResponse> create(@PathVariable UUID platformId, @Valid @RequestBody CreateRequest request) {
         LeaveRequest created = leaveRequestService.create(
-                platformId, currentAuthenticatedUser.get(), request.startDate(), request.endDate(), request.reason()
+                platformId, currentAuthenticatedUser.get(), request.startDate(), request.endDate(), request.hours(), request.reason()
         );
         return ResponseEntity.status(HttpStatus.CREATED).body(LeaveRequestResponse.from(created));
     }
@@ -66,20 +66,21 @@ public class LeaveRequestController {
         return LeaveRequestResponse.from(leaveRequestService.reject(id, currentAuthenticatedUser.get(), memo));
     }
 
-    public record CreateRequest(@NotNull LocalDate startDate, @NotNull LocalDate endDate, String reason) {
+    // hours: 시간 단위 휴가면 1~7, 종일(연차)이면 비워 둔다.
+    public record CreateRequest(@NotNull LocalDate startDate, @NotNull LocalDate endDate, Integer hours, String reason) {
     }
 
     public record DecisionRequest(String memo) {
     }
 
     public record LeaveRequestResponse(
-            UUID id, UUID platformId, UUID requestedBy, LocalDate startDate, LocalDate endDate, String reason,
+            UUID id, UUID platformId, UUID requestedBy, LocalDate startDate, LocalDate endDate, Integer hours, String reason,
             RequestStatus status, String decisionMemo, UUID decidedBy, Instant createdAt, Instant updatedAt
     ) {
         public static LeaveRequestResponse from(LeaveRequest request) {
             return new LeaveRequestResponse(
                     request.getId(), request.getPlatformId(), request.getRequestedBy(), request.getStartDate(),
-                    request.getEndDate(), request.getReason(), request.getStatus(), request.getDecisionMemo(),
+                    request.getEndDate(), request.getHours(), request.getReason(), request.getStatus(), request.getDecisionMemo(),
                     request.getDecidedBy(), request.getCreatedAt(), request.getUpdatedAt()
             );
         }

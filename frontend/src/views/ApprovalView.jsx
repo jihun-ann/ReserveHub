@@ -1,29 +1,31 @@
 import { useState, useEffect, useCallback, Fragment } from "react";
 import {
-	listWorkRequests, listWorkRequestAssignees, createWorkRequest, changeWorkRequestStatus, WORK_REQUEST_STATUS_LABEL,
+	listWorkRequests, listWorkRequestAssignees, createWorkRequest, workRequestStatusLabel, WORK_REQUEST_OPEN,
 	listAllScheduleRequests, listMyScheduleRequests, approveScheduleRequest, rejectScheduleRequest,
-	listAllLeaveRequests, listMyLeaveRequests, createLeaveRequest, approveLeaveRequest, rejectLeaveRequest,
-	listMySlots, getMyPermissions, getUser
+	listAllLeaveRequests, listMyLeaveRequests, approveLeaveRequest, rejectLeaveRequest,
+	listMySlots, getMyPermissions, getUser, leavePeriodLabel
 } from "../api/common.js";
 import { getCurrentUser } from "../api/http.js";
 import { openModal, closeModal } from "./default.js";
-import WorkRequestThread from "../components/WorkRequestThread.jsx";
+import WorkRequestDetail from "../components/WorkRequestDetail.jsx";
 import ScheduleChangeForm from "../components/ScheduleChangeForm.jsx";
+import LeaveForm from "../components/LeaveForm.jsx";
 import { formatDateTime } from "../utils/formatDateTime.js";
 
-// 결재 — 오너·매니저·세무사는 결재함(내가 처리할 것)과 내 신청을, 강사는 내 신청만 본다.
-// 업무 요청(담당자가 진행 중 → 완료), 휴가·일정 변경(오너/매니저가 승인 → 반려)을 한 표에 모은다.
+// 결재 — 결재함(내가 처리할 것)과 내 신청, 오너·매니저·세무사는 전체 조회까지 본다.
+// 업무 요청(요청됨 → 확인함 → 진행 중 → 완료, 추가 확인 요청), 휴가·일정 변경(오너/매니저가 승인 → 반려)을
+// 한 표에 모은다. 강사는 자기에게 온 업무 요청을 결재함에서 받는다.
 const OFFICE_ROLES = ["OWNER", "MANAGER", "TAX_ACCOUNTANT"];
 const APPROVER_ROLES = ["OWNER", "MANAGER"];
 const KIND_LABEL = { WORK: "업무 요청", LEAVE: "휴가", SCHEDULE: "일정 변경" };
 const APPROVAL_STATUS_LABEL = { PENDING: "대기 중", APPROVED: "승인됨", REJECTED: "반려됨" };
-const OPEN_STATUSES = ["PENDING", "REQUESTED", "IN_PROGRESS"];
+const OPEN_STATUSES = ["PENDING", ...WORK_REQUEST_OPEN];
 const MODAL_ID = "approvalSubmitModal";
 const EMPTY_QUERY = { text: "", kind: "", from: "", to: "" };
 
 function statusColor(status) {
 	if (status === "APPROVED" || status === "DONE") return "var(--green)";
-	if (status === "REJECTED") return "var(--red)";
+	if (status === "REJECTED" || status === "REVISION_REQUESTED") return "var(--red)";
 	if (status === "CANCELED") return "var(--text-dim)";
 	return "var(--accent3)";
 }
@@ -37,21 +39,21 @@ function categoriesFor(role, hasSlots) {
 	return list;
 }
 
-export default function ApprovalView({ platformId, role }) {
+export default function ApprovalView({ platformId, platforms = [], role }) {
 	const myId = getCurrentUser()?.id;
 	const isOffice = OFFICE_ROLES.includes(role);
 	const isApprover = APPROVER_ROLES.includes(role);
 
 	const [items, setItems] = useState([]);
 	const [loading, setLoading] = useState(true);
-	const [tab, setTab] = useState(isOffice ? "inbox" : "mine"); // inbox | mine | all
+	const [tab, setTab] = useState("inbox"); // inbox | mine | all
+	const [composeKey, setComposeKey] = useState(0);
 	// draft는 입력 중인 조건, query는 검색 버튼(또는 Enter)으로 적용된 조건.
 	const [draft, setDraft] = useState(EMPTY_QUERY);
 	const [query, setQuery] = useState(EMPTY_QUERY);
 	const [statusFilter, setStatusFilter] = useState("open"); // open | closed | all
 	const [expandedId, setExpandedId] = useState(null);
 	const [names, setNames] = useState({});
-	const [assignees, setAssignees] = useState([]);
 	const [permissions, setPermissions] = useState([]);
 	const [mySlots, setMySlots] = useState([]);
 	const [memoById, setMemoById] = useState({});
@@ -63,7 +65,7 @@ export default function ApprovalView({ platformId, role }) {
 		const here = (r) => r.platformId === platformId;
 		// 내 신청은 항상 따로 불러온다 — 결재함 권한(MENU_APPROVAL)이 없는 매니저는 전체 목록 조회가 막히기 때문.
 		const [work, allSchedules, mySchedules, allLeaves, myLeaves] = await Promise.all([
-			isOffice ? listWorkRequests(platformId).catch(() => []) : [],
+			listWorkRequests(platformId).catch(() => []), // 강사는 서버가 자기에게 온 것만 준다
 			isApprover ? listAllScheduleRequests([{ id: platformId }]).catch(() => []) : [],
 			listMyScheduleRequests().then((l) => l.filter(here)).catch(() => []),
 			isApprover ? listAllLeaveRequests([{ id: platformId }]).catch(() => []) : [],
@@ -71,11 +73,12 @@ export default function ApprovalView({ platformId, role }) {
 		]);
 		const unique = (list) => [...new Map(list.map((r) => [r.id, r])).values()];
 		return [
-			...work.map((r) => ({ ...r, kind: "WORK" })),
+			// 내 할 일(요청자 = 담당자)은 결재가 아니라 대시보드 할 일에서만 다룬다.
+			...work.filter((r) => r.requestedBy !== r.assigneeId).map((r) => ({ ...r, kind: "WORK" })),
 			...unique([...allSchedules, ...mySchedules]).map((r) => ({ ...r, kind: "SCHEDULE" })),
 			...unique([...allLeaves, ...myLeaves]).map((r) => ({ ...r, kind: "LEAVE" }))
 		].sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1));
-	}, [platformId, isOffice, isApprover]);
+	}, [platformId, isApprover]);
 
 	const refresh = useCallback(() => load().then(setItems), [load]);
 
@@ -89,15 +92,14 @@ export default function ApprovalView({ platformId, role }) {
 		if (isApprover) getMyPermissions(platformId).then(setPermissions).catch(() => setPermissions([]));
 		if (isOffice) {
 			listWorkRequestAssignees(platformId).then((list) => {
-				setAssignees(list);
 				setNames((prev) => ({ ...prev, ...Object.fromEntries(list.map((a) => [a.userId, a.name])) }));
-			}).catch(() => setAssignees([]));
+			}).catch(() => {});
 		}
 	}, [platformId, isOffice, isApprover]);
 
-	// 휴가·일정 변경 신청자(강사 등)는 담당자 목록에 없으니 따로 이름을 찾는다.
+	// 휴가·일정 변경 신청자, 강사 화면의 업무 요청자처럼 담당자 목록에 없는 사람은 따로 이름을 찾는다.
 	useEffect(() => {
-		const missing = [...new Set(items.flatMap((r) => [r.requestedBy, r.decidedBy]).filter(Boolean))].filter((id) => !(id in names));
+		const missing = [...new Set(items.flatMap((r) => [r.requestedBy, r.decidedBy, r.assigneeId]).filter(Boolean))].filter((id) => !(id in names));
 		if (missing.length === 0) return;
 		Promise.all(missing.map((id) => getUser(id).then((u) => [id, u.name]).catch(() => [id, null]))).then((pairs) => {
 			setNames((prev) => ({ ...prev, ...Object.fromEntries(pairs) }));
@@ -108,7 +110,7 @@ export default function ApprovalView({ platformId, role }) {
 
 	// 결재함: 내가 담당인 업무 요청 + (오너/매니저면) 다른 사람이 올린 휴가·일정 변경. 내 신청: 내가 올린 것 전부.
 	const inInbox = (r) => (r.kind === "WORK" ? r.assigneeId === myId : isApprover && r.requestedBy !== myId);
-	const summaryOf = (r) => (r.kind === "WORK" ? r.title : r.kind === "LEAVE" ? `${r.startDate} ~ ${r.endDate}` : `${r.originalDate} → ${r.requestedDate}`);
+	const summaryOf = (r) => (r.kind === "WORK" ? r.title : r.kind === "LEAVE" ? leavePeriodLabel(r) : `${r.originalDate} → ${r.requestedDate}`);
 	const handlerOf = (r) => (r.kind === "WORK" ? r.assigneeId : r.decidedBy);
 	// 조회 조건 — 검색어는 내용·사유·메모·요청자·담당자 이름, 기간은 등록일 기준.
 	const term = query.text.trim().toLowerCase();
@@ -135,47 +137,25 @@ export default function ApprovalView({ platformId, role }) {
 
 	function openSubmit() {
 		setCategory(null);
+		setComposeKey((k) => k + 1); // 신청 창을 열 때마다 이전 입력을 비운다
 		openModal(MODAL_ID);
 	}
 
-	function submitted() {
+	function submitted(sentPlatformId = platformId) {
 		closeModal(MODAL_ID);
 		setCategory(null);
 		setTab("mine");
 		setStatusFilter("open");
 		refresh();
+		// 목록은 지금 보고 있는 플랫폼 것만 보여 주므로, 다른 플랫폼으로 보냈으면 알려 준다.
+		if (sentPlatformId !== platformId) {
+			const name = platforms.find((p) => p.id === sentPlatformId)?.name || "다른 플랫폼";
+			alert(`${name}에 업무 요청을 보냈습니다. 해당 플랫폼으로 바꾸면 내 신청에서 볼 수 있습니다.`);
+		}
 	}
 
 	function renderDetail(r) {
-		if (r.kind === "WORK") {
-			const isAssignee = r.assigneeId === myId;
-			const isRequester = r.requestedBy === myId;
-			const open = OPEN_STATUSES.includes(r.status);
-			return (
-				<div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-					<div style={{ display: "flex", gap: "24px", fontSize: "13px", color: "var(--text-sub)", flexWrap: "wrap" }}>
-						<span>요청 {nameOf(r.requestedBy)}</span>
-						<span>담당 {nameOf(r.assigneeId)}</span>
-						{r.dueDate && <span style={{ fontFamily: "var(--mono)" }}>기한 {r.dueDate}</span>}
-					</div>
-					{r.memo && <div style={{ fontSize: "13px", whiteSpace: "pre-wrap" }}>{r.memo}</div>}
-					{open && (isAssignee || isRequester) && (
-						<div style={{ display: "flex", gap: "8px" }}>
-							{isAssignee && r.status === "REQUESTED" && (
-								<button className="btn btn-ghost btn-sm" onClick={() => run(() => changeWorkRequestStatus(r.id, "IN_PROGRESS"))}>진행 중으로</button>
-							)}
-							{isAssignee && <button className="btn btn-primary btn-sm" onClick={() => run(() => changeWorkRequestStatus(r.id, "DONE"))}>완료</button>}
-							{isRequester && (
-								<button className="btn btn-danger btn-sm" onClick={() => window.confirm("이 업무 요청을 취소할까요?") && run(() => changeWorkRequestStatus(r.id, "CANCELED"))}>
-									요청 취소
-								</button>
-							)}
-						</div>
-					)}
-					<WorkRequestThread requestId={r.id} />
-				</div>
-			);
-		}
+		if (r.kind === "WORK") return <WorkRequestDetail request={r} nameOf={nameOf} onChanged={refresh} />;
 
 		const isLeave = r.kind === "LEAVE";
 		const permission = isLeave ? "LEAVE_APPROVE" : "MENU_APPROVAL";
@@ -188,7 +168,7 @@ export default function ApprovalView({ platformId, role }) {
 		return (
 			<div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
 				<div style={{ display: "flex", gap: "24px", fontSize: "13px", fontFamily: "var(--mono)" }}>
-					{isLeave ? <span>{r.startDate} ~ {r.endDate}</span> : <span>{r.originalDate} → {r.requestedDate}</span>}
+					{isLeave ? <span>{leavePeriodLabel(r)}</span> : <span>{r.originalDate} → {r.requestedDate}</span>}
 				</div>
 				{r.reason && <div style={{ fontSize: "13px", color: "var(--text-sub)" }}>사유: {r.reason}</div>}
 				{r.status !== "PENDING" && (
@@ -228,21 +208,19 @@ export default function ApprovalView({ platformId, role }) {
 				<div className="page-header" style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: "16px" }}>
 					<div>
 						<div className="page-title">결재</div>
-						<div className="page-subtitle">{isOffice ? "업무 요청, 휴가, 일정 변경" : "휴가와 일정 변경 신청"}</div>
+						<div className="page-subtitle">업무 요청, 휴가, 일정 변경</div>
 					</div>
 					{categories.length > 0 && <button className="btn btn-primary" onClick={openSubmit}>결재 신청</button>}
 				</div>
 
 				<div style={{ display: "flex", gap: "12px", marginBottom: "16px", flexWrap: "wrap", alignItems: "center" }}>
-					{isOffice && (
-						<div className="seg">
-							<button className={tab === "inbox" ? "active" : ""} onClick={() => setTab("inbox")}>
-								결재함{inboxOpenCount > 0 && <span className="seg-count">{inboxOpenCount}</span>}
-							</button>
-							<button className={tab === "mine" ? "active" : ""} onClick={() => setTab("mine")}>내 신청</button>
-							<button className={tab === "all" ? "active" : ""} onClick={() => setTab("all")}>전체 조회</button>
-						</div>
-					)}
+					<div className="seg">
+						<button className={tab === "inbox" ? "active" : ""} onClick={() => setTab("inbox")}>
+							결재함{inboxOpenCount > 0 && <span className="seg-count">{inboxOpenCount}</span>}
+						</button>
+						<button className={tab === "mine" ? "active" : ""} onClick={() => setTab("mine")}>내 신청</button>
+						{isOffice && <button className={tab === "all" ? "active" : ""} onClick={() => setTab("all")}>전체 조회</button>}
+					</div>
 					<div className="seg">
 						{[["open", "진행 중"], ["closed", "끝남"], ["all", "전체"]].map(([k, label]) => (
 							<button key={k} className={statusFilter === k ? "active" : ""} onClick={() => setStatusFilter(k)}>{label}</button>
@@ -254,7 +232,7 @@ export default function ApprovalView({ platformId, role }) {
 					<input type="search" placeholder="내용, 이름으로 검색" value={draft.text} onChange={(e) => setDraft({ ...draft, text: e.target.value })} />
 					<select value={draft.kind} onChange={(e) => setDraft({ ...draft, kind: e.target.value })}>
 						<option value="">모든 유형</option>
-						{Object.entries(KIND_LABEL).filter(([k]) => isOffice || k !== "WORK").map(([k, label]) => <option key={k} value={k}>{label}</option>)}
+						{Object.entries(KIND_LABEL).map(([k, label]) => <option key={k} value={k}>{label}</option>)}
 					</select>
 					<input type="date" aria-label="등록일 시작" value={draft.from} onChange={(e) => setDraft({ ...draft, from: e.target.value })} />
 					<span style={{ color: "var(--text-dim)" }}>~</span>
@@ -284,13 +262,23 @@ export default function ApprovalView({ platformId, role }) {
 									{visible.map((r) => {
 										const key = `${r.kind}-${r.id}`;
 										const open = expandedId === key;
-										const label = r.kind === "WORK" ? WORK_REQUEST_STATUS_LABEL[r.status] : APPROVAL_STATUS_LABEL[r.status];
+										const label = r.kind === "WORK" ? workRequestStatusLabel(r) : APPROVAL_STATUS_LABEL[r.status];
 										const summary = summaryOf(r);
+										// 내가 받은 업무 요청을 아직 안 열어 봤으면 굵게 + 점.
+										const unread = r.kind === "WORK" && r.assigneeId === myId && !r.readAt && WORK_REQUEST_OPEN.includes(r.status);
 										return (
 											<Fragment key={key}>
 												<tr onClick={() => setExpandedId(open ? null : key)} style={{ cursor: "pointer", background: open ? "var(--surface2)" : undefined }}>
 													<td style={{ color: "var(--text-sub)" }}>{KIND_LABEL[r.kind]}</td>
-													<td style={{ fontWeight: 500 }}>{summary}</td>
+													<td style={{ fontWeight: unread ? 700 : 500 }}>
+														<span style={{ display: "inline-flex", alignItems: "center", gap: "8px" }}>
+															{unread && <span aria-label="안 읽음" style={{ width: "6px", height: "6px", borderRadius: "50%", background: "var(--accent)", flexShrink: 0 }} />}
+															{r.urgent && WORK_REQUEST_OPEN.includes(r.status) && (
+																<span style={{ fontSize: "11px", fontWeight: 600, color: "var(--red)", border: "1px solid var(--red)", borderRadius: "4px", padding: "0 4px", flexShrink: 0 }}>긴급</span>
+															)}
+															{summary}
+														</span>
+													</td>
 													<td>{nameOf(r.requestedBy)}</td>
 													<td>{r.kind === "WORK" ? nameOf(r.assigneeId) : r.decidedBy ? nameOf(r.decidedBy) : "-"}</td>
 													<td>
@@ -315,7 +303,7 @@ export default function ApprovalView({ platformId, role }) {
 			</div>
 
 			<div className="modal-overlay" id={MODAL_ID}>
-				<div className="modal-box" style={{ width: "min(520px, 92vw)" }}>
+				<div className="modal-box" style={{ width: category === "LEAVE" ? "min(640px, 94vw)" : "min(520px, 92vw)" }}>
 					<div className="modal-header">
 						<div className="modal-title">{category ? `${KIND_LABEL[category]} 신청` : "결재 신청"}</div>
 						<button className="modal-close" onClick={() => closeModal(MODAL_ID)}>✕</button>
@@ -333,7 +321,7 @@ export default function ApprovalView({ platformId, role }) {
 						</div>
 					)}
 					{category === "WORK" && (
-						<WorkRequestForm platformId={platformId} assignees={assignees} myId={myId} onSubmitted={submitted} onCancel={() => setCategory(null)} />
+						<ComposeForm key={composeKey} platforms={platforms} defaultPlatformId={platformId} myId={myId} onSubmitted={submitted} onCancel={() => setCategory(null)} />
 					)}
 					{category === "LEAVE" && <LeaveForm platformId={platformId} onSubmitted={submitted} onCancel={() => setCategory(null)} />}
 					{category === "SCHEDULE" && <ScheduleChangeForm slots={mySlots} onSubmitted={submitted} onCancel={() => setCategory(null)} />}
@@ -343,13 +331,55 @@ export default function ApprovalView({ platformId, role }) {
 	);
 }
 
+// 업무 요청 쓰기 — 플랫폼을 먼저 고르면 그 플랫폼 사람들 중에서 대상(매니저/강사)과 담당자를 고른다.
+// 오너·매니저·세무사로 있는 플랫폼에만 보낼 수 있다.
+function ComposeForm({ platforms, defaultPlatformId, myId, onSubmitted, onCancel }) {
+	const sendable = platforms.filter((p) => p.roles.some((r) => OFFICE_ROLES.includes(r)));
+	const [targetId, setTargetId] = useState(defaultPlatformId);
+	const [people, setPeople] = useState(null);
+
+	useEffect(() => {
+		if (!targetId) return;
+		let alive = true;
+		listWorkRequestAssignees(targetId)
+			.then((list) => alive && setPeople(list))
+			.catch(() => alive && setPeople([]));
+		return () => { alive = false; };
+	}, [targetId]);
+
+	return (
+		<div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+			<div className="form-field">
+				<label>플랫폼</label>
+				<select value={targetId || ""} onChange={(e) => { setPeople(null); setTargetId(e.target.value); }}>
+					{sendable.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+				</select>
+			</div>
+			{people === null ? (
+				<div style={{ fontSize: "13px", color: "var(--text-dim)" }}>담당자 불러오는 중</div>
+			) : (
+				<WorkRequestForm
+					key={targetId}
+					platformId={targetId}
+					assignees={people}
+					myId={myId}
+					onSubmitted={() => onSubmitted(targetId)}
+					onCancel={onCancel}
+				/>
+			)}
+		</div>
+	);
+}
+
 function WorkRequestForm({ platformId, assignees, myId, onSubmitted, onCancel }) {
-	const [form, setForm] = useState({ title: "", assigneeId: "", dueDate: "", memo: "" });
+	const [form, setForm] = useState({ title: "", assigneeId: "", dueDate: "", memo: "", urgent: false });
 	const [submitting, setSubmitting] = useState(false);
 	const [error, setError] = useState("");
-	// 담당자를 안 고르면 나 아닌 첫 사람에게 — 혼자 운영하는 곳이면 나에게(개인 할 일).
-	const assigneeId = form.assigneeId || assignees.find((a) => a.userId !== myId)?.userId || myId;
-	const ROLE = { OWNER: "오너", MANAGER: "매니저", TAX_ACCOUNTANT: "세무사" };
+	// 대상은 매니저/강사 중에서 먼저 고르고, 그 안에서 담당자를 고른다. 나 자신은 빠진다(개인 할 일은 대시보드에서).
+	const others = assignees.filter((a) => a.userId !== myId);
+	const [targetRole, setTargetRole] = useState(() => (others.some((a) => a.role === "MANAGER") || !others.some((a) => a.role === "TUTOR") ? "MANAGER" : "TUTOR"));
+	const candidates = others.filter((a) => a.role === targetRole);
+	const assigneeId = candidates.some((a) => a.userId === form.assigneeId) ? form.assigneeId : candidates[0]?.userId;
 
 	async function submit(e) {
 		e.preventDefault();
@@ -371,14 +401,24 @@ function WorkRequestForm({ platformId, assignees, myId, onSubmitted, onCancel })
 				<label>제목</label>
 				<input required maxLength={200} value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="예: 10월 매출 명세서 보내주세요" />
 			</div>
-			<div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
+			<div className="form-field">
+				<label>대상</label>
+				<div className="seg">
+					{[["MANAGER", "매니저"], ["TUTOR", "강사"]].map(([k, label]) => (
+						<button key={k} type="button" className={targetRole === k ? "active" : ""} onClick={() => setTargetRole(k)}>{label}</button>
+					))}
+				</div>
+			</div>
+			<div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: "12px" }}>
 				<div className="form-field">
 					<label>담당자</label>
-					<select value={assigneeId} onChange={(e) => setForm({ ...form, assigneeId: e.target.value })}>
-						{assignees.map((a) => (
-							<option key={a.userId} value={a.userId}>{a.userId === myId ? "나" : a.name} · {ROLE[a.role]}</option>
-						))}
-					</select>
+					{candidates.length === 0 ? (
+						<div style={{ fontSize: "13px", color: "var(--text-dim)", padding: "8px 0" }}>{targetRole === "MANAGER" ? "매니저" : "강사"}가 없습니다</div>
+					) : (
+						<select value={assigneeId} onChange={(e) => setForm({ ...form, assigneeId: e.target.value })}>
+							{candidates.map((a) => <option key={a.userId} value={a.userId}>{a.name}</option>)}
+						</select>
+					)}
 				</div>
 				<div className="form-field">
 					<label>기한 (선택)</label>
@@ -389,56 +429,17 @@ function WorkRequestForm({ platformId, assignees, myId, onSubmitted, onCancel })
 				<label>메모 (선택)</label>
 				<textarea value={form.memo} onChange={(e) => setForm({ ...form, memo: e.target.value })} placeholder="필요한 자료, 참고할 내용" />
 			</div>
+			{assigneeId !== myId && (
+				<label style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "13px", cursor: "pointer" }}>
+					<input type="checkbox" checked={form.urgent} onChange={(e) => setForm({ ...form, urgent: e.target.checked })} style={{ accentColor: "var(--accent)" }} />
+					긴급 — 담당자 할 일 맨 위에 올립니다
+				</label>
+			)}
 			{error && <div style={{ color: "var(--red)", fontSize: "12px" }}>{error}</div>}
 			<div style={{ display: "flex", justifyContent: "flex-end", gap: "8px" }}>
 				<button type="button" className="btn btn-ghost" onClick={onCancel}>뒤로</button>
-				<button type="submit" className="btn btn-primary" disabled={submitting || !form.title.trim()}>{submitting ? "신청 중" : "신청"}</button>
+				<button type="submit" className="btn btn-primary" disabled={submitting || !form.title.trim() || !assigneeId}>{submitting ? "신청 중" : "신청"}</button>
 			</div>
 		</form>
-	);
-}
-
-function LeaveForm({ platformId, onSubmitted, onCancel }) {
-	const [start, setStart] = useState("");
-	const [end, setEnd] = useState("");
-	const [reason, setReason] = useState("");
-	const [submitting, setSubmitting] = useState(false);
-	const [error, setError] = useState("");
-
-	async function submit() {
-		setError("");
-		setSubmitting(true);
-		try {
-			await createLeaveRequest(platformId, { startDate: start, endDate: end, reason: reason.trim() || null });
-			onSubmitted();
-		} catch (err) {
-			setError(err.message || "신청에 실패했습니다.");
-		} finally {
-			setSubmitting(false);
-		}
-	}
-
-	return (
-		<div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-			<div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
-				<div className="form-field">
-					<label>시작일</label>
-					<input type="date" value={start} onChange={(e) => setStart(e.target.value)} />
-				</div>
-				<div className="form-field">
-					<label>종료일</label>
-					<input type="date" value={end} onChange={(e) => setEnd(e.target.value)} />
-				</div>
-			</div>
-			<div className="form-field">
-				<label>사유 (선택)</label>
-				<textarea value={reason} onChange={(e) => setReason(e.target.value)} />
-			</div>
-			{error && <div style={{ color: "var(--red)", fontSize: "12px" }}>{error}</div>}
-			<div style={{ display: "flex", justifyContent: "flex-end", gap: "8px" }}>
-				<button className="btn btn-ghost" onClick={onCancel}>뒤로</button>
-				<button className="btn btn-primary" disabled={submitting || !start || !end} onClick={submit}>{submitting ? "신청 중" : "신청"}</button>
-			</div>
-		</div>
 	);
 }

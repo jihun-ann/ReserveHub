@@ -2,8 +2,8 @@ package com.hub.reservehub.domain.approval;
 
 import java.util.List;
 import java.util.UUID;
-import org.springframework.data.jpa.repository.JpaRepository;
+import com.hub.reservehub.common.persistence.BaseRepository;
 
-public interface MemberMemoRepository extends JpaRepository<MemberMemo, UUID> {
+public interface MemberMemoRepository extends BaseRepository<MemberMemo, UUID> {
     List<MemberMemo> findByPlatformIdAndUserId(UUID platformId, UUID userId);
 }

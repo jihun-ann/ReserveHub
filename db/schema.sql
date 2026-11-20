@@ -504,6 +504,7 @@ CREATE TABLE leave_requests (
                                 start_date      DATE            NOT NULL,
                                 end_date        DATE            NOT NULL,
                                 reason          TEXT,
+                                hours           INTEGER         CHECK (hours BETWEEN 1 AND 7),  -- 시간 단위 휴가(하루짜리). NULL = 종일(연차)
                                 status          request_status  NOT NULL DEFAULT 'PENDING',
                                 decision_memo   TEXT,
                                 decided_by      UUID            REFERENCES users(id),
@@ -517,7 +518,7 @@ COMMENT ON TABLE leave_requests IS '스태프가 제출한 휴가 요청. 매니
 
 -- 업무 요청 — 오너·매니저·세무사가 같은 플랫폼의 오너·매니저·세무사에게(자기 자신 포함) 맡기는 일.
 -- 담당자가 진행 중 → 완료로 넘기고, 요청자는 끝나기 전에 취소할 수 있다.
-CREATE TYPE work_request_status AS ENUM ('REQUESTED', 'IN_PROGRESS', 'DONE', 'CANCELED');
+CREATE TYPE work_request_status AS ENUM ('REQUESTED', 'IN_PROGRESS', 'DONE', 'CANCELED', 'REVISION_REQUESTED');
 
 CREATE TABLE work_requests (
                                id              UUID                  PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -528,6 +529,9 @@ CREATE TABLE work_requests (
                                memo            TEXT,
                                due_date        DATE,
                                status          work_request_status   NOT NULL DEFAULT 'REQUESTED',
+                               read_at         TIMESTAMPTZ,
+                               urgent          BOOLEAN               NOT NULL DEFAULT FALSE,
+                               sort_order      INTEGER,
                                created_at      TIMESTAMPTZ           NOT NULL DEFAULT NOW(),
                                updated_at      TIMESTAMPTZ           NOT NULL DEFAULT NOW()
 );

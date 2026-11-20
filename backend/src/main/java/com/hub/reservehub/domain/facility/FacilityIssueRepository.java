@@ -2,8 +2,8 @@ package com.hub.reservehub.domain.facility;
 
 import java.util.List;
 import java.util.UUID;
-import org.springframework.data.jpa.repository.JpaRepository;
+import com.hub.reservehub.common.persistence.BaseRepository;
 
-public interface FacilityIssueRepository extends JpaRepository<FacilityIssue, UUID> {
+public interface FacilityIssueRepository extends BaseRepository<FacilityIssue, UUID> {
     List<FacilityIssue> findByPlatformIdOrderByCreatedAtDesc(UUID platformId);
 }

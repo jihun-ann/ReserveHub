@@ -48,6 +48,20 @@ public class PlatformAccessGuard {
         }
     }
 
+    // 본인 데이터(내 주문·내가 맡은 수업·내 예약 등)면 통과, 남의 것이면 이 플랫폼의 오너/활성 스태프여야 한다.
+    public void verifySelfOrMember(UUID ownerUserId, UUID platformId, AuthenticatedUser actor) {
+        if (!ownerUserId.equals(actor.getId())) {
+            verify(platformId, actor);
+        }
+    }
+
+    // 플랫폼 소유자만 — 운영 정지·세무사 초대처럼 스태프에게 위임하면 안 되는 작업에 쓴다.
+    public void verifyOwner(UUID platformId, AuthenticatedUser user) {
+        if (!platformRepository.existsByIdAndCreatedBy(platformId, user.getId())) {
+            throw new PlatformAccessDeniedException(platformId);
+        }
+    }
+
     // Owner always passes; otherwise at least one of the actor's active PlatformStaff.staffRole
     // entries on THIS platform must be in allowedRoles — a user may hold more than one role here
     // (e.g. MANAGER+TUTOR) — never their global account role.
@@ -58,8 +72,8 @@ public class PlatformAccessGuard {
             return;
         }
         List<StaffRole> allowed = Arrays.asList(allowedRoles);
-        boolean hasRole = platformStaffRepository.findByPlatformIdAndUserId(platformId, user.getId()).stream()
-                .anyMatch(staff -> staff.isActive() && allowed.contains(staff.getStaffRole()));
+        boolean hasRole = platformStaffRepository.findByPlatformIdAndUserIdAndIsActiveTrue(platformId, user.getId()).stream()
+                .anyMatch(staff -> allowed.contains(staff.getStaffRole()));
         if (!hasRole) {
             throw new PlatformAccessDeniedException(platformId);
         }
@@ -72,8 +86,8 @@ public class PlatformAccessGuard {
             return EnumSet.allOf(ManagerPermission.class);
         }
         Set<ManagerPermission> result = EnumSet.noneOf(ManagerPermission.class);
-        platformStaffRepository.findByPlatformIdAndUserId(platformId, user.getId()).stream()
-                .filter(staff -> staff.isActive() && staff.getStaffRole() == StaffRole.MANAGER && staff.getManagerGroupId() != null)
+        platformStaffRepository.findByPlatformIdAndUserIdAndIsActiveTrue(platformId, user.getId()).stream()
+                .filter(staff -> staff.getStaffRole() == StaffRole.MANAGER && staff.getManagerGroupId() != null)
                 .forEach(staff -> managerGroupRepository.findById(staff.getManagerGroupId())
                         .ifPresent(group -> result.addAll(group.getPermissions())));
         return result;
@@ -108,8 +122,8 @@ public class PlatformAccessGuard {
         if (platformRepository.existsByIdAndCreatedBy(platformId, userId)) {
             return true;
         }
-        boolean isManager = platformStaffRepository.findByPlatformIdAndUserId(platformId, userId).stream()
-                .anyMatch(staff -> staff.isActive() && staff.getStaffRole() == StaffRole.MANAGER);
+        boolean isManager = platformStaffRepository.findByPlatformIdAndUserIdAndIsActiveTrue(platformId, userId).stream()
+                .anyMatch(staff -> staff.getStaffRole() == StaffRole.MANAGER);
         return isManager || platformTaxAccountantRepository.existsByPlatformIdAndUserIdAndIsActiveTrue(platformId, userId);
     }
 

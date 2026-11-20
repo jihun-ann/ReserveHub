@@ -1,8 +1,7 @@
 package com.hub.reservehub.domain.pass;
 
 import com.hub.reservehub.domain.approval.LogMemo;
-import com.hub.reservehub.domain.approval.ActionLog;
-import com.hub.reservehub.domain.approval.ActionLogRepository;
+import com.hub.reservehub.domain.approval.ActionLogger;
 import com.hub.reservehub.domain.approval.ActionTarget;
 import com.hub.reservehub.domain.outbox.OutboxEvent;
 import com.hub.reservehub.domain.outbox.OutboxEventRepository;
@@ -34,14 +33,14 @@ public class OrderService {
     private final DiscountPolicyRepository discountPolicyRepository;
     private final UserPassRepository userPassRepository;
     private final PlatformAccessGuard platformAccessGuard;
-    private final ActionLogRepository actionLogRepository;
+    private final ActionLogger actionLogger;
     private final OutboxEventRepository outboxEventRepository;
 
     public OrderService(
             OrderRepository orderRepository, OrderItemRepository orderItemRepository,
             OrderDiscountRepository orderDiscountRepository, PassRepository passRepository,
             DiscountPolicyRepository discountPolicyRepository, UserPassRepository userPassRepository,
-            PlatformAccessGuard platformAccessGuard, ActionLogRepository actionLogRepository,
+            PlatformAccessGuard platformAccessGuard, ActionLogger actionLogger,
             OutboxEventRepository outboxEventRepository
     ) {
         this.orderRepository = orderRepository;
@@ -51,7 +50,7 @@ public class OrderService {
         this.discountPolicyRepository = discountPolicyRepository;
         this.userPassRepository = userPassRepository;
         this.platformAccessGuard = platformAccessGuard;
-        this.actionLogRepository = actionLogRepository;
+        this.actionLogger = actionLogger;
         this.outboxEventRepository = outboxEventRepository;
     }
 
@@ -83,8 +82,7 @@ public class OrderService {
         List<ResolvedItem> resolvedItems = new ArrayList<>();
         int originalAmount = 0;
         for (PassSelection selection : selections) {
-            Pass pass = passRepository.findById(selection.passId())
-                    .orElseThrow(() -> new IllegalArgumentException("Pass not found: " + selection.passId()));
+            Pass pass = passRepository.getOrThrow(selection.passId());
             if (!pass.getPlatformId().equals(platformId) || !pass.isActive()) {
                 throw new IllegalArgumentException("Pass not available on this platform: " + selection.passId());
             }
@@ -99,8 +97,7 @@ public class OrderService {
         int runningAmount = originalAmount;
         short applyOrder = 1;
         for (UUID policyId : discountPolicyIds) {
-            DiscountPolicy policy = discountPolicyRepository.findById(policyId)
-                    .orElseThrow(() -> new IllegalArgumentException("Discount policy not found: " + policyId));
+            DiscountPolicy policy = discountPolicyRepository.getOrThrow(policyId);
             if (!policy.getPlatformId().equals(platformId) || !policy.isUsableNow()) {
                 throw new IllegalStateException("Discount policy not usable: " + policyId);
             }
@@ -140,8 +137,8 @@ public class OrderService {
 
     @Transactional(readOnly = true)
     public Order get(UUID orderId, AuthenticatedUser actor) {
-        Order order = findOrder(orderId);
-        verifyBuyerOrStaff(order, actor);
+        Order order = orderRepository.getOrThrow(orderId);
+        platformAccessGuard.verifySelfOrMember(order.getUserId(), order.getPlatformId(), actor);
         return order;
     }
 
@@ -166,7 +163,7 @@ public class OrderService {
     // Confirms payment and issues one UserPass instance per purchased unit (AGENT.md event: order.paid).
     // 결제를 확정하고 구매 수량만큼 UserPass 인스턴스를 발급한다.
     public Order pay(UUID orderId, AuthenticatedUser actor, PaymentMethod paymentMethod, CashReceiptStatus cashReceiptStatus, @Nullable String receiptNumber) {
-        Order order = findOrder(orderId);
+        Order order = orderRepository.getOrThrow(orderId);
         // 결제 확정은 구매자 본인이 할 수 없다 — 실제 결제 연동(PG) 전에는 직원이 입금/카드 결제를 확인하고 처리한다.
         platformAccessGuard.verifyManagerPermission(order.getPlatformId(), actor, ManagerPermission.MENU_PAYMENT);
         order.pay(paymentMethod, cashReceiptStatus, receiptNumber, actor.getId());
@@ -181,7 +178,7 @@ public class OrderService {
             UUID orderId, AuthenticatedUser actor, int amount,
             PaymentMethod paymentMethod, CashReceiptStatus cashReceiptStatus, @Nullable String receiptNumber
     ) {
-        Order order = findOrder(orderId);
+        Order order = orderRepository.getOrThrow(orderId);
         platformAccessGuard.verifyManagerPermission(order.getPlatformId(), actor, ManagerPermission.MENU_PAYMENT);
         order.partialPay(amount, paymentMethod, cashReceiptStatus, receiptNumber, actor.getId());
         if (order.getStatus() == OrderStatus.PAID) {
@@ -192,8 +189,7 @@ public class OrderService {
 
     private void issuePassesAndEmitPaidEvent(Order order) {
         for (OrderItem item : orderItemRepository.findByOrderId(order.getId())) {
-            Pass pass = passRepository.findById(item.getPassId())
-                    .orElseThrow(() -> new IllegalArgumentException("Pass not found: " + item.getPassId()));
+            Pass pass = passRepository.getOrThrow(item.getPassId());
             Integer sessionsTotal = pass.getType() == PassType.SESSION && pass.getSessionCount() != null
                     ? Integer.valueOf(pass.getSessionCount())
                     : null;
@@ -215,8 +211,8 @@ public class OrderService {
 
     @Transactional
     public Order cancel(UUID orderId, AuthenticatedUser actor) {
-        Order order = findOrder(orderId);
-        verifyBuyerOrStaff(order, actor);
+        Order order = orderRepository.getOrThrow(orderId);
+        platformAccessGuard.verifySelfOrMember(order.getUserId(), order.getPlatformId(), actor);
         order.cancel();
         return order;
     }
@@ -226,7 +222,7 @@ public class OrderService {
     // amount가 null이면 잔여 전액(finalAmount - 이미 환불된 금액)을 환불한다. 부분 환불은 수강권을
     // 정지하지 않는다 — 전액이 환불됐을 때만 이용 권한을 회수한다.
     public Order refund(UUID orderId, AuthenticatedUser actor, @Nullable Integer amount, @Nullable String memo) {
-        Order order = findOrder(orderId);
+        Order order = orderRepository.getOrThrow(orderId);
         platformAccessGuard.verifyManagerPermission(order.getPlatformId(), actor, ManagerPermission.REFUND); // 환불: 임원급 매니저 전용
         int refundAmount = amount != null ? amount : order.getFinalAmount() - order.getRefundAmount();
         order.refund(refundAmount);
@@ -241,11 +237,11 @@ public class OrderService {
             }
         }
 
-        actionLogRepository.save(ActionLog.of(
+        actionLogger.log(
                 order.getPlatformId(), actor.getId(), ActionTarget.PASS_REFUND, order.getId(), "REFUND",
                 LogMemo.with("환불: 결제 " + LogMemo.won(order.getFinalAmount()) + " 중 " + LogMemo.won(refundAmount) + " 환불 ("
                         + (order.getStatus() == OrderStatus.REFUNDED ? "전액 환불, 이용권 정지" : "부분 환불") + ")", memo)
-        ));
+        );
         outboxEventRepository.save(OutboxEvent.of(
                 "ORDER", order.getId(), "order.refunded", "reservehub.order",
                 Map.of("orderId", order.getId().toString(), "userId", order.getUserId().toString())
@@ -257,16 +253,5 @@ public class OrderService {
     @Transactional(readOnly = true)
     public List<UserPass> myPasses(AuthenticatedUser actor) {
         return userPassRepository.findByUserId(actor.getId());
-    }
-
-    private void verifyBuyerOrStaff(Order order, AuthenticatedUser actor) {
-        if (!order.getUserId().equals(actor.getId())) {
-            platformAccessGuard.verify(order.getPlatformId(), actor);
-        }
-    }
-
-    private Order findOrder(UUID orderId) {
-        return orderRepository.findById(orderId)
-                .orElseThrow(() -> new IllegalArgumentException("Order not found"));
     }
 }

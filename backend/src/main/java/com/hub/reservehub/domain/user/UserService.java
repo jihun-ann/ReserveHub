@@ -29,8 +29,7 @@ public class UserService {
     // Fetches a user by primary key for profile and admin flows.
     // 프로필 조회나 관리자 흐름에서 사용할 사용자를 기본 키로 조회한다.
     public User get(UUID id) {
-        return userRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+        return userRepository.getOrThrow(id);
     }
 
     @Transactional(readOnly = true)

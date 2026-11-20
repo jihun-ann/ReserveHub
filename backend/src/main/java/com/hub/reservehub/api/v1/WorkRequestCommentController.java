@@ -28,7 +28,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 @RestController
 @Validated
-@PreAuthorize("hasAnyRole('OWNER', 'MANAGER', 'TAX_ACCOUNTANT')")
+@PreAuthorize("hasAnyRole('OWNER', 'MANAGER', 'TUTOR', 'TAX_ACCOUNTANT')")
 public class WorkRequestCommentController {
 
     private final WorkRequestCommentService commentService;

@@ -2,9 +2,9 @@ package com.hub.reservehub.domain.platform;
 
 import java.util.List;
 import java.util.UUID;
-import org.springframework.data.jpa.repository.JpaRepository;
+import com.hub.reservehub.common.persistence.BaseRepository;
 
-public interface ManagerGroupRepository extends JpaRepository<ManagerGroup, UUID> {
+public interface ManagerGroupRepository extends BaseRepository<ManagerGroup, UUID> {
     List<ManagerGroup> findByPlatformIdOrderByCreatedAtAsc(UUID platformId);
 
     boolean existsByPlatformIdAndName(UUID platformId, String name);

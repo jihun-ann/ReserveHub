@@ -2,9 +2,9 @@ package com.hub.reservehub.domain.pass;
 
 import java.util.List;
 import java.util.UUID;
-import org.springframework.data.jpa.repository.JpaRepository;
+import com.hub.reservehub.common.persistence.BaseRepository;
 
-public interface UserPassRepository extends JpaRepository<UserPass, UUID> {
+public interface UserPassRepository extends BaseRepository<UserPass, UUID> {
     List<UserPass> findByUserId(UUID userId);
 
     List<UserPass> findByOrderItemId(UUID orderItemId);

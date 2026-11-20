@@ -2,8 +2,7 @@ package com.hub.reservehub.domain.platform;
 
 import org.springframework.beans.factory.annotation.Value;
 import com.hub.reservehub.domain.approval.LogMemo;
-import com.hub.reservehub.domain.approval.ActionLog;
-import com.hub.reservehub.domain.approval.ActionLogRepository;
+import com.hub.reservehub.domain.approval.ActionLogger;
 import com.hub.reservehub.domain.approval.ActionTarget;
 import com.hub.reservehub.domain.user.User;
 import com.hub.reservehub.domain.user.UserService;
@@ -30,7 +29,7 @@ public class StaffInvitationService {
     private final PlatformService platformService;
     private final PlatformAccessGuard platformAccessGuard;
     private final ManagerGroupRepository managerGroupRepository;
-    private final ActionLogRepository actionLogRepository;
+    private final ActionLogger actionLogger;
     private final UserService userService;
     private final boolean requireVerifiedContact;
 
@@ -38,7 +37,7 @@ public class StaffInvitationService {
             StaffInvitationRepository invitationRepository, PlatformRepository platformRepository,
             PlatformService platformService, PlatformAccessGuard platformAccessGuard,
             ManagerGroupRepository managerGroupRepository,
-            ActionLogRepository actionLogRepository, UserService userService,
+            ActionLogger actionLogger, UserService userService,
             @Value("${app.invitation.require-verified-contact:false}") boolean requireVerifiedContact
     ) {
         this.invitationRepository = invitationRepository;
@@ -46,7 +45,7 @@ public class StaffInvitationService {
         this.platformService = platformService;
         this.platformAccessGuard = platformAccessGuard;
         this.managerGroupRepository = managerGroupRepository;
-        this.actionLogRepository = actionLogRepository;
+        this.actionLogger = actionLogger;
         this.userService = userService;
         this.requireVerifiedContact = requireVerifiedContact;
     }
@@ -69,8 +68,7 @@ public class StaffInvitationService {
         }
         UUID groupId = role == StaffRole.MANAGER ? managerGroupId : null;
         if (groupId != null) {
-            ManagerGroup group = managerGroupRepository.findById(groupId)
-                    .orElseThrow(() -> new IllegalArgumentException("그룹을 찾을 수 없습니다."));
+            ManagerGroup group = managerGroupRepository.getOrThrow(groupId);
             if (!group.getPlatformId().equals(platformId)) {
                 throw new IllegalArgumentException("이 플랫폼의 그룹이 아닙니다.");
             }
@@ -79,10 +77,10 @@ public class StaffInvitationService {
                 platformId, role, role == StaffRole.MANAGER ? (tier != null ? tier : ManagerTier.LOW) : null, groupId,
                 normEmail, normPhone, actor.getId(), Instant.now().plus(VALID_FOR)
         ));
-        actionLogRepository.save(ActionLog.of(
+        actionLogger.log(
                 platformId, actor.getId(), ActionTarget.STAFF_CHANGE, invitation.getId(), "INVITE_" + role.name(),
                 "직원 초대: " + roleLabel(role) + " — " + contact(normEmail, normPhone) + " (유효 " + VALID_FOR.toDays() + "일)"
-        ));
+        );
         return invitation;
     }
 
@@ -95,17 +93,16 @@ public class StaffInvitationService {
 
     @Transactional
     public void cancel(UUID invitationId, AuthenticatedUser actor) {
-        StaffInvitation invitation = invitationRepository.findById(invitationId)
-                .orElseThrow(() -> new IllegalArgumentException("Invitation not found"));
+        StaffInvitation invitation = invitationRepository.getOrThrow(invitationId);
         verifyCanManage(invitation.getPlatformId(), actor, invitation.getStaffRole());
         if (invitation.getStatus() != InvitationStatus.PENDING) {
             throw new IllegalStateException("대기 중인 초대만 취소할 수 있습니다.");
         }
         invitation.cancel();
-        actionLogRepository.save(ActionLog.of(
+        actionLogger.log(
                 invitation.getPlatformId(), actor.getId(), ActionTarget.STAFF_CHANGE, invitation.getId(), "INVITE_CANCEL",
                 "초대 취소: " + roleLabel(invitation.getStaffRole()) + " — " + contact(invitation.getEmail(), invitation.getPhone())
-        ));
+        );
     }
 
     // 링크를 연 사람에게 "어느 플랫폼의 어떤 역할 초대인지" 보여주기 위한 조회 — 로그인 전에도 호출된다.
@@ -148,10 +145,10 @@ public class StaffInvitationService {
             managerGroupRepository.findById(invitation.getManagerGroupId()).ifPresent(staff::assignGroup);
         }
         invitation.accept();
-        actionLogRepository.save(ActionLog.of(
+        actionLogger.log(
                 invitation.getPlatformId(), actor.getId(), ActionTarget.STAFF_CHANGE, invitation.getId(), "INVITE_ACCEPT",
                 "초대 수락: " + LogMemo.who(user) + " → " + roleLabel(invitation.getStaffRole()) + " 배정"
-        ));
+        );
         return staff;
     }
 

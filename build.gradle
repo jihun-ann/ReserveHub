@@ -52,6 +52,11 @@ dependencies {
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 }
 
+// 소스는 UTF-8이다. 지정하지 않으면 한국어 Windows의 JDK 17이 MS949로 읽어 한글 문자열(오류 메시지 등)이 "??"로 깨진다.
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+}
+
 tasks.named('test') {
     useJUnitPlatform()
 }

@@ -2,9 +2,9 @@ package com.hub.reservehub.domain.program;
 
 import java.util.List;
 import java.util.UUID;
-import org.springframework.data.jpa.repository.JpaRepository;
+import com.hub.reservehub.common.persistence.BaseRepository;
 
-public interface SlotMemberRepository extends JpaRepository<SlotMember, UUID> {
+public interface SlotMemberRepository extends BaseRepository<SlotMember, UUID> {
     List<SlotMember> findBySlotIdAndIsActiveTrue(UUID slotId);
 
     boolean existsBySlotIdAndUserIdAndIsActiveTrue(UUID slotId, UUID userId);

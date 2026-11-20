@@ -209,13 +209,13 @@ public class DummyDataSeeder implements CommandLineRunner {
 
         var payday = workRequestService.create(
                 platformId, taxAccountantPrincipal, managerPrincipal.getId(),
-                "8월 급여 이체", "급여 이체 예정일입니다.", LocalDate.now().withDayOfMonth(25)
+                "8월 급여 이체", "급여 이체 예정일입니다.", LocalDate.now().withDayOfMonth(25), false
         );
         workRequestService.changeStatus(payday.getId(), managerPrincipal, WorkRequestStatus.DONE);
 
         workRequestService.create(
                 platformId, taxAccountantPrincipal, managerPrincipal.getId(),
-                "부가세 신고 자료 제출", "신고 전 정산 자료 확인 부탁드립니다.", LocalDate.now().plusDays(10)
+                "부가세 신고 자료 제출", "신고 전 정산 자료 확인 부탁드립니다.", LocalDate.now().plusDays(10), true
         );
     }
 

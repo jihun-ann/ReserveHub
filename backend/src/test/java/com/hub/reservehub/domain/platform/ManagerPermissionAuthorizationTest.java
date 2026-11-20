@@ -11,7 +11,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import com.hub.reservehub.common.exception.PlatformAccessDeniedException;
-import com.hub.reservehub.domain.approval.ActionLogRepository;
+import com.hub.reservehub.domain.approval.ActionLogger;
 import com.hub.reservehub.domain.pass.CashReceiptStatus;
 import com.hub.reservehub.domain.pass.DiscountPolicyRepository;
 import com.hub.reservehub.domain.pass.MemberService;
@@ -76,7 +76,7 @@ class ManagerPermissionAuthorizationTest {
         when(staff.isActive()).thenReturn(true);
         when(staff.getStaffRole()).thenReturn(StaffRole.MANAGER);
         when(staff.getManagerGroupId()).thenReturn(groupId);
-        when(staffRepository.findByPlatformIdAndUserId(platformId, userId)).thenReturn(List.of(staff));
+        when(staffRepository.findByPlatformIdAndUserIdAndIsActiveTrue(platformId, userId)).thenReturn(List.of(staff));
         ManagerGroup group = mock(ManagerGroup.class);
         when(group.getPermissions()).thenReturn(permissions);
         when(groupRepository.findById(groupId)).thenReturn(Optional.of(group));
@@ -108,7 +108,7 @@ class ManagerPermissionAuthorizationTest {
         PlatformStaff tutor = mock(PlatformStaff.class);
         when(tutor.isActive()).thenReturn(true);
         when(tutor.getStaffRole()).thenReturn(StaffRole.TUTOR);
-        when(staffRepository.findByPlatformIdAndUserId(platformId, userId)).thenReturn(List.of(noGroup, tutor));
+        when(staffRepository.findByPlatformIdAndUserIdAndIsActiveTrue(platformId, userId)).thenReturn(List.of(noGroup, tutor));
         assertTrue(guard.permissionsOf(platformId, actor).isEmpty());
     }
 
@@ -149,12 +149,12 @@ class ManagerPermissionAuthorizationTest {
         PlatformAccessGuard guardMock = mock(PlatformAccessGuard.class);
         OrderService orderService = new OrderService(
                 orderRepository, mock(OrderItemRepository.class), mock(OrderDiscountRepository.class), mock(PassRepository.class),
-                mock(DiscountPolicyRepository.class), mock(UserPassRepository.class), guardMock, mock(ActionLogRepository.class),
+                mock(DiscountPolicyRepository.class), mock(UserPassRepository.class), guardMock, mock(ActionLogger.class),
                 mock(OutboxEventRepository.class));
         // 구매자 본인(userId)이 자기 주문을 결제 확정하려는 상황
         Order order = new Order(userId, platformId, 100_000, 0, 100_000, null, userId);
         UUID orderId = UUID.randomUUID();
-        when(orderRepository.findById(orderId)).thenReturn(Optional.of(order));
+        when(orderRepository.getOrThrow(orderId)).thenReturn(order);
         org.mockito.Mockito.doThrow(new PlatformAccessDeniedException(platformId))
                 .when(guardMock).verifyManagerPermission(eq(platformId), any(), eq(ManagerPermission.MENU_PAYMENT));
 

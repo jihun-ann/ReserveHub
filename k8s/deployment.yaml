@@ -21,6 +21,30 @@ spec:
         - name: reservehub
           image: ghcr.io/jihun-ann/reservehub:c122fc8008f4ab6f3638b7dd9a77d856c9b585a6
 
+          # DB 접속 정보는 secret.yaml(reservehub-db)에서 키로 꺼내 쓴다.
+          env:
+            - name: DB_URL
+              valueFrom:
+                secretKeyRef:
+                  name: reservehub-db
+                  key: DB_URL
+            - name: DB_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: reservehub-db
+                  key: DB_USERNAME
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: reservehub-db
+                  key: DB_PASSWORD
+            # 로그인 토큰 서명 키 — reservehub-jwt 시크릿에서 꺼낸다(없으면 코드의 공개된 기본값을 쓰게 되어 위험).
+            - name: JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: reservehub-jwt
+                  key: JWT_SECRET
+
           ports:
             - containerPort: 8080
 ---

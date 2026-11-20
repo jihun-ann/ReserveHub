@@ -19,26 +19,33 @@ public class LeaveRequestService {
 
     private final LeaveRequestRepository leaveRequestRepository;
     private final PlatformAccessGuard platformAccessGuard;
-    private final ActionLogRepository actionLogRepository;
+    private final ActionLogger actionLogger;
 
     public LeaveRequestService(
             LeaveRequestRepository leaveRequestRepository, PlatformAccessGuard platformAccessGuard,
-            ActionLogRepository actionLogRepository
+            ActionLogger actionLogger
     ) {
         this.leaveRequestRepository = leaveRequestRepository;
         this.platformAccessGuard = platformAccessGuard;
-        this.actionLogRepository = actionLogRepository;
+        this.actionLogger = actionLogger;
     }
 
     @Transactional
-    public LeaveRequest create(UUID platformId, AuthenticatedUser actor, LocalDate startDate, LocalDate endDate, @Nullable String reason) {
+    public LeaveRequest create(
+            UUID platformId, AuthenticatedUser actor, LocalDate startDate, LocalDate endDate, @Nullable Integer hours, @Nullable String reason
+    ) {
         platformAccessGuard.verify(platformId, actor);
         if (endDate.isBefore(startDate)) {
-            throw new IllegalArgumentException("endDate must not be before startDate");
+            throw new IllegalArgumentException("끝나는 날이 시작일보다 빠를 수 없습니다.");
         }
-        LeaveRequest request = leaveRequestRepository.save(new LeaveRequest(platformId, actor.getId(), startDate, endDate, reason));
-        actionLogRepository.save(ActionLog.of(platformId, actor.getId(), ActionTarget.LEAVE_REQUEST, request.getId(), "CREATE",
-                "휴가 신청: " + startDate + " ~ " + endDate + (reason == null || reason.isBlank() ? "" : " (사유: " + LogMemo.clip(reason, 100) + ")")));
+        // 시간 단위 휴가는 하루 안에서 1~7시간 — 8시간 이상이면 종일(연차)로 올린다.
+        if (hours != null && (hours < 1 || hours > 7 || !startDate.equals(endDate))) {
+            throw new IllegalArgumentException("시간 단위 휴가는 하루에 1~7시간까지만 신청할 수 있습니다.");
+        }
+        LeaveRequest request = leaveRequestRepository.save(new LeaveRequest(platformId, actor.getId(), startDate, endDate, hours, reason));
+        actionLogger.log(platformId, actor.getId(), ActionTarget.LEAVE_REQUEST, request.getId(), "CREATE",
+                "휴가 신청: " + startDate + (hours != null ? " (" + hours + "시간)" : " ~ " + endDate)
+                        + (reason == null || reason.isBlank() ? "" : " (사유: " + LogMemo.clip(reason, 100) + ")"));
         return request;
     }
 
@@ -56,23 +63,23 @@ public class LeaveRequestService {
     @Transactional
     // 휴가 승인/반려는 HIGH 등급 매니저(또는 오너)만 — L/M 등급 매니저는 조회만 가능하다.
     public LeaveRequest approve(UUID requestId, AuthenticatedUser actor, @Nullable String memo) {
-        LeaveRequest request = findRequest(requestId);
+        LeaveRequest request = leaveRequestRepository.getOrThrow(requestId);
         platformAccessGuard.verifyManagerPermission(request.getPlatformId(), actor, ManagerPermission.LEAVE_APPROVE);
         rejectSelfDecision(request, actor);
         request.approve(actor.getId(), memo);
-        actionLogRepository.save(ActionLog.of(request.getPlatformId(), actor.getId(), ActionTarget.LEAVE_REQUEST, request.getId(), "APPROVE",
-                LogMemo.with("휴가 승인: " + request.getStartDate() + " ~ " + request.getEndDate(), memo)));
+        actionLogger.log(request.getPlatformId(), actor.getId(), ActionTarget.LEAVE_REQUEST, request.getId(), "APPROVE",
+                LogMemo.with("휴가 승인: " + request.getStartDate() + " ~ " + request.getEndDate(), memo));
         return request;
     }
 
     @Transactional
     public LeaveRequest reject(UUID requestId, AuthenticatedUser actor, @Nullable String memo) {
-        LeaveRequest request = findRequest(requestId);
+        LeaveRequest request = leaveRequestRepository.getOrThrow(requestId);
         platformAccessGuard.verifyManagerPermission(request.getPlatformId(), actor, ManagerPermission.LEAVE_APPROVE);
         rejectSelfDecision(request, actor);
         request.reject(actor.getId(), memo);
-        actionLogRepository.save(ActionLog.of(request.getPlatformId(), actor.getId(), ActionTarget.LEAVE_REQUEST, request.getId(), "REJECT",
-                LogMemo.with("휴가 반려: " + request.getStartDate() + " ~ " + request.getEndDate(), memo)));
+        actionLogger.log(request.getPlatformId(), actor.getId(), ActionTarget.LEAVE_REQUEST, request.getId(), "REJECT",
+                LogMemo.with("휴가 반려: " + request.getStartDate() + " ~ " + request.getEndDate(), memo));
         return request;
     }
 
@@ -82,10 +89,5 @@ public class LeaveRequestService {
         if (request.getRequestedBy().equals(actor.getId())) {
             throw new IllegalStateException("Cannot decide on your own leave request");
         }
-    }
-
-    private LeaveRequest findRequest(UUID requestId) {
-        return leaveRequestRepository.findById(requestId)
-                .orElseThrow(() -> new IllegalArgumentException("Leave request not found"));
     }
 }

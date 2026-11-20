@@ -3,9 +3,9 @@ package com.hub.reservehub.domain.platform;
 import java.util.Optional;
 import java.util.List;
 import java.util.UUID;
-import org.springframework.data.jpa.repository.JpaRepository;
+import com.hub.reservehub.common.persistence.BaseRepository;
 
-public interface PlatformRepository extends JpaRepository<Platform, UUID> {
+public interface PlatformRepository extends BaseRepository<Platform, UUID> {
     List<Platform> findByCreatedBy(UUID createdBy);
 
     boolean existsByIdAndCreatedBy(UUID id, UUID createdBy);

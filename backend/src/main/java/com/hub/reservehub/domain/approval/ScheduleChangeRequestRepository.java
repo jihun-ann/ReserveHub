@@ -2,9 +2,9 @@ package com.hub.reservehub.domain.approval;
 
 import java.util.List;
 import java.util.UUID;
-import org.springframework.data.jpa.repository.JpaRepository;
+import com.hub.reservehub.common.persistence.BaseRepository;
 
-public interface ScheduleChangeRequestRepository extends JpaRepository<ScheduleChangeRequest, UUID> {
+public interface ScheduleChangeRequestRepository extends BaseRepository<ScheduleChangeRequest, UUID> {
     List<ScheduleChangeRequest> findByPlatformIdAndStatus(UUID platformId, RequestStatus status);
 
     List<ScheduleChangeRequest> findByRequestedBy(UUID requestedBy);

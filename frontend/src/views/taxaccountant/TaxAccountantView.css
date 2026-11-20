@@ -360,10 +360,6 @@
             display: flex;
         }
 
-        .collapse-btn {
-            display: none;
-        }
-
         .sidebar .logo-text, .sidebar .user-info, .sidebar .nav-label {
             opacity: 1 !important;
             width: auto !important;

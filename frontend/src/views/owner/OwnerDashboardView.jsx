@@ -1,5 +1,6 @@
 import { businessTypeLabel } from "../../api/common.js";
 import MyTasksCard from "../../components/MyTasksCard.jsx";
+import ManagerCalendarView from "../manager/ManagerCalendarView.jsx";
 
 // 처리 대기 업무(할 일·승인 대기)는 현재 고른 플랫폼 기준 — 실제 승인/반려는 결재 화면에서 한다.
 export default function OwnerDashboardView({ platforms, requests, platformId, onNavigate }) {
@@ -62,6 +63,9 @@ export default function OwnerDashboardView({ platforms, requests, platformId, on
 				<MyTasksCard platformId={platformId} canApprove onOpenApproval={() => onNavigate("approval")} />
 
 			</div>
+
+			{/* 캘린더는 따로 메뉴를 두지 않고 대시보드 아래에서 본다 — 현재 고른 플랫폼 기준 */}
+			<ManagerCalendarView platformId={platformId} embedded />
 		</div>
 	);
 }

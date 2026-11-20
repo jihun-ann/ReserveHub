@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { listAllScheduleRequests, listMembers } from "../../api/common.js";
 import MyTasksCard from "../../components/MyTasksCard.jsx";
+import ManagerCalendarView from "./ManagerCalendarView.jsx";
 
 export default function ManagerDashBoardView({ onNavigate, platformId, platformName }) {
 	const [members, setMembers] = useState([]);
@@ -61,6 +62,8 @@ export default function ManagerDashBoardView({ onNavigate, platformId, platformN
 			<div className="dash-grid">
 				<MyTasksCard platformId={platformId} canApprove onOpenApproval={() => onNavigate("approval")} />
 			</div>
+
+			<ManagerCalendarView platformId={platformId} embedded />
 		</div>
 	);
 }

@@ -908,3 +908,237 @@ body {
 .approval-query input[type="search"] {
   width: 220px;
 }
+
+/* ── 휴대폰 폭 공통 보정 ──
+   각 화면이 인라인 스타일로 잡은 크기는 그대로 두고, 좁은 화면에서만 넘치거나 잘리는 부분을 한 곳에서 고친다. */
+@media (max-width: 640px) {
+  .page-title {
+    font-size: 22px;
+  }
+
+  /* 제목 + 버튼 줄(결재 신청, 업무 요청하기 등)이 좁으면 버튼을 아래로 내린다 */
+  .page-header {
+    flex-wrap: wrap;
+  }
+
+  /* 탭이 화면보다 길면 탭 줄만 옆으로 넘긴다 */
+  .seg {
+    max-width: 100%;
+    overflow-x: auto;
+  }
+
+  .seg button {
+    flex-shrink: 0;
+    white-space: nowrap;
+  }
+
+  .approval-query input[type="search"] {
+    width: 100%;
+  }
+
+  .modal-box {
+    padding: 16px;
+    max-height: 90vh;
+  }
+
+  /* 표는 칸이 찌그러지지 않게 최소 폭을 두고, 감싼 카드(overflow-x: auto) 안에서 옆으로 넘긴다 */
+  .data-table {
+    min-width: 560px;
+  }
+
+  .data-table th,
+  .data-table td {
+    padding: 10px 12px;
+  }
+
+  /* iOS는 16px 미만 입력칸에 포커스하면 화면을 확대해 버린다 */
+  input,
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+}
+
+/* ── 휴가 사용일 선택 (결재 → 휴가 신청) ──
+   캘린더 화면의 날짜 칸과 같은 모양으로, 3주를 월요일부터 한 번에 보여준다. */
+.leave-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.leave-nav-label {
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.leave-nav-btn {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  color: var(--text);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color var(--tr), border-color var(--tr), color var(--tr);
+}
+
+.leave-nav-btn:hover:not(:disabled) {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--on-accent);
+}
+
+.leave-nav-btn:disabled {
+  opacity: .35;
+  cursor: default;
+}
+
+.leave-dow,
+.leave-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+}
+
+.leave-dow {
+  margin-bottom: 4px;
+}
+
+.leave-dow > div {
+  text-align: center;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-dim);
+  padding: 4px 0;
+}
+
+.leave-cell {
+  min-height: 64px;
+  border-radius: 8px;
+  border: 1.5px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  text-align: left;
+  cursor: pointer;
+  transition: background-color var(--tr), border-color var(--tr), color var(--tr);
+}
+
+.leave-cell:hover:not(:disabled) {
+  border-color: var(--accent);
+}
+
+.leave-cell .leave-date {
+  font-size: 13px;
+  font-weight: 600;
+  font-family: var(--mono);
+}
+
+.leave-cell .leave-note {
+  font-size: 11px;
+  color: var(--text-dim);
+}
+
+.leave-cell.sat .leave-date { color: var(--accent); }
+.leave-cell.sun .leave-date { color: var(--red); }
+
+.leave-cell.today {
+  border-color: var(--accent);
+}
+
+.leave-cell:disabled {
+  cursor: default;
+  opacity: .45;
+}
+
+.leave-cell.used {
+  background: var(--surface2);
+  opacity: 1;
+}
+
+.leave-cell.selected,
+.leave-cell.selected .leave-date,
+.leave-cell.selected .leave-note {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--on-accent);
+}
+
+
+.leave-legend {
+  display: flex;
+  gap: 16px;
+  font-size: 11px;
+  color: var(--text-dim);
+}
+
+.leave-legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.leave-legend i {
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+  border: 1px solid var(--border);
+}
+
+@media (max-width: 640px) {
+  .leave-cell {
+    min-height: 52px;
+    padding: 4px;
+  }
+
+  .leave-cell .leave-note {
+    font-size: 10px;
+  }
+}
+
+/* 고른 날짜들 — 날짜순으로 한 줄씩, 줄마다 휴가 종류(연차 / 시간 단위)를 정한다 */
+.leave-kind-list {
+  border-radius: var(--rs);
+  background: var(--surface2);
+  border: 1px solid var(--border);
+}
+
+.leave-kind {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 10px 12px;
+}
+
+.leave-kind + .leave-kind {
+  border-top: 1px solid var(--border);
+}
+
+.leave-kind-date {
+  min-width: 96px;
+  font-size: 13px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.leave-kind select {
+  height: 32px;
+  padding: 0 10px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  font-size: 13px;
+}

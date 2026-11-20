@@ -4,8 +4,7 @@ import java.security.SecureRandom;
 import java.util.stream.Collectors;
 import com.hub.reservehub.domain.user.UserService;
 import com.hub.reservehub.domain.approval.LogMemo;
-import com.hub.reservehub.domain.approval.ActionLog;
-import com.hub.reservehub.domain.approval.ActionLogRepository;
+import com.hub.reservehub.domain.approval.ActionLogger;
 import com.hub.reservehub.domain.approval.ActionTarget;
 import com.hub.reservehub.domain.pass.UserPassRepository;
 import com.hub.reservehub.security.AuthenticatedUser;
@@ -26,7 +25,7 @@ public class PlatformService {
     private final PlatformTaxAccountantRepository platformTaxAccountantRepository;
     private final UserPassRepository userPassRepository;
     private final PlatformAccessGuard platformAccessGuard;
-    private final ActionLogRepository actionLogRepository;
+    private final ActionLogger actionLogger;
     private final ManagerGroupService managerGroupService;
     private final UserService userService;
 
@@ -36,7 +35,7 @@ public class PlatformService {
             PlatformTaxAccountantRepository platformTaxAccountantRepository,
             UserPassRepository userPassRepository,
             PlatformAccessGuard platformAccessGuard,
-            ActionLogRepository actionLogRepository,
+            ActionLogger actionLogger,
             ManagerGroupService managerGroupService,
             UserService userService
     ) {
@@ -45,7 +44,7 @@ public class PlatformService {
         this.platformTaxAccountantRepository = platformTaxAccountantRepository;
         this.userPassRepository = userPassRepository;
         this.platformAccessGuard = platformAccessGuard;
-        this.actionLogRepository = actionLogRepository;
+        this.actionLogger = actionLogger;
         this.managerGroupService = managerGroupService;
         this.userService = userService;
     }
@@ -81,8 +80,7 @@ public class PlatformService {
     @Transactional(readOnly = true)
     public Platform get(UUID platformId, AuthenticatedUser user) {
         platformAccessGuard.verify(platformId, user);
-        return platformRepository.findById(platformId)
-                .orElseThrow(() -> new IllegalArgumentException("Platform not found"));
+        return platformRepository.getOrThrow(platformId);
     }
 
     @Transactional(readOnly = true)
@@ -113,8 +111,7 @@ public class PlatformService {
         if (platformRepository.existsByIdAndCreatedBy(platformId, user.getId())) {
             roles.add("OWNER");
         }
-        platformStaffRepository.findByPlatformIdAndUserId(platformId, user.getId()).stream()
-                .filter(PlatformStaff::isActive)
+        platformStaffRepository.findByPlatformIdAndUserIdAndIsActiveTrue(platformId, user.getId()).stream()
                 .forEach(staff -> roles.add(staff.getStaffRole().name()));
         boolean hasPass = userPassRepository.findByUserId(user.getId()).stream()
                 .anyMatch(userPass -> userPass.getPlatformId().equals(platformId));
@@ -148,8 +145,8 @@ public class PlatformService {
     PlatformStaff createAssignment(
             UUID platformId, UUID actorId, UUID targetUserId, StaffRole staffRole, @Nullable ManagerTier initialManagerTier
     ) {
-        if (platformStaffRepository.findByPlatformIdAndUserId(platformId, targetUserId).stream()
-                .anyMatch(s -> s.isActive() && s.getStaffRole() == staffRole)) {
+        if (platformStaffRepository.findByPlatformIdAndUserIdAndIsActiveTrue(platformId, targetUserId).stream()
+                .anyMatch(s -> s.getStaffRole() == staffRole)) {
             throw new IllegalStateException("이미 이 플랫폼에 배정된 역할입니다.");
         }
         if (staffRole == StaffRole.MANAGER
@@ -162,10 +159,10 @@ public class PlatformService {
                         ? new PlatformStaff(platformId, targetUserId, staffRole, initialManagerTier != null ? initialManagerTier : ManagerTier.LOW)
                         : new PlatformStaff(platformId, targetUserId, staffRole)
         );
-        actionLogRepository.save(ActionLog.of(
+        actionLogger.log(
                 platformId, actorId, ActionTarget.STAFF_CHANGE, staff.getId(), "ASSIGN_" + staffRole.name(),
                 "직원 배정: " + LogMemo.who(userService.get(targetUserId)) + " → " + (staffRole == StaffRole.MANAGER ? "매니저" : "강사")
-        ));
+        );
         return staff;
     }
 
@@ -176,9 +173,7 @@ public class PlatformService {
     // UI의 단일 "제거" 동작에 맞춰 한 번에 모두 해제한다. 등급 게이트는 배정과 대칭: 대상이 MANAGER를
     // 하나라도 갖고 있으면 HIGH, TUTOR뿐이면 MEDIUM 이상이 필요하다.
     public void removeStaff(UUID platformId, AuthenticatedUser actor, UUID targetUserId) {
-        List<PlatformStaff> staffList = platformStaffRepository.findByPlatformIdAndUserId(platformId, targetUserId).stream()
-                .filter(PlatformStaff::isActive)
-                .toList();
+        List<PlatformStaff> staffList = platformStaffRepository.findByPlatformIdAndUserIdAndIsActiveTrue(platformId, targetUserId);
         if (staffList.isEmpty()) {
             throw new IllegalArgumentException("Staff assignment not found");
         }
@@ -186,9 +181,9 @@ public class PlatformService {
         platformAccessGuard.verifyManagerPermission(platformId, actor, removesManager ? ManagerPermission.MANAGER_MANAGE : ManagerPermission.TUTOR_MANAGE);
 
         staffList.forEach(PlatformStaff::leave);
-        actionLogRepository.save(ActionLog.of(platformId, actor.getId(), ActionTarget.STAFF_CHANGE, targetUserId, "REMOVE",
+        actionLogger.log(platformId, actor.getId(), ActionTarget.STAFF_CHANGE, targetUserId, "REMOVE",
                 "직원 삭제: " + LogMemo.who(userService.get(targetUserId)) + " (해제된 역할: "
-                        + staffList.stream().map(st -> st.getStaffRole() == StaffRole.MANAGER ? "매니저" : "강사").distinct().collect(Collectors.joining(", ")) + ")"));
+                        + staffList.stream().map(st -> st.getStaffRole() == StaffRole.MANAGER ? "매니저" : "강사").distinct().collect(Collectors.joining(", ")) + ")");
     }
 
     @Transactional(readOnly = true)
@@ -205,16 +200,14 @@ public class PlatformService {
     // 전부에 동일하게 적용한다 — 소득유형은 역할이 아니라 사람에 딸린 정보이기 때문.
     public List<PlatformStaff> updateStaffIncomeType(UUID platformId, AuthenticatedUser actor, UUID targetUserId, IncomeType incomeType) {
         platformAccessGuard.verifyManagerPermission(platformId, actor, ManagerPermission.TUTOR_MANAGE);
-        List<PlatformStaff> staffList = platformStaffRepository.findByPlatformIdAndUserId(platformId, targetUserId).stream()
-                .filter(PlatformStaff::isActive)
-                .toList();
+        List<PlatformStaff> staffList = platformStaffRepository.findByPlatformIdAndUserIdAndIsActiveTrue(platformId, targetUserId);
         if (staffList.isEmpty()) {
             throw new IllegalArgumentException("Staff assignment not found");
         }
         IncomeType before = staffList.get(0).getIncomeType();
         staffList.forEach(staff -> staff.changeIncomeType(incomeType));
-        actionLogRepository.save(ActionLog.of(platformId, actor.getId(), ActionTarget.STAFF_CHANGE, targetUserId, "UPDATE_INCOME_TYPE",
-                "소득유형 변경: " + LogMemo.who(userService.get(targetUserId)) + " — " + LogMemo.changes(LogMemo.change("소득유형", before, incomeType))));
+        actionLogger.log(platformId, actor.getId(), ActionTarget.STAFF_CHANGE, targetUserId, "UPDATE_INCOME_TYPE",
+                "소득유형 변경: " + LogMemo.who(userService.get(targetUserId)) + " — " + LogMemo.changes(LogMemo.change("소득유형", before, incomeType)));
         return staffList;
     }
 
@@ -223,15 +216,15 @@ public class PlatformService {
     // MANAGER 몫 급여는 건드리지 않음). MANAGER 이상만 변경 가능.
     public PlatformStaff updateStaffSessionRate(UUID platformId, AuthenticatedUser actor, UUID targetUserId, int sessionRate) {
         platformAccessGuard.verifyManagerPermission(platformId, actor, ManagerPermission.TUTOR_MANAGE);
-        PlatformStaff staff = platformStaffRepository.findByPlatformIdAndUserId(platformId, targetUserId).stream()
-                .filter(s -> s.isActive() && s.getStaffRole() == StaffRole.TUTOR)
+        PlatformStaff staff = platformStaffRepository.findByPlatformIdAndUserIdAndIsActiveTrue(platformId, targetUserId).stream()
+                .filter(s -> s.getStaffRole() == StaffRole.TUTOR)
                 .findFirst()
                 .orElseThrow(() -> new IllegalArgumentException("이 사용자는 이 플랫폼의 강사가 아닙니다."));
         Integer before = staff.getSessionRate();
         staff.changeSessionRate(sessionRate);
-        actionLogRepository.save(ActionLog.of(platformId, actor.getId(), ActionTarget.STAFF_CHANGE, targetUserId, "UPDATE_SESSION_RATE",
+        actionLogger.log(platformId, actor.getId(), ActionTarget.STAFF_CHANGE, targetUserId, "UPDATE_SESSION_RATE",
                 "강사료 변경: " + LogMemo.who(userService.get(targetUserId)) + " — 회당 "
-                        + (before == null ? "미설정" : LogMemo.won(before)) + " → " + LogMemo.won(sessionRate)));
+                        + (before == null ? "미설정" : LogMemo.won(before)) + " → " + LogMemo.won(sessionRate));
         return staff;
     }
 
@@ -239,18 +232,17 @@ public class PlatformService {
     // OWNER only; ownership is already enforced by the guard (non-owning users never pass the OWNER branch).
     // OWNER만 호출 가능하며, 소유권 검증은 가드에서 이미 처리된다 (OWNER 분기는 소유자만 통과).
     public Platform setSuspended(UUID platformId, AuthenticatedUser owner, boolean suspended) {
-        platformAccessGuard.verify(platformId, owner);
-        Platform platform = platformRepository.findById(platformId)
-                .orElseThrow(() -> new IllegalArgumentException("Platform not found"));
+        platformAccessGuard.verifyOwner(platformId, owner);
+        Platform platform = platformRepository.getOrThrow(platformId);
         if (suspended) {
             platform.suspend();
         } else {
             platform.activate();
         }
-        actionLogRepository.save(ActionLog.of(
+        actionLogger.log(
                 platformId, owner.getId(), ActionTarget.PLATFORM_CHANGE, platformId, suspended ? "SUSPEND" : "ACTIVATE",
                 (suspended ? "플랫폼 운영 정지: '" : "플랫폼 정지 해제: '") + platform.getName() + "'"
-        ));
+        );
         return platform;
     }
 }

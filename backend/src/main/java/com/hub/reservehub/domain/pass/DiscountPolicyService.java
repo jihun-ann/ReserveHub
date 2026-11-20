@@ -1,8 +1,7 @@
 package com.hub.reservehub.domain.pass;
 
 import com.hub.reservehub.domain.approval.LogMemo;
-import com.hub.reservehub.domain.approval.ActionLog;
-import com.hub.reservehub.domain.approval.ActionLogRepository;
+import com.hub.reservehub.domain.approval.ActionLogger;
 import com.hub.reservehub.domain.approval.ActionTarget;
 import com.hub.reservehub.domain.platform.ManagerPermission;
 import com.hub.reservehub.domain.platform.PlatformAccessGuard;
@@ -20,15 +19,15 @@ public class DiscountPolicyService {
 
     private final DiscountPolicyRepository discountPolicyRepository;
     private final PlatformAccessGuard platformAccessGuard;
-    private final ActionLogRepository actionLogRepository;
+    private final ActionLogger actionLogger;
 
     public DiscountPolicyService(
             DiscountPolicyRepository discountPolicyRepository, PlatformAccessGuard platformAccessGuard,
-            ActionLogRepository actionLogRepository
+            ActionLogger actionLogger
     ) {
         this.discountPolicyRepository = discountPolicyRepository;
         this.platformAccessGuard = platformAccessGuard;
-        this.actionLogRepository = actionLogRepository;
+        this.actionLogger = actionLogger;
     }
 
     @Transactional
@@ -40,9 +39,9 @@ public class DiscountPolicyService {
         DiscountPolicy policy = discountPolicyRepository.save(
                 new DiscountPolicy(platformId, name, type, rate, conditionValue, couponCode, expiresAt, memo, actor.getId())
         );
-        actionLogRepository.save(ActionLog.of(platformId, actor.getId(), ActionTarget.DISCOUNT_CHANGE, policy.getId(), "CREATE",
+        actionLogger.log(platformId, actor.getId(), ActionTarget.DISCOUNT_CHANGE, policy.getId(), "CREATE",
                 "할인정책 등록: '" + name + "' (" + type + " " + rate + (conditionValue != null ? ", 조건 " + conditionValue : "")
-                        + (couponCode != null && !couponCode.isBlank() ? ", 쿠폰 " + couponCode : "") + ")"));
+                        + (couponCode != null && !couponCode.isBlank() ? ", 쿠폰 " + couponCode : "") + ")");
         return policy;
     }
 
@@ -58,7 +57,7 @@ public class DiscountPolicyService {
     public DiscountPolicy update(
             UUID policyId, AuthenticatedUser actor, String name, DiscountType type, BigDecimal rate, @Nullable Integer conditionValue
     ) {
-        DiscountPolicy policy = findPolicy(policyId);
+        DiscountPolicy policy = discountPolicyRepository.getOrThrow(policyId);
         platformAccessGuard.verifyManagerPermission(policy.getPlatformId(), actor, ManagerPermission.DISCOUNT_POLICY); // 할인정책: 임원급 매니저 전용
         String changes = LogMemo.changes(
                 LogMemo.change("이름", policy.getName(), name),
@@ -67,22 +66,17 @@ public class DiscountPolicyService {
                 LogMemo.change("조건값", policy.getConditionValue(), conditionValue)
         );
         policy.update(name, type, rate, conditionValue);
-        actionLogRepository.save(ActionLog.of(policy.getPlatformId(), actor.getId(), ActionTarget.DISCOUNT_CHANGE, policy.getId(), "UPDATE",
-                "할인정책 수정: '" + policy.getName() + "' — " + changes));
+        actionLogger.log(policy.getPlatformId(), actor.getId(), ActionTarget.DISCOUNT_CHANGE, policy.getId(), "UPDATE",
+                "할인정책 수정: '" + policy.getName() + "' — " + changes);
         return policy;
     }
 
     @Transactional
     public void deactivate(UUID policyId, AuthenticatedUser actor) {
-        DiscountPolicy policy = findPolicy(policyId);
+        DiscountPolicy policy = discountPolicyRepository.getOrThrow(policyId);
         platformAccessGuard.verifyManagerPermission(policy.getPlatformId(), actor, ManagerPermission.DISCOUNT_POLICY); // 할인정책: 임원급 매니저 전용
         policy.deactivate();
-        actionLogRepository.save(ActionLog.of(policy.getPlatformId(), actor.getId(), ActionTarget.DISCOUNT_CHANGE, policy.getId(), "DEACTIVATE",
-                "할인정책 비활성화: '" + policy.getName() + "'"));
-    }
-
-    private DiscountPolicy findPolicy(UUID policyId) {
-        return discountPolicyRepository.findById(policyId)
-                .orElseThrow(() -> new IllegalArgumentException("Discount policy not found"));
+        actionLogger.log(policy.getPlatformId(), actor.getId(), ActionTarget.DISCOUNT_CHANGE, policy.getId(), "DEACTIVATE",
+                "할인정책 비활성화: '" + policy.getName() + "'");
     }
 }

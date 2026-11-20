@@ -119,10 +119,34 @@ export const updateStaffSessionRate = (platformId, userId, sessionRate) =>
 export const updateTaxAccountantIncomeType = (platformId, userId, incomeType) =>
 	apiPatch(`/api/v1/platforms/${platformId}/tax-accountants/${userId}/income-type`, { incomeType });
 
-export const WORK_REQUEST_STATUS_LABEL = { REQUESTED: "요청됨", IN_PROGRESS: "진행 중", DONE: "완료", CANCELED: "취소" };
+export const WORK_REQUEST_STATUS_LABEL = {
+	REQUESTED: "요청됨", IN_PROGRESS: "진행 중", DONE: "완료", CANCELED: "취소", REVISION_REQUESTED: "추가 확인 요청"
+};
+export const WORK_REQUEST_OPEN = ["REQUESTED", "IN_PROGRESS", "REVISION_REQUESTED"];
 
-export const createWorkRequest = (platformId, { assigneeId, title, memo, dueDate }) =>
-	apiPost(`/api/v1/platforms/${platformId}/work-requests`, { assigneeId, title, memo: memo || null, dueDate: dueDate || null });
+// 목록에 보일 상태 — 담당자가 열어 봤지만 아직 시작 전이면 "확인함".
+export const workRequestStatusLabel = (r) =>
+	r.status === "REQUESTED" && r.readAt ? "확인함" : WORK_REQUEST_STATUS_LABEL[r.status];
+
+// 담당자 할 일 순서 — 긴급(등록 순) → 내가 정한 순서 → 등록 순.
+export const byWorkPriority = (a, b) =>
+	(b.urgent - a.urgent) ||
+	(a.urgent ? (a.createdAt < b.createdAt ? -1 : 1) : 0) ||
+	((a.sortOrder ?? Infinity) - (b.sortOrder ?? Infinity)) ||
+	(a.createdAt < b.createdAt ? -1 : 1);
+
+export const createWorkRequest = (platformId, { assigneeId, title, memo, dueDate, urgent }) =>
+	apiPost(`/api/v1/platforms/${platformId}/work-requests`, { assigneeId, title, memo: memo || null, dueDate: dueDate || null, urgent: !!urgent });
+
+export const markWorkRequestRead = (id) => apiPost(`/api/v1/work-requests/${id}/read`);
+
+export const markWorkRequestUrgent = (id) => apiPost(`/api/v1/work-requests/${id}/urgent`);
+
+export const reorderWorkRequests = (platformId, ids) =>
+	apiPost(`/api/v1/platforms/${platformId}/work-requests/order`, { ids });
+
+// 내가 직접 추가한 할 일만 지워진다.
+export const deleteWorkRequestTodo = (id) => apiDelete(`/api/v1/work-requests/${id}`);
 
 export const listWorkRequests = (platformId) =>
 	apiGet(`/api/v1/platforms/${platformId}/work-requests`);
@@ -456,3 +480,7 @@ export const cancelStaffInvitation = (id) => apiPost(`/api/v1/staff-invitations/
 export const previewStaffInvitation = (token) => apiGet(`/api/v1/staff-invitations/token/${token}`);
 
 export const acceptStaffInvitation = (token) => apiPost(`/api/v1/staff-invitations/token/${token}/accept`, {});
+
+// 휴가 한 건의 표시 — 시간 단위면 "날짜 (2시간)", 하루 연차면 "날짜 (연차)", 여러 날이면 "시작 ~ 끝".
+export const leavePeriodLabel = (r) =>
+	r.hours ? `${r.startDate} (${r.hours}시간)` : r.startDate === r.endDate ? `${r.startDate} (연차)` : `${r.startDate} ~ ${r.endDate}`;

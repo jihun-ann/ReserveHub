@@ -4,7 +4,7 @@ import com.hub.reservehub.domain.platform.ManagerPermission;
 import com.hub.reservehub.domain.outbox.OutboxEvent;
 import com.hub.reservehub.domain.outbox.OutboxEventRepository;
 import com.hub.reservehub.domain.platform.PlatformAccessGuard;
-import com.hub.reservehub.domain.platform.StaffRole;
+import com.hub.reservehub.domain.program.ProgramRepository;
 import com.hub.reservehub.domain.program.Slot;
 import com.hub.reservehub.domain.program.SlotRepository;
 import com.hub.reservehub.domain.reservation.Reservation;
@@ -31,20 +31,22 @@ public class ScheduleChangeRequestService {
     private final ScheduleChangeRequestRepository requestRepository;
     private final ReservationRepository reservationRepository;
     private final SlotRepository slotRepository;
+    private final ProgramRepository programRepository;
     private final PlatformAccessGuard platformAccessGuard;
-    private final ActionLogRepository actionLogRepository;
+    private final ActionLogger actionLogger;
     private final OutboxEventRepository outboxEventRepository;
 
     public ScheduleChangeRequestService(
             ScheduleChangeRequestRepository requestRepository, ReservationRepository reservationRepository,
-            SlotRepository slotRepository, PlatformAccessGuard platformAccessGuard,
-            ActionLogRepository actionLogRepository, OutboxEventRepository outboxEventRepository
+            SlotRepository slotRepository, ProgramRepository programRepository, PlatformAccessGuard platformAccessGuard,
+            ActionLogger actionLogger, OutboxEventRepository outboxEventRepository
     ) {
         this.requestRepository = requestRepository;
         this.reservationRepository = reservationRepository;
         this.slotRepository = slotRepository;
+        this.programRepository = programRepository;
         this.platformAccessGuard = platformAccessGuard;
-        this.actionLogRepository = actionLogRepository;
+        this.actionLogger = actionLogger;
         this.outboxEventRepository = outboxEventRepository;
     }
 
@@ -53,13 +55,14 @@ public class ScheduleChangeRequestService {
             UUID platformId, AuthenticatedUser actor, UUID reservationId,
             LocalDate requestedDate, @Nullable UUID requestedSlot, @Nullable String reason
     ) {
-        Reservation reservation = reservationRepository.findById(reservationId)
-                .orElseThrow(() -> new IllegalArgumentException("Reservation not found"));
-        Slot slot = slotRepository.findById(reservation.getSlotId())
-                .orElseThrow(() -> new IllegalArgumentException("Slot not found"));
-        if (!slot.getInstructorId().equals(actor.getId())) {
-            platformAccessGuard.verify(platformId, actor);
+        Reservation reservation = reservationRepository.getOrThrow(reservationId);
+        // 경로의 platformId를 믿지 않는다 — 예약(과 바꿀 슬롯)이 실제로 이 플랫폼 소속인지 확인하고,
+        // 담당 강사라도 이 플랫폼의 오너/활성 스태프여야 요청할 수 있다.
+        requireSlotOnPlatform(reservation.getSlotId(), platformId);
+        if (requestedSlot != null) {
+            requireSlotOnPlatform(requestedSlot, platformId);
         }
+        platformAccessGuard.verify(platformId, actor);
 
         ScheduleChangeRequest request = requestRepository.save(new ScheduleChangeRequest(
                 platformId, actor.getId(), reservationId, reservation.getScheduledDate(),
@@ -89,12 +92,12 @@ public class ScheduleChangeRequestService {
 
     @Transactional
     public ScheduleChangeRequest approve(UUID requestId, AuthenticatedUser actor, @Nullable String memo) {
-        ScheduleChangeRequest request = findRequest(requestId);
+        ScheduleChangeRequest request = requestRepository.getOrThrow(requestId);
         platformAccessGuard.verifyManagerPermission(request.getPlatformId(), actor, ManagerPermission.MENU_APPROVAL);
         request.approve(actor.getId(), memo);
 
-        actionLogRepository.save(ActionLog.of(request.getPlatformId(), actor.getId(), ActionTarget.SCHEDULE_REQUEST, request.getId(), "APPROVE",
-                LogMemo.with("일정 변경 승인: " + request.getOriginalDate() + " → " + request.getRequestedDate(), memo)));
+        actionLogger.log(request.getPlatformId(), actor.getId(), ActionTarget.SCHEDULE_REQUEST, request.getId(), "APPROVE",
+                LogMemo.with("일정 변경 승인: " + request.getOriginalDate() + " → " + request.getRequestedDate(), memo));
         outboxEventRepository.save(OutboxEvent.of(
                 "SCHEDULE_REQUEST", request.getId(), "schedule_request.approved", "reservehub.schedule",
                 Map.of("requestId", request.getId().toString())
@@ -105,12 +108,12 @@ public class ScheduleChangeRequestService {
 
     @Transactional
     public ScheduleChangeRequest reject(UUID requestId, AuthenticatedUser actor, @Nullable String memo) {
-        ScheduleChangeRequest request = findRequest(requestId);
+        ScheduleChangeRequest request = requestRepository.getOrThrow(requestId);
         platformAccessGuard.verifyManagerPermission(request.getPlatformId(), actor, ManagerPermission.MENU_APPROVAL);
         request.reject(actor.getId(), memo);
 
-        actionLogRepository.save(ActionLog.of(request.getPlatformId(), actor.getId(), ActionTarget.SCHEDULE_REQUEST, request.getId(), "REJECT",
-                LogMemo.with("일정 변경 반려: " + request.getOriginalDate() + " → " + request.getRequestedDate(), memo)));
+        actionLogger.log(request.getPlatformId(), actor.getId(), ActionTarget.SCHEDULE_REQUEST, request.getId(), "REJECT",
+                LogMemo.with("일정 변경 반려: " + request.getOriginalDate() + " → " + request.getRequestedDate(), memo));
         outboxEventRepository.save(OutboxEvent.of(
                 "SCHEDULE_REQUEST", request.getId(), "schedule_request.rejected", "reservehub.schedule",
                 Map.of("requestId", request.getId().toString())
@@ -119,8 +122,12 @@ public class ScheduleChangeRequestService {
         return request;
     }
 
-    private ScheduleChangeRequest findRequest(UUID requestId) {
-        return requestRepository.findById(requestId)
-                .orElseThrow(() -> new IllegalArgumentException("Schedule change request not found"));
+    private void requireSlotOnPlatform(UUID slotId, UUID platformId) {
+        Slot slot = slotRepository.getOrThrow(slotId);
+        UUID slotPlatformId = programRepository.getOrThrow(slot.getProgramId())
+                .getPlatformId();
+        if (!slotPlatformId.equals(platformId)) {
+            throw new IllegalArgumentException("이 플랫폼의 수업이 아닙니다.");
+        }
     }
 }

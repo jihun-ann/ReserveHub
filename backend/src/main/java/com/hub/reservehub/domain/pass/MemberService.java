@@ -1,5 +1,6 @@
 package com.hub.reservehub.domain.pass;
 
+import com.hub.reservehub.common.persistence.Lookups;
 import com.hub.reservehub.domain.platform.StaffRole;
 import com.hub.reservehub.domain.platform.ManagerPermission;
 import com.hub.reservehub.domain.platform.PlatformAccessGuard;
@@ -9,8 +10,6 @@ import com.hub.reservehub.security.AuthenticatedUser;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import java.util.function.Function;
-import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -49,10 +48,8 @@ public class MemberService {
         }
         List<UserPass> userPasses = userPassRepository.findByPlatformId(platformId);
 
-        Map<UUID, Pass> passesById = passRepository.findAllById(userPasses.stream().map(UserPass::getPassId).distinct().toList())
-                .stream().collect(Collectors.toMap(Pass::getId, Function.identity()));
-        Map<UUID, User> usersById = userRepository.findAllById(userPasses.stream().map(UserPass::getUserId).distinct().toList())
-                .stream().collect(Collectors.toMap(User::getId, Function.identity()));
+        Map<UUID, Pass> passesById = Lookups.byId(passRepository.findAllById(userPasses.stream().map(UserPass::getPassId).distinct().toList()), Pass::getId);
+        Map<UUID, User> usersById = Lookups.byId(userRepository.findAllById(userPasses.stream().map(UserPass::getUserId).distinct().toList()), User::getId);
 
         return userPasses.stream()
                 .map(up -> new MemberPass(up, passesById.get(up.getPassId()), usersById.get(up.getUserId()), contactVisible))
@@ -69,8 +66,7 @@ public class MemberService {
         if (!isMember) {
             throw new IllegalArgumentException("Member not found on this platform");
         }
-        User user = userRepository.findById(targetUserId)
-                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+        User user = userRepository.getOrThrow(targetUserId);
         user.updateGuardian(guardianName, guardianPhone);
         return user;
     }

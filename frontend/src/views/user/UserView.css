@@ -1209,10 +1209,6 @@
             display: flex;
         }
 
-        .collapse-btn {
-            display: none;
-        }
-
         .sidebar .logo-text {
             opacity: 1 !important;
             width: auto !important;

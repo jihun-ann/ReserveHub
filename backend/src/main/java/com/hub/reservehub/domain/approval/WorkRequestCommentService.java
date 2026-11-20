@@ -1,6 +1,6 @@
 package com.hub.reservehub.domain.approval;
 
-import com.hub.reservehub.domain.platform.PlatformAccessGuard;
+import com.hub.reservehub.common.persistence.Lookups;
 import com.hub.reservehub.domain.user.User;
 import com.hub.reservehub.domain.user.UserRepository;
 import com.hub.reservehub.security.AuthenticatedUser;
@@ -11,8 +11,6 @@ import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import java.util.function.Function;
-import java.util.stream.Collectors;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.lang.Nullable;
 import org.springframework.stereotype.Service;
@@ -21,36 +19,33 @@ import org.springframework.web.multipart.MultipartFile;
 
 /**
  * 업무 요청 댓글 — 오너·매니저·세무사가 자유롭게 이어서 남기고 파일을 첨부할 수 있다.
- * 접근 권한은 WorkRequestService.list()와 동일하게 verifyFinancialAccess로 검증한다
- * (오너, 이 플랫폼의 MANAGER, 또는 초대된 세무사).
+ * 접근 권한은 WorkRequestService.findViewable로 검증한다
+ * (오너·매니저·세무사, 또는 이 요청의 담당자).
  */
 @Service
 public class WorkRequestCommentService {
 
     private final WorkRequestCommentRepository commentRepository;
-    private final WorkRequestRepository workRequestRepository;
-    private final PlatformAccessGuard platformAccessGuard;
-    private final ActionLogRepository actionLogRepository;
+    private final WorkRequestService workRequestService;
+    private final ActionLogger actionLogger;
     private final UserRepository userRepository;
     private final Path uploadsRoot;
 
     public WorkRequestCommentService(
-            WorkRequestCommentRepository commentRepository, WorkRequestRepository workRequestRepository,
-            PlatformAccessGuard platformAccessGuard, ActionLogRepository actionLogRepository, UserRepository userRepository,
+            WorkRequestCommentRepository commentRepository, WorkRequestService workRequestService,
+            ActionLogger actionLogger, UserRepository userRepository,
             @Value("${app.uploads.dir:uploads}") String uploadsDir
     ) {
         this.commentRepository = commentRepository;
-        this.workRequestRepository = workRequestRepository;
-        this.platformAccessGuard = platformAccessGuard;
-        this.actionLogRepository = actionLogRepository;
+        this.workRequestService = workRequestService;
+        this.actionLogger = actionLogger;
         this.userRepository = userRepository;
         this.uploadsRoot = Path.of(uploadsDir, "work-requests");
     }
 
     @Transactional
     public CommentView create(UUID requestId, AuthenticatedUser actor, @Nullable String content, @Nullable MultipartFile file) {
-        WorkRequest request = findRequest(requestId);
-        platformAccessGuard.verifyFinancialAccess(request.getPlatformId(), actor);
+        WorkRequest request = workRequestService.findViewable(requestId, actor);
         if (!hasUsableContent(content, file)) {
             throw new IllegalArgumentException("Comment must have content or an attachment");
         }
@@ -60,9 +55,9 @@ public class WorkRequestCommentService {
                 : new WorkRequestComment(requestId, actor.getId(), content);
         comment = commentRepository.save(comment);
 
-        actionLogRepository.save(ActionLog.of(request.getPlatformId(), actor.getId(), ActionTarget.FINANCIAL_REQUEST, requestId, "COMMENT",
+        actionLogger.log(request.getPlatformId(), actor.getId(), ActionTarget.FINANCIAL_REQUEST, requestId, "COMMENT",
                 "업무 요청 '" + request.getTitle() + "'에 댓글 작성" + (file != null && !file.isEmpty() ? " (첨부파일 포함)" : "")
-                        + (content == null || content.isBlank() ? "" : ": \"" + LogMemo.clip(content, 80) + "\"")));
+                        + (content == null || content.isBlank() ? "" : ": \"" + LogMemo.clip(content, 80) + "\""));
         User author = userRepository.findById(actor.getId())
                 .orElseThrow(() -> new IllegalStateException("Authenticated user not found: " + actor.getId()));
         return new CommentView(comment, author);
@@ -70,11 +65,9 @@ public class WorkRequestCommentService {
 
     @Transactional(readOnly = true)
     public List<CommentView> list(UUID requestId, AuthenticatedUser actor) {
-        WorkRequest request = findRequest(requestId);
-        platformAccessGuard.verifyFinancialAccess(request.getPlatformId(), actor);
+        workRequestService.findViewable(requestId, actor);
         List<WorkRequestComment> comments = commentRepository.findByRequestIdOrderByCreatedAtAsc(requestId);
-        Map<UUID, User> usersById = userRepository.findAllById(comments.stream().map(WorkRequestComment::getAuthorId).distinct().toList())
-                .stream().collect(Collectors.toMap(User::getId, Function.identity()));
+        Map<UUID, User> usersById = Lookups.byId(userRepository.findAllById(comments.stream().map(WorkRequestComment::getAuthorId).distinct().toList()), User::getId);
         return comments.stream()
                 .map(comment -> new CommentView(comment, usersById.get(comment.getAuthorId())))
                 .toList();
@@ -85,10 +78,8 @@ public class WorkRequestCommentService {
 
     @Transactional(readOnly = true)
     public WorkRequestComment getAttachment(UUID requestId, UUID commentId, AuthenticatedUser actor) {
-        WorkRequest request = findRequest(requestId);
-        platformAccessGuard.verifyFinancialAccess(request.getPlatformId(), actor);
-        WorkRequestComment comment = commentRepository.findById(commentId)
-                .orElseThrow(() -> new IllegalArgumentException("Comment not found"));
+        workRequestService.findViewable(requestId, actor);
+        WorkRequestComment comment = commentRepository.getOrThrow(commentId);
         if (!comment.getRequestId().equals(requestId) || comment.getAttachmentStoredPath() == null) {
             throw new IllegalArgumentException("Attachment not found");
         }
@@ -125,9 +116,5 @@ public class WorkRequestCommentService {
         boolean hasFile = file != null && !file.isEmpty();
         return hasContent || hasFile;
     }
-
-    private WorkRequest findRequest(UUID requestId) {
-        return workRequestRepository.findById(requestId)
-                .orElseThrow(() -> new IllegalArgumentException("Work request not found"));
-    }
 }
+

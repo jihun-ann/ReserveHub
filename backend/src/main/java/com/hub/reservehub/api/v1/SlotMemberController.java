@@ -43,7 +43,7 @@ public class SlotMemberController {
 
     @GetMapping("/api/v1/programs/{programId}/slots/{slotId}/members")
     public List<SlotMemberResponse> listMembers(@PathVariable UUID programId, @PathVariable UUID slotId) {
-        return programService.listSlotMembers(programId, slotId).stream()
+        return programService.listSlotMembers(programId, slotId, currentAuthenticatedUser.get()).stream()
                 .map(SlotMemberResponse::from)
                 .toList();
     }

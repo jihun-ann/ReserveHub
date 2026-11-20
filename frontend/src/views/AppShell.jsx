@@ -27,7 +27,6 @@ import ManagerPaymentView from "./manager/ManagerPaymentView.jsx";
 import ManagerPaymentHistoryView from "./manager/ManagerPaymentHistoryView.jsx";
 import ManagerLessonManageView from "./manager/ManagerLessonManageView.jsx";
 import ManagerCalculationView from "./manager/ManagerCalculationView.jsx";
-import ManagerCalendarView from "./manager/ManagerCalendarView.jsx";
 import ManagerStudyHistoryView from "./manager/ManagerStudyHistoryView.jsx";
 import ManagerMypageView from "./manager/ManagerMypageView.jsx";
 
@@ -93,14 +92,15 @@ const COMMON_MENU = [
 const SHARED_BOTTOM_ROLES = ["TUTOR", "MANAGER"];
 // 세무사는 본인 레슨/예약이 없는 외부 조회 역할이라 캘린더가 의미 없다 — UserCalendarView는
 // #user-app 전용 CSS라 다른 셸에서 그냥 깨져 보이기도 해서, 아예 메뉴에서 뺀다.
-const NO_CALENDAR_ROLES = ["TAX_ACCOUNTANT"];
+// 오너·매니저는 캘린더가 대시보드 아래에 들어가 있어 메뉴를 따로 두지 않는다.
+const NO_CALENDAR_ROLES = ["TAX_ACCOUNTANT", "OWNER", "MANAGER"];
 const ROLE_MENU = {
 	OWNER: [
 		{ id: "dashboard", label: "대시보드", icon: LayoutDashboard },
 		{ id: "platform", label: "플랫폼 관리", icon: Building2 },
 		{ id: "facility", label: "시설물 관리", icon: Warehouse },
 		{ id: "facilityStatus", label: "시설물 현황", icon: ClipboardCheck },
-		{ id: "approval", label: "결재", icon: CheckSquare }
+		{ id: "approval", label: "결재", icon: CheckSquare },
 	],
 	MANAGER: [
 		{ id: "dashboard", label: "대시보드", icon: LayoutDashboard },
@@ -130,7 +130,7 @@ const ROLE_MENU = {
 	TAX_ACCOUNTANT: [
 		{ id: "revenue", label: "매출 집계", icon: Wallet },
 		{ id: "payroll", label: "직원 정보", icon: Receipt },
-		{ id: "approval", label: "결재", icon: CheckSquare }
+		{ id: "approval", label: "결재", icon: CheckSquare },
 	]
 };
 
@@ -297,9 +297,12 @@ export default function AppShell() {
 			saved?.platformId === currentPlatform.id && currentPlatform.roles.includes(saved.role);
 		const next = savedMatches ? saved.role : pickActiveRole(currentPlatform.roles);
 		setActiveRole(next);
-		setCurrentContext(
-			savedMatches && saved.context ? saved.context : DEFAULT_CONTEXT[next] || "calendar"
-		);
+		// 캘린더 메뉴가 없어진 역할(오너·매니저는 대시보드로 합침)은 저장된 캘린더 위치를 기본 화면으로 바꾼다.
+		const savedContext = savedMatches && saved.context && !(saved.context === "calendar" && NO_CALENDAR_ROLES.includes(next))
+			? saved.context
+			: null;
+		// 업무 요청 화면은 결재로 합쳐졌다.
+		setCurrentContext((savedContext === "workRequests" ? "approval" : savedContext) || DEFAULT_CONTEXT[next] || "calendar");
 		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [currentPlatformId, platforms]);
 
@@ -532,7 +535,7 @@ export default function AppShell() {
 					{showSharedMenu && (
 						<div className="nav-section">
 							{menuSections.length > 1 && <div className="nav-section-label">공유</div>}
-							{COMMON_MENU.map((m) => (
+							{COMMON_MENU.filter((m) => m.id !== "calendar" || !NO_CALENDAR_ROLES.includes(activeRole)).map((m) => (
 								<button
 									key={`shared-${m.id}`}
 									className={`nav-item ${currentContext === m.id ? "active" : ""}`}
@@ -588,11 +591,9 @@ export default function AppShell() {
 				</div>
 			);
 
-		if (currentContext === "calendar") {
+		// 오너·매니저의 캘린더는 대시보드 안에 있다 — 아래 역할별 switch에서 대시보드로 보낸다.
+		if (currentContext === "calendar" && activeRole !== "OWNER" && activeRole !== "MANAGER") {
 			switch (activeRole) {
-				case "OWNER":
-				case "MANAGER":
-					return <ManagerCalendarView platformId={currentPlatformId} />;
 				case "TUTOR":
 					return <TutorCalendarView />;
 				case "TAX_ACCOUNTANT":
@@ -621,6 +622,7 @@ export default function AppShell() {
 
 		if (activeRole === "OWNER") {
 			switch (currentContext) {
+				case "calendar":
 				case "dashboard":
 					return (
 						<OwnerDashboardView
@@ -643,8 +645,9 @@ export default function AppShell() {
 					return <OwnerFacilityView platformId={currentPlatformId} />;
 				case "facilityStatus":
 					return <ManagerFacilityView platformId={currentPlatformId} />;
+				case "workRequests": // 예전 업무 요청 화면 위치는 결재로 합쳐졌다
 				case "approval":
-					return <ApprovalView platformId={currentPlatformId} role="OWNER" />;
+					return <ApprovalView platformId={currentPlatformId} platforms={platforms} role="OWNER" />;
 				default:
 					return null;
 			}
@@ -655,6 +658,7 @@ export default function AppShell() {
 			const needed = MANAGER_PERMISSIONS.find((p) => p.menuId === currentContext)?.key;
 			const context = needed && !(permissions || []).includes(needed) ? "dashboard" : currentContext;
 			switch (context) {
+				case "calendar":
 				case "dashboard":
 					return (
 						<ManagerDashBoardView
@@ -663,8 +667,9 @@ export default function AppShell() {
 							platformName={currentPlatform?.name}
 						/>
 					);
+				case "workRequests": // 예전 업무 요청 화면 위치는 결재로 합쳐졌다
 				case "approval":
-					return <ApprovalView platformId={currentPlatformId} role="MANAGER" />;
+					return <ApprovalView platformId={currentPlatformId} platforms={platforms} role="MANAGER" />;
 				case "members":
 					return <ManagerMemberManageView platformId={currentPlatformId} />;
 				case "tutor":
@@ -701,8 +706,9 @@ export default function AppShell() {
 					return <TutorAttendanceView platformId={currentPlatformId} />;
 				case "attendHistory":
 					return <TutorAttendanceHistoryView platformId={currentPlatformId} />;
+				case "workRequests": // 예전 업무 요청 화면 위치는 결재로 합쳐졌다
 				case "approval":
-					return <ApprovalView platformId={currentPlatformId} role="TUTOR" />;
+					return <ApprovalView platformId={currentPlatformId} platforms={platforms} role="TUTOR" />;
 				case "facilityReport":
 					return <TutorFacilityReportView platformId={currentPlatformId} />;
 				default:
@@ -718,8 +724,9 @@ export default function AppShell() {
 					);
 				case "payroll":
 					return <TaxAccountantStaffView platformId={currentPlatformId} />;
+				case "workRequests": // 예전 업무 요청 화면 위치는 결재로 합쳐졌다
 				case "approval":
-					return <ApprovalView platformId={currentPlatformId} role="TAX_ACCOUNTANT" />;
+					return <ApprovalView platformId={currentPlatformId} platforms={platforms} role="TAX_ACCOUNTANT" />;
 				default:
 					return null;
 			}

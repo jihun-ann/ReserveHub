@@ -1,5 +1,6 @@
 package com.hub.reservehub.domain.lesson;
 
+import com.hub.reservehub.common.persistence.Lookups;
 import com.hub.reservehub.domain.platform.ManagerPermission;
 import com.hub.reservehub.domain.platform.PlatformAccessGuard;
 import com.hub.reservehub.domain.platform.StaffRole;
@@ -12,8 +13,6 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import java.util.function.Function;
-import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -56,10 +55,8 @@ public class LessonHistoryService {
     }
 
     private List<Entry> enrich(List<Lesson> lessons) {
-        Map<UUID, Program> programsById = programRepository.findAllById(lessons.stream().map(Lesson::getProgramId).distinct().toList())
-                .stream().collect(Collectors.toMap(Program::getId, Function.identity()));
-        Map<UUID, User> instructorsById = userRepository.findAllById(lessons.stream().map(Lesson::getInstructorId).distinct().toList())
-                .stream().collect(Collectors.toMap(User::getId, Function.identity()));
+        Map<UUID, Program> programsById = Lookups.byId(programRepository.findAllById(lessons.stream().map(Lesson::getProgramId).distinct().toList()), Program::getId);
+        Map<UUID, User> instructorsById = Lookups.byId(userRepository.findAllById(lessons.stream().map(Lesson::getInstructorId).distinct().toList()), User::getId);
 
         return lessons.stream().map(lesson -> {
             List<Attendance> attendances = attendanceRepository.findByLessonId(lesson.getId());

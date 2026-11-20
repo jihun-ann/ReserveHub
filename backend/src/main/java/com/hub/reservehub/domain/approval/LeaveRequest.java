@@ -41,6 +41,10 @@ public class LeaveRequest extends BaseEntity {
     @Nullable
     private String reason;
 
+    // 시간 단위 휴가면 쓰는 시간(1~7, 하루짜리만). null이면 종일(연차).
+    @Nullable
+    private Integer hours;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private RequestStatus status = RequestStatus.PENDING;
@@ -56,12 +60,20 @@ public class LeaveRequest extends BaseEntity {
         // JPA only.
     }
 
-    public LeaveRequest(UUID platformId, UUID requestedBy, LocalDate startDate, LocalDate endDate, @Nullable String reason) {
+    public LeaveRequest(
+            UUID platformId, UUID requestedBy, LocalDate startDate, LocalDate endDate, @Nullable Integer hours, @Nullable String reason
+    ) {
         this.platformId = platformId;
         this.requestedBy = requestedBy;
         this.startDate = startDate;
         this.endDate = endDate;
+        this.hours = hours;
         this.reason = reason;
+    }
+
+    @Nullable
+    public Integer getHours() {
+        return hours;
     }
 
     public UUID getId() {

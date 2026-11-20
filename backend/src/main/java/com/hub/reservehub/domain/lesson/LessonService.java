@@ -59,11 +59,9 @@ public class LessonService {
     // 자동 생성한다 — 매주 신청할 필요 없이 출석/세션차감 파이프라인(Attendance→UserPass.useSession)을
     // 그대로 탄다. 신청형(GROUP+APPLICATION)은 그대로 사용자가 직접 신청한 Reservation만 존재한다.
     public Lesson create(UUID slotId, AuthenticatedUser actor, LocalDate lessonDate) {
-        Slot slot = slotRepository.findById(slotId)
-                .orElseThrow(() -> new IllegalArgumentException("Slot not found"));
-        Program program = programRepository.findById(slot.getProgramId())
-                .orElseThrow(() -> new IllegalArgumentException("Program not found"));
-        verifyInstructorOrStaff(slot, program, actor);
+        Slot slot = slotRepository.getOrThrow(slotId);
+        Program program = programRepository.getOrThrow(slot.getProgramId());
+        platformAccessGuard.verifySelfOrMember(slot.getInstructorId(), program.getPlatformId(), actor);
 
         if (lessonRepository.findBySlotIdAndLessonDate(slotId, lessonDate).isPresent()) {
             throw new IllegalStateException("Lesson already recorded for this slot and date");
@@ -82,16 +80,16 @@ public class LessonService {
 
     @Transactional
     public Lesson start(UUID lessonId, AuthenticatedUser actor) {
-        Lesson lesson = findLesson(lessonId);
-        verifyInstructorOrStaff(lesson, actor);
+        Lesson lesson = lessonRepository.getOrThrow(lessonId);
+        platformAccessGuard.verifySelfOrMember(lesson.getInstructorId(), lesson.getPlatformId(), actor);
         lesson.start();
         return lesson;
     }
 
     @Transactional
     public Lesson end(UUID lessonId, AuthenticatedUser actor) {
-        Lesson lesson = findLesson(lessonId);
-        verifyInstructorOrStaff(lesson, actor);
+        Lesson lesson = lessonRepository.getOrThrow(lessonId);
+        platformAccessGuard.verifySelfOrMember(lesson.getInstructorId(), lesson.getPlatformId(), actor);
         lesson.end();
         return lesson;
     }
@@ -101,8 +99,8 @@ public class LessonService {
             UUID lessonId, AuthenticatedUser actor, UUID userId, AttendStatus status,
             @Nullable UUID reservationId, @Nullable String memo
     ) {
-        Lesson lesson = findLesson(lessonId);
-        verifyInstructorOrStaff(lesson, actor);
+        Lesson lesson = lessonRepository.getOrThrow(lessonId);
+        platformAccessGuard.verifySelfOrMember(lesson.getInstructorId(), lesson.getPlatformId(), actor);
 
         if (attendanceRepository.existsByLessonIdAndUserId(lessonId, userId)) {
             throw new IllegalStateException("Attendance already recorded for this user");
@@ -110,10 +108,8 @@ public class LessonService {
         Attendance attendance = attendanceRepository.save(new Attendance(lessonId, userId, reservationId, status, actor.getId(), memo));
 
         if ((status == AttendStatus.PRESENT || status == AttendStatus.LATE) && reservationId != null) {
-            Reservation reservation = reservationRepository.findById(reservationId)
-                    .orElseThrow(() -> new IllegalArgumentException("Reservation not found"));
-            UserPass userPass = userPassRepository.findById(reservation.getUserPassId())
-                    .orElseThrow(() -> new IllegalArgumentException("User pass not found"));
+            Reservation reservation = reservationRepository.getOrThrow(reservationId);
+            UserPass userPass = userPassRepository.getOrThrow(reservation.getUserPassId());
             userPass.useSession();
         }
 
@@ -122,25 +118,8 @@ public class LessonService {
 
     @Transactional(readOnly = true)
     public List<Attendance> listAttendance(UUID lessonId, AuthenticatedUser actor) {
-        Lesson lesson = findLesson(lessonId);
-        verifyInstructorOrStaff(lesson, actor);
+        Lesson lesson = lessonRepository.getOrThrow(lessonId);
+        platformAccessGuard.verifySelfOrMember(lesson.getInstructorId(), lesson.getPlatformId(), actor);
         return attendanceRepository.findByLessonId(lessonId);
-    }
-
-    private void verifyInstructorOrStaff(Lesson lesson, AuthenticatedUser actor) {
-        if (!lesson.getInstructorId().equals(actor.getId())) {
-            platformAccessGuard.verify(lesson.getPlatformId(), actor);
-        }
-    }
-
-    private void verifyInstructorOrStaff(Slot slot, Program program, AuthenticatedUser actor) {
-        if (!slot.getInstructorId().equals(actor.getId())) {
-            platformAccessGuard.verify(program.getPlatformId(), actor);
-        }
-    }
-
-    private Lesson findLesson(UUID lessonId) {
-        return lessonRepository.findById(lessonId)
-                .orElseThrow(() -> new IllegalArgumentException("Lesson not found"));
     }
 }

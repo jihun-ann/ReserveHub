@@ -1,9 +1,9 @@
 package com.hub.reservehub.domain.program;
 
+import com.hub.reservehub.common.persistence.Lookups;
 import com.hub.reservehub.domain.user.UserService;
 import com.hub.reservehub.domain.approval.LogMemo;
-import com.hub.reservehub.domain.approval.ActionLog;
-import com.hub.reservehub.domain.approval.ActionLogRepository;
+import com.hub.reservehub.domain.approval.ActionLogger;
 import com.hub.reservehub.domain.approval.ActionTarget;
 import com.hub.reservehub.domain.pass.Pass;
 import com.hub.reservehub.domain.pass.PassRepository;
@@ -15,8 +15,6 @@ import java.time.LocalTime;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import java.util.function.Function;
-import java.util.stream.Collectors;
 import org.springframework.lang.Nullable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -29,12 +27,12 @@ public class ProgramService {
     private final SlotMemberRepository slotMemberRepository;
     private final PassRepository passRepository;
     private final PlatformAccessGuard platformAccessGuard;
-    private final ActionLogRepository actionLogRepository;
+    private final ActionLogger actionLogger;
     private final UserService userService;
 
     public ProgramService(
             ProgramRepository programRepository, SlotRepository slotRepository, SlotMemberRepository slotMemberRepository,
-            PassRepository passRepository, PlatformAccessGuard platformAccessGuard, ActionLogRepository actionLogRepository,
+            PassRepository passRepository, PlatformAccessGuard platformAccessGuard, ActionLogger actionLogger,
             UserService userService
     ) {
         this.programRepository = programRepository;
@@ -42,7 +40,7 @@ public class ProgramService {
         this.slotMemberRepository = slotMemberRepository;
         this.passRepository = passRepository;
         this.platformAccessGuard = platformAccessGuard;
-        this.actionLogRepository = actionLogRepository;
+        this.actionLogger = actionLogger;
         this.userService = userService;
     }
 
@@ -66,16 +64,15 @@ public class ProgramService {
         if (type == ProgramType.GROUP && enrollmentMode == null) {
             throw new IllegalArgumentException("enrollmentMode is required for GROUP programs (FIXED or APPLICATION)");
         }
-        Pass pass = passRepository.findById(passId)
-                .orElseThrow(() -> new IllegalArgumentException("Pass not found: " + passId));
+        Pass pass = passRepository.getOrThrow(passId);
         if (!pass.getPlatformId().equals(platformId)) {
             throw new IllegalArgumentException("Pass does not belong to this platform");
         }
         Program program = programRepository.save(new Program(
                 platformId, pass.getName(), type, enrollmentMode, capacity, durationMin, description, passId
         ));
-        actionLogRepository.save(ActionLog.of(platformId, actor.getId(), ActionTarget.PROGRAM_CHANGE, program.getId(), "CREATE",
-                "프로그램 등록: '" + pass.getName() + "' (" + type + ", 정원 " + capacity + "명, " + durationMin + "분)"));
+        actionLogger.log(platformId, actor.getId(), ActionTarget.PROGRAM_CHANGE, program.getId(), "CREATE",
+                "프로그램 등록: '" + pass.getName() + "' (" + type + ", 정원 " + capacity + "명, " + durationMin + "분)");
         return program;
     }
 
@@ -84,7 +81,7 @@ public class ProgramService {
             UUID programId, AuthenticatedUser actor, ProgramType type, @Nullable EnrollmentMode enrollmentMode,
             short capacity, short durationMin, @Nullable String description
     ) {
-        Program program = findProgram(programId);
+        Program program = programRepository.getOrThrow(programId);
         platformAccessGuard.verifyManagerPermission(program.getPlatformId(), actor, ManagerPermission.PROGRAM_MANAGE); // 프로그램 운영: 중간 등급 이상 매니저
         if (type == ProgramType.GROUP && enrollmentMode == null) {
             throw new IllegalArgumentException("enrollmentMode is required for GROUP programs (FIXED or APPLICATION)");
@@ -97,8 +94,8 @@ public class ProgramService {
                 LogMemo.change("설명", program.getDescription(), description)
         );
         program.update(type, enrollmentMode, capacity, durationMin, description);
-        actionLogRepository.save(ActionLog.of(program.getPlatformId(), actor.getId(), ActionTarget.PROGRAM_CHANGE, program.getId(), "UPDATE",
-                "프로그램 수정: '" + programName(program) + "' — " + changes));
+        actionLogger.log(program.getPlatformId(), actor.getId(), ActionTarget.PROGRAM_CHANGE, program.getId(), "UPDATE",
+                "프로그램 수정: '" + programName(program) + "' — " + changes);
         return program;
     }
 
@@ -111,24 +108,24 @@ public class ProgramService {
 
     @Transactional(readOnly = true)
     public ProgramView get(UUID programId) {
-        Program program = findProgram(programId);
+        Program program = programRepository.getOrThrow(programId);
         return withLinkedPasses(List.of(program)).get(0);
     }
 
     private List<ProgramView> withLinkedPasses(List<Program> programs) {
-        Map<UUID, Pass> passesById = passRepository.findAllById(
+        Map<UUID, Pass> passesById = Lookups.byId(passRepository.findAllById(
                 programs.stream().map(Program::getPassId).filter(java.util.Objects::nonNull).distinct().toList()
-        ).stream().collect(Collectors.toMap(Pass::getId, Function.identity()));
+        ), Pass::getId);
         return programs.stream().map(p -> new ProgramView(p, p.getPassId() != null ? passesById.get(p.getPassId()) : null)).toList();
     }
 
     @Transactional
     public void deactivate(UUID programId, AuthenticatedUser actor) {
-        Program program = findProgram(programId);
+        Program program = programRepository.getOrThrow(programId);
         platformAccessGuard.verifyManagerPermission(program.getPlatformId(), actor, ManagerPermission.PROGRAM_MANAGE); // 프로그램 운영: 중간 등급 이상 매니저
         program.deactivate();
-        actionLogRepository.save(ActionLog.of(program.getPlatformId(), actor.getId(), ActionTarget.PROGRAM_CHANGE, program.getId(), "DEACTIVATE",
-                "프로그램 비활성화: '" + programName(program) + "'"));
+        actionLogger.log(program.getPlatformId(), actor.getId(), ActionTarget.PROGRAM_CHANGE, program.getId(), "DEACTIVATE",
+                "프로그램 비활성화: '" + programName(program) + "'");
     }
 
     @Transactional
@@ -136,12 +133,12 @@ public class ProgramService {
             UUID programId, AuthenticatedUser actor, @Nullable String name, UUID instructorId, DayOfWeek dayOfWeek,
             LocalTime startTime, LocalTime endTime, LocalDate validFrom, @Nullable LocalDate validUntil
     ) {
-        Program program = findProgram(programId);
+        Program program = programRepository.getOrThrow(programId);
         platformAccessGuard.verifyManagerPermission(program.getPlatformId(), actor, ManagerPermission.PROGRAM_MANAGE); // 프로그램 운영: 중간 등급 이상 매니저
         Slot slot = slotRepository.save(new Slot(programId, name, instructorId, dayOfWeek, startTime, endTime, validFrom, validUntil));
-        actionLogRepository.save(ActionLog.of(program.getPlatformId(), actor.getId(), ActionTarget.PROGRAM_CHANGE, slot.getId(), "ADD_SLOT",
+        actionLogger.log(program.getPlatformId(), actor.getId(), ActionTarget.PROGRAM_CHANGE, slot.getId(), "ADD_SLOT",
                 "수업 슬롯 추가: '" + programName(program) + "' " + dayOfWeek + " " + startTime + "~" + endTime
-                        + ", 강사 " + LogMemo.who(userService.get(instructorId))));
+                        + ", 강사 " + LogMemo.who(userService.get(instructorId)));
         return slot;
     }
 
@@ -152,13 +149,12 @@ public class ProgramService {
 
     @Transactional
     public void deactivateSlot(UUID programId, UUID slotId, AuthenticatedUser actor) {
-        Program program = findProgram(programId);
+        Program program = programRepository.getOrThrow(programId);
         platformAccessGuard.verifyManagerPermission(program.getPlatformId(), actor, ManagerPermission.PROGRAM_MANAGE); // 프로그램 운영: 중간 등급 이상 매니저
-        Slot slot = slotRepository.findById(slotId)
-                .orElseThrow(() -> new IllegalArgumentException("Slot not found"));
+        Slot slot = slotRepository.getOrThrow(slotId);
         slot.deactivate();
-        actionLogRepository.save(ActionLog.of(program.getPlatformId(), actor.getId(), ActionTarget.PROGRAM_CHANGE, slot.getId(), "DEACTIVATE_SLOT",
-                "수업 슬롯 비활성화: '" + programName(program) + "' " + slot.getDayOfWeek() + " " + slot.getStartTime() + "~" + slot.getEndTime()));
+        actionLogger.log(program.getPlatformId(), actor.getId(), ActionTarget.PROGRAM_CHANGE, slot.getId(), "DEACTIVATE_SLOT",
+                "수업 슬롯 비활성화: '" + programName(program) + "' " + slot.getDayOfWeek() + " " + slot.getStartTime() + "~" + slot.getEndTime());
     }
 
     @Transactional(readOnly = true)
@@ -166,8 +162,7 @@ public class ProgramService {
     // 강사 본인의 고정 주간 시간표(소속된 모든 플랫폼 포함) — 본인 데이터라 가드가 필요 없다.
     public List<SlotWithProgram> listMySlots(AuthenticatedUser actor) {
         List<Slot> slots = slotRepository.findByInstructorIdAndIsActiveTrue(actor.getId());
-        Map<UUID, Program> programsById = programRepository.findAllById(slots.stream().map(Slot::getProgramId).distinct().toList())
-                .stream().collect(Collectors.toMap(Program::getId, Function.identity()));
+        Map<UUID, Program> programsById = Lookups.byId(programRepository.findAllById(slots.stream().map(Slot::getProgramId).distinct().toList()), Program::getId);
         return slots.stream().map(slot -> new SlotWithProgram(slot, programsById.get(slot.getProgramId()))).toList();
     }
 
@@ -179,7 +174,7 @@ public class ProgramService {
     // 으로 처리하므로 고정 로스터를 쓰지 않는다. 정원(capacity)을 넘길 수 없고, 이미 등록된 사람은
     // 중복 등록할 수 없다.
     public SlotMember addSlotMember(UUID programId, UUID slotId, AuthenticatedUser actor, UUID userId, UUID userPassId) {
-        Program program = findProgram(programId);
+        Program program = programRepository.getOrThrow(programId);
         platformAccessGuard.verifyManagerPermission(program.getPlatformId(), actor, ManagerPermission.PROGRAM_MANAGE); // 프로그램 운영: 중간 등급 이상 매니저
         if (!program.isFixedRoster()) {
             throw new IllegalStateException("Application-mode GROUP programs use weekly reservations, not a fixed roster");
@@ -192,36 +187,36 @@ public class ProgramService {
             throw new IllegalStateException("Slot roster is full");
         }
         SlotMember member = slotMemberRepository.save(new SlotMember(slotId, userId, userPassId));
-        actionLogRepository.save(ActionLog.of(program.getPlatformId(), actor.getId(), ActionTarget.PROGRAM_CHANGE, member.getId(), "ADD_SLOT_MEMBER",
+        actionLogger.log(program.getPlatformId(), actor.getId(), ActionTarget.PROGRAM_CHANGE, member.getId(), "ADD_SLOT_MEMBER",
                 "슬롯 명단 추가: " + LogMemo.who(userService.get(userId)) + " → '" + programName(program) + "' "
-                        + slot.getDayOfWeek() + " " + slot.getStartTime() + "~" + slot.getEndTime()));
+                        + slot.getDayOfWeek() + " " + slot.getStartTime() + "~" + slot.getEndTime());
         return member;
     }
 
     @Transactional(readOnly = true)
-    public List<SlotMember> listSlotMembers(UUID programId, UUID slotId) {
+    // 수강생 명단은 개인정보라 이 플랫폼의 오너/활성 스태프만 볼 수 있다.
+    public List<SlotMember> listSlotMembers(UUID programId, UUID slotId, AuthenticatedUser actor) {
+        platformAccessGuard.verify(programRepository.getOrThrow(programId).getPlatformId(), actor);
         findSlot(slotId, programId);
         return slotMemberRepository.findBySlotIdAndIsActiveTrue(slotId);
     }
 
     @Transactional
     public void removeSlotMember(UUID programId, UUID slotId, UUID memberId, AuthenticatedUser actor) {
-        Program program = findProgram(programId);
+        Program program = programRepository.getOrThrow(programId);
         platformAccessGuard.verifyManagerPermission(program.getPlatformId(), actor, ManagerPermission.PROGRAM_MANAGE); // 프로그램 운영: 중간 등급 이상 매니저
         findSlot(slotId, programId);
-        SlotMember member = slotMemberRepository.findById(memberId)
-                .orElseThrow(() -> new IllegalArgumentException("Slot member not found"));
+        SlotMember member = slotMemberRepository.getOrThrow(memberId);
         if (!member.getSlotId().equals(slotId)) {
             throw new IllegalArgumentException("Slot member does not belong to this slot");
         }
         member.remove();
-        actionLogRepository.save(ActionLog.of(program.getPlatformId(), actor.getId(), ActionTarget.PROGRAM_CHANGE, member.getId(), "REMOVE_SLOT_MEMBER",
-                "슬롯 명단 제외: " + LogMemo.who(userService.get(member.getUserId())) + " ← '" + programName(program) + "'"));
+        actionLogger.log(program.getPlatformId(), actor.getId(), ActionTarget.PROGRAM_CHANGE, member.getId(), "REMOVE_SLOT_MEMBER",
+                "슬롯 명단 제외: " + LogMemo.who(userService.get(member.getUserId())) + " ← '" + programName(program) + "'");
     }
 
     private Slot findSlot(UUID slotId, UUID programId) {
-        Slot slot = slotRepository.findById(slotId)
-                .orElseThrow(() -> new IllegalArgumentException("Slot not found"));
+        Slot slot = slotRepository.getOrThrow(slotId);
         if (!slot.getProgramId().equals(programId)) {
             throw new IllegalArgumentException("Slot does not belong to this program");
         }
@@ -232,10 +227,5 @@ public class ProgramService {
     private String programName(Program program) {
         return program.getPassId() == null ? program.getName()
                 : passRepository.findById(program.getPassId()).map(Pass::getName).orElse(program.getName());
-    }
-
-    private Program findProgram(UUID programId) {
-        return programRepository.findById(programId)
-                .orElseThrow(() -> new IllegalArgumentException("Program not found"));
     }
 }

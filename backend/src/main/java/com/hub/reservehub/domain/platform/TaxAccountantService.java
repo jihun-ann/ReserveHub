@@ -1,6 +1,6 @@
 package com.hub.reservehub.domain.platform;
 
-import com.hub.reservehub.common.exception.PlatformAccessDeniedException;
+import com.hub.reservehub.common.persistence.Lookups;
 import com.hub.reservehub.domain.lesson.AttendStatus;
 import com.hub.reservehub.domain.lesson.AttendanceRepository;
 import com.hub.reservehub.domain.lesson.Lesson;
@@ -16,8 +16,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import java.util.function.Function;
-import java.util.stream.Collectors;
 import org.springframework.lang.Nullable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -61,7 +59,7 @@ public class TaxAccountantService {
             UUID platformId, AuthenticatedUser owner, String username, String email,
             String rawPassword, String name, String phone
     ) {
-        requireOwner(platformId, owner);
+        platformAccessGuard.verifyOwner(platformId, owner);
         User accountant = userService.findOrCreateWithRole(username, email, rawPassword, Role.TAX_ACCOUNTANT, name, phone);
 
         platformTaxAccountantRepository.findByPlatformIdAndUserId(platformId, accountant.getId())
@@ -74,7 +72,7 @@ public class TaxAccountantService {
 
     @Transactional
     public void revoke(UUID platformId, AuthenticatedUser owner, UUID accountantUserId) {
-        requireOwner(platformId, owner);
+        platformAccessGuard.verifyOwner(platformId, owner);
         PlatformTaxAccountant grant = platformTaxAccountantRepository.findByPlatformIdAndUserId(platformId, accountantUserId)
                 .orElseThrow(() -> new IllegalArgumentException("Tax accountant grant not found"));
         grant.leave();
@@ -82,10 +80,9 @@ public class TaxAccountantService {
 
     @Transactional(readOnly = true)
     public List<GrantedAccountant> listGranted(UUID platformId, AuthenticatedUser owner) {
-        requireOwner(platformId, owner);
+        platformAccessGuard.verifyOwner(platformId, owner);
         List<PlatformTaxAccountant> grants = platformTaxAccountantRepository.findByPlatformIdAndIsActiveTrue(platformId);
-        Map<UUID, User> usersById = userRepository.findAllById(grants.stream().map(PlatformTaxAccountant::getUserId).toList())
-                .stream().collect(Collectors.toMap(User::getId, Function.identity()));
+        Map<UUID, User> usersById = Lookups.byId(userRepository.findAllById(grants.stream().map(PlatformTaxAccountant::getUserId).toList()), User::getId);
         return grants.stream()
                 .map(grant -> usersById.get(grant.getUserId()))
                 .filter(java.util.Objects::nonNull)
@@ -100,7 +97,7 @@ public class TaxAccountantService {
     @Transactional
     // 세무사 본인의 소득 구분(보통 사업소득자) 지정 — OWNER만 변경 가능.
     public PlatformTaxAccountant updateIncomeType(UUID platformId, AuthenticatedUser owner, UUID accountantUserId, IncomeType incomeType) {
-        requireOwner(platformId, owner);
+        platformAccessGuard.verifyOwner(platformId, owner);
         PlatformTaxAccountant grant = platformTaxAccountantRepository.findByPlatformIdAndUserId(platformId, accountantUserId)
                 .orElseThrow(() -> new IllegalArgumentException("Tax accountant grant not found"));
         grant.changeIncomeType(incomeType);
@@ -115,16 +112,14 @@ public class TaxAccountantService {
     // 건드리지 않는다(매니저 급여는 아직 별도 관리 기능이 없음).
     public List<StaffPayrollEntry> listStaffPayroll(UUID platformId, AuthenticatedUser actor, int year, int month) {
         platformAccessGuard.verifyFinancialAccess(platformId, actor);
-        Platform platform = platformRepository.findById(platformId)
-                .orElseThrow(() -> new IllegalArgumentException("Platform not found"));
+        Platform platform = platformRepository.getOrThrow(platformId);
         List<PlatformStaff> staffList = platformStaffRepository.findByPlatformIdAndIsActiveTrue(platformId);
         List<PlatformTaxAccountant> accountantGrants = platformTaxAccountantRepository.findByPlatformIdAndIsActiveTrue(platformId);
 
         List<UUID> userIds = new ArrayList<>(staffList.stream().map(PlatformStaff::getUserId).distinct().toList());
         userIds.addAll(accountantGrants.stream().map(PlatformTaxAccountant::getUserId).distinct().toList());
         userIds.add(platform.getCreatedBy());
-        Map<UUID, User> usersById = userRepository.findAllById(userIds).stream()
-                .collect(Collectors.toMap(User::getId, Function.identity()));
+        Map<UUID, User> usersById = Lookups.byId(userRepository.findAllById(userIds), User::getId);
 
         List<StaffPayrollEntry> entries = new ArrayList<>();
         User owner = usersById.get(platform.getCreatedBy());
@@ -182,12 +177,6 @@ public class TaxAccountantService {
                 incomeType, incomeType != null ? WithholdingTaxCalculator.rateLabel(incomeType) : null,
                 sessionRate, lessonCount, attendanceCount, grossSettlement, withholdingTaxAmount, netSettlement
         );
-    }
-
-    private void requireOwner(UUID platformId, AuthenticatedUser owner) {
-        if (!platformRepository.existsByIdAndCreatedBy(platformId, owner.getId())) {
-            throw new PlatformAccessDeniedException(platformId);
-        }
     }
 
     public record StaffPayrollEntry(

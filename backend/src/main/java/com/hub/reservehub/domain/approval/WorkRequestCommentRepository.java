@@ -2,8 +2,8 @@ package com.hub.reservehub.domain.approval;
 
 import java.util.List;
 import java.util.UUID;
-import org.springframework.data.jpa.repository.JpaRepository;
+import com.hub.reservehub.common.persistence.BaseRepository;
 
-public interface WorkRequestCommentRepository extends JpaRepository<WorkRequestComment, UUID> {
+public interface WorkRequestCommentRepository extends BaseRepository<WorkRequestComment, UUID> {
     List<WorkRequestComment> findByRequestIdOrderByCreatedAtAsc(UUID requestId);
 }

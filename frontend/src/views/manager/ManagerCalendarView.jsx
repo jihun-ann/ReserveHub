@@ -11,7 +11,8 @@ function isoDate(year, month, day) {
 	return `${year}-${pad(month)}-${pad(day)}`;
 }
 
-export default function ManagerCalendarView({ platformId }) {
+// embedded: 오너·매니저 대시보드 아래에 붙여 쓸 때 — 페이지 제목 대신 섹션 제목만 단다.
+export default function ManagerCalendarView({ platformId, embedded = false }) {
 	const today0 = new Date();
 	const [calYear, setCalYear] = useState(today0.getFullYear());
 	const [calMonth, setCalMonth] = useState(today0.getMonth() + 1);
@@ -90,11 +91,15 @@ export default function ManagerCalendarView({ platformId }) {
 
 	return (
 		<>
-		<div className="page" id="manager-calendar">
-			<div className="page-header">
-				<div className="page-title">캘린더</div>
-				<div className="page-subtitle">플랫폼 전체 일정</div>
-			</div>
+		<div {...(embedded ? { style: { marginTop: "24px" } } : { className: "page", id: "manager-calendar" })}>
+			{embedded ? (
+				<div style={{ fontSize: "16px", fontWeight: 600, marginBottom: "12px" }}>캘린더</div>
+			) : (
+				<div className="page-header">
+					<div className="page-title">캘린더</div>
+					<div className="page-subtitle">플랫폼 전체 일정</div>
+				</div>
+			)}
 
 			<div style={{ display: "flex", alignItems: "center", gap: "16px", flexWrap: "wrap", padding: "12px 16px", background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "10px", marginBottom: "20px" }}>
 				<span style={{ fontSize: "11px", color: "var(--text-dim)" }}>범례</span>

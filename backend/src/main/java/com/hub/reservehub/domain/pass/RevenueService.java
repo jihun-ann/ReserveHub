@@ -1,5 +1,6 @@
 package com.hub.reservehub.domain.pass;
 
+import com.hub.reservehub.common.persistence.Lookups;
 import com.hub.reservehub.domain.platform.PlatformAccessGuard;
 import com.hub.reservehub.domain.program.Program;
 import com.hub.reservehub.domain.program.ProgramRepository;
@@ -15,8 +16,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import java.util.function.Function;
-import java.util.stream.Collectors;
 import org.springframework.lang.Nullable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -55,12 +54,11 @@ public class RevenueService {
         List<Order> orders = ordersForMonth(platformId, year, month);
         List<OrderItem> items = orderItemRepository.findByOrderIdIn(orders.stream().map(Order::getId).toList());
 
-        Map<UUID, User> usersById = userRepository.findAllById(orders.stream().map(Order::getUserId).distinct().toList())
-                .stream().collect(Collectors.toMap(User::getId, Function.identity()));
-        Map<UUID, Program> programsById = programRepository.findAllById(
+        Map<UUID, User> usersById = Lookups.byId(userRepository.findAllById(orders.stream().map(Order::getUserId).distinct().toList()), User::getId);
+        Map<UUID, Program> programsById = Lookups.byId(programRepository.findAllById(
                 items.stream().map(OrderItem::getProgramId).filter(java.util.Objects::nonNull).distinct().toList()
-        ).stream().collect(Collectors.toMap(Program::getId, Function.identity()));
-        Map<UUID, Order> ordersById = orders.stream().collect(Collectors.toMap(Order::getId, Function.identity()));
+        ), Program::getId);
+        Map<UUID, Order> ordersById = Lookups.byId(orders, Order::getId);
 
         List<RevenueRecord> records = new ArrayList<>();
         for (OrderItem item : items) {

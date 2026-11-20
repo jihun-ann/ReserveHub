@@ -14,7 +14,6 @@ import com.hub.reservehub.domain.user.UserRepository;
 import com.hub.reservehub.domain.user.Role;
 import com.hub.reservehub.domain.user.User;
 import com.hub.reservehub.security.AuthenticatedUser;
-import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.security.access.AccessDeniedException;
@@ -30,13 +29,13 @@ class WorkRequestServiceTest {
     private final WorkRequestRepository repository = mock(WorkRequestRepository.class);
     private final PlatformAccessGuard guard = mock(PlatformAccessGuard.class);
     private final WorkRequestService service = new WorkRequestService(
-            repository, guard, mock(ActionLogRepository.class), mock(PlatformRepository.class),
+            repository, guard, mock(ActionLogger.class), mock(PlatformRepository.class),
             mock(PlatformStaffRepository.class), mock(PlatformTaxAccountantRepository.class), mock(UserRepository.class)
     );
 
     private WorkRequest openRequest() {
         WorkRequest request = new WorkRequest(platformId, requesterId, assigneeId, "명세서 보내주세요", null, null);
-        when(repository.findById(any())).thenReturn(Optional.of(request));
+        when(repository.getOrThrow(any())).thenReturn(request);
         return request;
     }
 
@@ -79,8 +78,45 @@ class WorkRequestServiceTest {
     }
 
     @Test
+    void requesterSendsDoneWorkBackAndAssigneeMustReconfirm() {
+        WorkRequest request = openRequest();
+        assertThrows(IllegalStateException.class, () -> service.changeStatus(UUID.randomUUID(), as(requesterId), WorkRequestStatus.REVISION_REQUESTED));
+        service.markRead(UUID.randomUUID(), as(assigneeId));
+        service.changeStatus(UUID.randomUUID(), as(assigneeId), WorkRequestStatus.DONE);
+        assertThrows(AccessDeniedException.class, () -> service.changeStatus(UUID.randomUUID(), as(assigneeId), WorkRequestStatus.REVISION_REQUESTED));
+
+        service.changeStatus(UUID.randomUUID(), as(requesterId), WorkRequestStatus.REVISION_REQUESTED);
+        assertEquals(WorkRequestStatus.REVISION_REQUESTED, request.getStatus());
+        assertEquals(null, request.getReadAt());
+        service.changeStatus(UUID.randomUUID(), as(assigneeId), WorkRequestStatus.DONE);
+        assertEquals(WorkRequestStatus.DONE, request.getStatus());
+    }
+
+    @Test
+    void onlyRequesterMarksUrgentAndOnlyAssigneeReadsIt() {
+        WorkRequest request = openRequest();
+        service.markRead(UUID.randomUUID(), as(requesterId));
+        assertEquals(null, request.getReadAt());
+        assertThrows(AccessDeniedException.class, () -> service.markUrgent(UUID.randomUUID(), as(assigneeId)));
+        service.markUrgent(UUID.randomUUID(), as(requesterId));
+        assertEquals(true, request.isUrgent());
+    }
+
+    @Test
+    void onlyOwnTodoCanBeDeleted() {
+        openRequest(); // 남이 맡긴 업무 — 요청자도 담당자도 지울 수 없다
+        assertThrows(AccessDeniedException.class, () -> service.deleteTodo(UUID.randomUUID(), as(requesterId)));
+        assertThrows(AccessDeniedException.class, () -> service.deleteTodo(UUID.randomUUID(), as(assigneeId)));
+
+        WorkRequest todo = new WorkRequest(platformId, assigneeId, assigneeId, "내 할 일", null, null);
+        when(repository.getOrThrow(any())).thenReturn(todo);
+        service.deleteTodo(UUID.randomUUID(), as(assigneeId));
+        org.mockito.Mockito.verify(repository).delete(todo);
+    }
+
+    @Test
     void assigneeMustBelongToThePlatformOffice() {
         when(guard.isOfficeMember(platformId, assigneeId)).thenReturn(false);
-        assertThrows(IllegalArgumentException.class, () -> service.create(platformId, as(requesterId), assigneeId, "제목", null, null));
+        assertThrows(IllegalArgumentException.class, () -> service.create(platformId, as(requesterId), assigneeId, "제목", null, null, false));
     }
 }

@@ -13,23 +13,23 @@ public class MemberMemoService {
 
     private final MemberMemoRepository memberMemoRepository;
     private final PlatformAccessGuard platformAccessGuard;
-    private final ActionLogRepository actionLogRepository;
+    private final ActionLogger actionLogger;
 
     public MemberMemoService(
             MemberMemoRepository memberMemoRepository, PlatformAccessGuard platformAccessGuard,
-            ActionLogRepository actionLogRepository
+            ActionLogger actionLogger
     ) {
         this.memberMemoRepository = memberMemoRepository;
         this.platformAccessGuard = platformAccessGuard;
-        this.actionLogRepository = actionLogRepository;
+        this.actionLogger = actionLogger;
     }
 
     @Transactional
     public MemberMemo create(UUID platformId, AuthenticatedUser actor, UUID targetUserId, String content) {
         platformAccessGuard.verifyManagerPermission(platformId, actor, ManagerPermission.MENU_MEMBERS);
         MemberMemo memo = memberMemoRepository.save(new MemberMemo(platformId, targetUserId, actor.getId(), content));
-        actionLogRepository.save(ActionLog.of(platformId, actor.getId(), ActionTarget.MEMBER_MEMO, memo.getId(), "CREATE",
-                "회원 메모 작성: \"" + LogMemo.clip(content, 100) + "\""));
+        actionLogger.log(platformId, actor.getId(), ActionTarget.MEMBER_MEMO, memo.getId(), "CREATE",
+                "회원 메모 작성: \"" + LogMemo.clip(content, 100) + "\"");
         return memo;
     }
 
@@ -42,8 +42,7 @@ public class MemberMemoService {
     @Transactional
     public void delete(UUID platformId, AuthenticatedUser actor, UUID memoId) {
         platformAccessGuard.verifyManagerPermission(platformId, actor, ManagerPermission.MENU_MEMBERS);
-        MemberMemo memo = memberMemoRepository.findById(memoId)
-                .orElseThrow(() -> new IllegalArgumentException("Memo not found"));
+        MemberMemo memo = memberMemoRepository.getOrThrow(memoId);
         if (!memo.getPlatformId().equals(platformId)) {
             throw new IllegalArgumentException("Memo not found");
         }
