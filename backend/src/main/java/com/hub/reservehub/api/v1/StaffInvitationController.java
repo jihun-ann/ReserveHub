@@ -1,5 +1,6 @@
 package com.hub.reservehub.api.v1;
 
+import com.hub.reservehub.common.Masking;
 import com.hub.reservehub.domain.platform.InvitationStatus;
 import com.hub.reservehub.domain.platform.ManagerTier;
 import com.hub.reservehub.domain.platform.StaffInvitation;
@@ -52,12 +53,14 @@ public class StaffInvitationController {
     }
 
     // 로그인 전에도 열 수 있는 공개 조회(SecurityConfig permitAll) — 링크의 token 자체가 비밀이다.
+    // 이메일/연락처는 가려서 준다: 원문을 주면 링크를 손에 넣은 사람이 그 이메일로 가입해 초대를 가로챌 수 있다.
+    // 초대받은 본인은 자기 이메일을 알고 있으니 가린 값으로 확인만 하면 된다.
     @GetMapping("/api/v1/staff-invitations/token/{token}")
     public PreviewResponse preview(@PathVariable String token) {
         StaffInvitationService.Preview preview = invitationService.preview(token);
         StaffInvitation i = preview.invitation();
         return new PreviewResponse(
-                preview.platformName(), i.getStaffRole(), i.getManagerTier(), i.getEmail(), i.getPhone(),
+                preview.platformName(), i.getStaffRole(), i.getManagerTier(), Masking.contact(i.getEmail()), Masking.contact(i.getPhone()),
                 i.getStatus(), i.isExpired()
         );
     }

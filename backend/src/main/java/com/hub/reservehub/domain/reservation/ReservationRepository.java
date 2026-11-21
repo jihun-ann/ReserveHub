@@ -13,4 +13,6 @@ public interface ReservationRepository extends BaseRepository<Reservation, UUID>
     int countBySlotIdAndScheduledDateAndStatus(UUID slotId, LocalDate scheduledDate, ReservationStatus status);
 
     boolean existsByUserIdAndSlotIdAndScheduledDate(UUID userId, UUID slotId, LocalDate scheduledDate);
+
+    boolean existsByUserIdAndSlotIdAndScheduledDateAndStatusNot(UUID userId, UUID slotId, LocalDate scheduledDate, ReservationStatus status);
 }

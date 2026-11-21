@@ -328,7 +328,9 @@ CREATE TABLE orders (
                         refunded_at          TIMESTAMPTZ,
                         created_at           TIMESTAMPTZ         NOT NULL DEFAULT NOW(),
                         updated_at           TIMESTAMPTZ         NOT NULL DEFAULT NOW(),
-                        CONSTRAINT chk_amount CHECK (final_amount >= 0)
+                        CONSTRAINT chk_amount CHECK (final_amount >= 0),
+                        CONSTRAINT chk_order_paid_within_final CHECK (paid_amount BETWEEN 0 AND final_amount),
+                        CONSTRAINT chk_order_refund_within_paid CHECK (refund_amount BETWEEN 0 AND paid_amount)  -- 받은 돈보다 많이 환불하지 않는다
 );
 
 COMMENT ON TABLE  orders              IS '결제 주문. 여러 수강권을 묶어 한 번에 결제';
@@ -388,7 +390,8 @@ CREATE TABLE user_passes (
                              started_at      DATE                NOT NULL DEFAULT CURRENT_DATE,
                              expires_at      DATE                NOT NULL,
                              created_at      TIMESTAMPTZ         NOT NULL DEFAULT NOW(),
-                             CONSTRAINT chk_sessions CHECK (sessions_used >= 0)
+                             CONSTRAINT chk_sessions CHECK (sessions_used >= 0),
+                             CONSTRAINT chk_user_pass_sessions_within_total CHECK (sessions_total IS NULL OR sessions_used <= sessions_total)
 );
 
 COMMENT ON TABLE  user_passes              IS '사용자가 실제 보유한 수강권 인스턴스';
@@ -426,9 +429,11 @@ CREATE TABLE reservations (
                               status          reservation_status  NOT NULL DEFAULT 'CONFIRMED',
                               cancelled_at    TIMESTAMPTZ,
                               cancel_reason   TEXT,
-                              created_at      TIMESTAMPTZ         NOT NULL DEFAULT NOW(),
-                              UNIQUE (user_id, slot_id, scheduled_date)   -- 동일 슬롯 중복 예약 방지
+                              created_at      TIMESTAMPTZ         NOT NULL DEFAULT NOW()
 );
+
+-- 동일 슬롯 중복 예약 방지 — 살아 있는 예약끼리만. 취소한 수업은 다시 신청할 수 있다.
+CREATE UNIQUE INDEX uq_reservations_active ON reservations(user_id, slot_id, scheduled_date) WHERE status <> 'CANCELLED';
 
 COMMENT ON TABLE reservations IS '개별 수업 예약. 슬롯 + 날짜로 실제 수업 인스턴스를 특정';
 
@@ -884,6 +889,22 @@ $$ LANGUAGE plpgsql;
 CREATE TRIGGER trg_manager_single_platform
     BEFORE INSERT OR UPDATE ON platform_staff
                          FOR EACH ROW EXECUTE FUNCTION check_manager_single_platform();
+
+-- 위 트리거는 동시 INSERT 두 건을 모두 통과시킬 수 있다 — 같은 규칙을 DB 유니크로도 강제한다.
+CREATE UNIQUE INDEX uq_platform_staff_one_active_manager ON platform_staff(user_id) WHERE staff_role = 'MANAGER' AND is_active;
+
+
+-- 처리 이력은 고치거나 지울 수 없다 (action_logs 주석의 "삭제 불가"를 실제로 강제)
+CREATE OR REPLACE FUNCTION forbid_action_log_change()
+RETURNS TRIGGER AS $$
+BEGIN
+    RAISE EXCEPTION 'action_logs는 수정/삭제할 수 없습니다.';
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trg_action_logs_immutable
+    BEFORE UPDATE OR DELETE ON action_logs
+    FOR EACH ROW EXECUTE FUNCTION forbid_action_log_change();
 
 
 -- updated_at 자동 갱신

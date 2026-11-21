@@ -8,4 +8,6 @@ public interface ContactVerificationRepository extends JpaRepository<ContactVeri
     Optional<ContactVerification> findFirstByUserIdAndChannelOrderByCreatedAtDesc(UUID userId, VerificationChannel channel);
 
     void deleteByUserIdAndChannel(UUID userId, VerificationChannel channel);
+
+    void deleteByUserId(UUID userId);
 }

@@ -210,7 +210,13 @@ public class Order extends BaseEntity {
         this.status = OrderStatus.CANCELLED;
     }
 
-    // 부분 환불을 지원한다 — 전액이 환불되면 상태를 REFUNDED로, 아니면 현재 상태(PAID/PARTIAL)를 유지한다.
+    // 실제로 받은 돈(paidAmount) 중 아직 돌려주지 않은 금액 — 부분납 주문은 결제 총액보다 적다.
+    public int getRefundableAmount() {
+        return paidAmount - refundAmount;
+    }
+
+    // 부분 환불을 지원한다 — 받은 돈이 전부 환불되면 상태를 REFUNDED로, 아니면 현재 상태(PAID/PARTIAL)를 유지한다.
+    // 한도를 넘는 요청은 잘라서 넣지 않고 거부한다 — 잘라 넣으면 처리 이력에 남는 금액과 실제 환불액이 달라진다.
     public void refund(int amount) {
         if (status != OrderStatus.PAID && status != OrderStatus.PARTIAL) {
             throw new IllegalStateException("Only a PAID or PARTIAL order can be refunded");
@@ -218,9 +224,12 @@ public class Order extends BaseEntity {
         if (amount <= 0) {
             throw new IllegalArgumentException("amount must be positive");
         }
-        this.refundAmount = Math.min(finalAmount, this.refundAmount + amount);
+        if (amount > getRefundableAmount()) {
+            throw new IllegalArgumentException("환불 금액이 환불 가능 금액(" + getRefundableAmount() + "원)을 넘습니다.");
+        }
+        this.refundAmount += amount;
         this.refundedAt = Instant.now();
-        if (this.refundAmount >= finalAmount) {
+        if (this.refundAmount >= paidAmount) {
             this.status = OrderStatus.REFUNDED;
         }
     }

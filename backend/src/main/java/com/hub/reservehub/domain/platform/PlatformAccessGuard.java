@@ -1,6 +1,7 @@
 package com.hub.reservehub.domain.platform;
 
 import com.hub.reservehub.common.exception.PlatformAccessDeniedException;
+import com.hub.reservehub.domain.pass.UserPassRepository;
 import com.hub.reservehub.security.AuthenticatedUser;
 import java.util.Arrays;
 import java.util.EnumSet;
@@ -26,15 +27,18 @@ public class PlatformAccessGuard {
     private final PlatformStaffRepository platformStaffRepository;
     private final PlatformTaxAccountantRepository platformTaxAccountantRepository;
     private final ManagerGroupRepository managerGroupRepository;
+    private final UserPassRepository userPassRepository;
 
     public PlatformAccessGuard(
             PlatformRepository platformRepository, PlatformStaffRepository platformStaffRepository,
-            PlatformTaxAccountantRepository platformTaxAccountantRepository, ManagerGroupRepository managerGroupRepository
+            PlatformTaxAccountantRepository platformTaxAccountantRepository, ManagerGroupRepository managerGroupRepository,
+            UserPassRepository userPassRepository
     ) {
         this.platformRepository = platformRepository;
         this.platformStaffRepository = platformStaffRepository;
         this.platformTaxAccountantRepository = platformTaxAccountantRepository;
         this.managerGroupRepository = managerGroupRepository;
+        this.userPassRepository = userPassRepository;
     }
 
     // Owner of the platform OR an active staff member (any role) may access it.
@@ -43,6 +47,17 @@ public class PlatformAccessGuard {
         boolean allowed = platformRepository.existsByIdAndCreatedBy(platformId, user.getId())
                 || platformStaffRepository.existsByPlatformIdAndUserIdAndIsActiveTrue(platformId, user.getId());
 
+        if (!allowed) {
+            throw new PlatformAccessDeniedException(platformId);
+        }
+    }
+
+    // 이 플랫폼을 이용하는 사람인지 — 오너/활성 스태프, 또는 이 플랫폼 수강권을 가진 회원 (listAccessible과 같은 기준).
+    // 시설 예약처럼 회원도 쓰지만 외부인은 쓰면 안 되는 기능에 쓴다.
+    public void verifyParticipant(UUID platformId, AuthenticatedUser user) {
+        boolean allowed = platformRepository.existsByIdAndCreatedBy(platformId, user.getId())
+                || platformStaffRepository.existsByPlatformIdAndUserIdAndIsActiveTrue(platformId, user.getId())
+                || userPassRepository.existsByUserIdAndPlatformId(user.getId(), platformId);
         if (!allowed) {
             throw new PlatformAccessDeniedException(platformId);
         }

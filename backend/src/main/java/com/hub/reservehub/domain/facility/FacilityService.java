@@ -46,7 +46,7 @@ public class FacilityService {
             UUID platformId, AuthenticatedUser actor, String name, @Nullable String description, @Nullable String floor,
             @Nullable Integer capacity, @Nullable LocalTime openTime, @Nullable LocalTime closeTime
     ) {
-        platformAccessGuard.verify(platformId, actor);
+        platformAccessGuard.verifyOwner(platformId, actor); // 전역 OWNER 역할이 아니라 "이 플랫폼의" 오너인지 확인
         Facility facility = facilityRepository.save(
                 new Facility(platformId, name, description, floor, capacity != null ? capacity : 1, openTime, closeTime)
         );
@@ -61,7 +61,7 @@ public class FacilityService {
             @Nullable Integer capacity, @Nullable LocalTime openTime, @Nullable LocalTime closeTime
     ) {
         Facility facility = facilityRepository.getOrThrow(facilityId);
-        platformAccessGuard.verify(facility.getPlatformId(), actor);
+        platformAccessGuard.verifyOwner(facility.getPlatformId(), actor);
         String changes = LogMemo.changes(
                 LogMemo.change("이름", facility.getName(), name),
                 LogMemo.change("설명", facility.getDescription(), description),
@@ -80,7 +80,7 @@ public class FacilityService {
     // 배치도 드래그앤드롭으로 위치만 갱신 — 잦은 호출이라 CREATE/UPDATE 액션 로그는 남기지 않는다.
     public Facility updatePosition(UUID facilityId, AuthenticatedUser actor, int posX, int posY) {
         Facility facility = facilityRepository.getOrThrow(facilityId);
-        platformAccessGuard.verify(facility.getPlatformId(), actor);
+        platformAccessGuard.verifyOwner(facility.getPlatformId(), actor);
         facility.updatePosition(posX, posY);
         return facility;
     }
@@ -88,7 +88,7 @@ public class FacilityService {
     @Transactional
     public void deactivate(UUID facilityId, AuthenticatedUser actor) {
         Facility facility = facilityRepository.getOrThrow(facilityId);
-        platformAccessGuard.verify(facility.getPlatformId(), actor);
+        platformAccessGuard.verifyOwner(facility.getPlatformId(), actor);
         facility.deactivate();
         actionLogger.log(facility.getPlatformId(), actor.getId(), ActionTarget.FACILITY_CHANGE, facility.getId(), "DEACTIVATE",
                 "시설 비활성화: '" + facility.getName() + "'");
@@ -106,7 +106,9 @@ public class FacilityService {
             UUID facilityId, AuthenticatedUser actor, LocalDate bookingDate,
             LocalTime startTime, LocalTime endTime, @Nullable String purpose
     ) {
-        Facility facility = facilityRepository.getOrThrow(facilityId);
+        // 시설 행을 잠가 같은 시설 예약을 한 줄로 세운다 — 안 그러면 동시 예약이 둘 다 "빈 시간"을 보고 겹쳐 들어간다.
+        Facility facility = facilityRepository.getForUpdate(facilityId);
+        platformAccessGuard.verifyParticipant(facility.getPlatformId(), actor); // 이 센터 회원/직원만 — 외부인이 시간대를 다 잡아 막지 못하게
         if (!facility.isActive()) {
             throw new IllegalStateException("Facility is not active");
         }
@@ -161,9 +163,10 @@ public class FacilityService {
     }
 
     @Transactional
-    // 사용자/강사/매니저/오너 누구나 고장·이상을 신고할 수 있다 — 플랫폼 소속 검증 없음.
+    // 이 센터의 회원/강사/매니저/오너 누구나 고장·이상을 신고할 수 있다.
     public FacilityIssue reportIssue(UUID facilityId, AuthenticatedUser actor, String description) {
         Facility facility = facilityRepository.getOrThrow(facilityId);
+        platformAccessGuard.verifyParticipant(facility.getPlatformId(), actor); // 외부인이 남의 센터에 신고를 쌓지 못하게
         FacilityIssue issue = facilityIssueRepository.save(new FacilityIssue(facilityId, facility.getPlatformId(), actor.getId(), description));
         actionLogger.log(facility.getPlatformId(), actor.getId(), ActionTarget.FACILITY_CHANGE, issue.getId(), "REPORT_ISSUE",
                 "시설 고장 신고: '" + facility.getName() + "' — " + LogMemo.clip(description, 150));

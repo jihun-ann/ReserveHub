@@ -9,8 +9,12 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.time.Instant;
 import java.util.List;
+import java.util.Locale;
+import java.util.Set;
 import java.util.UUID;
 import org.springframework.core.io.FileSystemResource;
+import org.springframework.http.InvalidMediaTypeException;
+import org.springframework.lang.Nullable;
 import org.springframework.core.io.Resource;
 import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpHeaders;
@@ -60,12 +64,33 @@ public class WorkRequestCommentController {
     public ResponseEntity<Resource> downloadAttachment(@PathVariable UUID id, @PathVariable UUID commentId) throws IOException {
         WorkRequestComment comment = commentService.getAttachment(id, commentId, currentAuthenticatedUser.get());
         Resource resource = new FileSystemResource(comment.getAttachmentStoredPath());
-        String contentType = comment.getAttachmentContentType() != null ? comment.getAttachmentContentType() : MediaType.APPLICATION_OCTET_STREAM_VALUE;
         return ResponseEntity.ok()
-                .contentType(MediaType.parseMediaType(contentType))
+                .contentType(safeContentType(comment.getAttachmentContentType()))
                 .header(HttpHeaders.CONTENT_DISPOSITION, ContentDisposition.attachment().filename(comment.getAttachmentOriginalName(), java.nio.charset.StandardCharsets.UTF_8).build().toString())
                 .contentLength(Files.size(resource.getFile().toPath()))
                 .body(resource);
+    }
+
+    // 브라우저에서 열어도 스크립트가 돌지 않는 타입만 그대로 내려준다.
+    private static final Set<String> INLINE_SAFE_TYPES = Set.of(
+            "image/png", "image/jpeg", "image/gif", "image/webp", "application/pdf", "text/plain"
+    );
+
+    // 첨부의 Content-Type은 업로더가 보낸 값이다. text/html이나 image/svg+xml을 그대로 돌려주면 프론트가 이 응답을
+    // 앱과 같은 오리진의 blob URL로 열 때 스크립트가 실행된다(저장형 XSS). 허용 목록 밖은 전부 바이너리로 내려 다운로드되게 한다.
+    static MediaType safeContentType(@Nullable String stored) {
+        if (stored != null) {
+            try {
+                MediaType type = MediaType.parseMediaType(stored);
+                String base = type.getType() + "/" + type.getSubtype();
+                if (INLINE_SAFE_TYPES.contains(base.toLowerCase(Locale.ROOT))) {
+                    return MediaType.parseMediaType(base); // charset 등 파라미터는 버린다
+                }
+            } catch (InvalidMediaTypeException ignored) {
+                // 깨진 값은 바이너리로 취급
+            }
+        }
+        return MediaType.APPLICATION_OCTET_STREAM;
     }
 
     public record CommentResponse(

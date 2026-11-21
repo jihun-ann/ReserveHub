@@ -40,10 +40,8 @@ export default function InviteView() {
 	const attempted = useRef(null); // 같은 계정으로 자동 수락을 두 번 시도하지 않도록 계정 id를 기억
 
 	useEffect(() => {
-		previewStaffInvitation(token).then((p) => {
-			setInvite(p);
-			setForm((f) => ({ ...f, email: p.email || "", phone: p.phone || "" }));
-		}).catch((err) => setError(err.message || "유효하지 않은 초대 링크입니다."));
+		// 서버는 초대 이메일/연락처를 가려서 준다(j***@gmail.com) — 가입 폼은 미리 채우지 않고 본인이 직접 입력한다.
+		previewStaffInvitation(token).then(setInvite).catch((err) => setError(err.message || "유효하지 않은 초대 링크입니다."));
 		loadCurrentUser().then(setUser);
 	}, [token]);
 
@@ -72,7 +70,7 @@ export default function InviteView() {
 		setError("");
 		setBusy(true);
 		try {
-			// 가입 시 이메일/연락처는 초대받은 값으로 고정해서 보낸다 — 다른 값으로는 승인되지 않는다.
+			// 가입 이메일/연락처가 초대받은 값과 같아야 승인된다 — 비교는 서버가 한다.
 			const result = mode === "login"
 				? await apiPost("/api/v1/auth/login", { username: form.username, password: form.password })
 				: await apiPost("/api/v1/auth/register", { ...form, role: "USER" });
@@ -124,6 +122,11 @@ export default function InviteView() {
 							<form onSubmit={submitAuth} style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
 								<div style={{ fontSize: "12px", color: "var(--text-sub)" }}>
 									초대받은 이메일/연락처와 같은 정보를 가진 계정으로 로그인하면 자동으로 승인됩니다.
+									{(invite.email || invite.phone) && (
+										<div style={{ marginTop: "4px" }}>
+											초대 대상: <b>{[invite.email, invite.phone].filter(Boolean).join(" / ")}</b>
+										</div>
+									)}
 								</div>
 								<div style={{ display: "flex", gap: "8px", fontSize: "13px" }}>
 									<button type="button" onClick={() => setMode("login")} style={{ ...inputStyle, flex: 1, fontWeight: mode === "login" ? 700 : 400 }}>로그인</button>
@@ -133,9 +136,9 @@ export default function InviteView() {
 								<input type="password" placeholder="비밀번호" required value={form.password} onChange={set("password")} style={inputStyle} />
 								{mode === "register" && (
 									<>
-										<input type="email" placeholder="이메일" required readOnly={!!invite.email} value={form.email} onChange={set("email")} style={inputStyle} />
+										<input type="email" placeholder={invite.email ? `이메일 (${invite.email})` : "이메일"} required value={form.email} onChange={set("email")} style={inputStyle} />
 										<input placeholder="이름" required value={form.name} onChange={set("name")} style={inputStyle} />
-										<input placeholder="연락처" readOnly={!!invite.phone} value={form.phone} onChange={set("phone")} style={inputStyle} />
+										<input placeholder={invite.phone ? `연락처 (${invite.phone})` : "연락처"} value={form.phone} onChange={set("phone")} style={inputStyle} />
 									</>
 								)}
 								<button type="submit" style={buttonStyle} disabled={busy}>{busy ? "처리 중..." : mode === "login" ? "로그인" : "가입하고 계속"}</button>

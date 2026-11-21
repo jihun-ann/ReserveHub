@@ -206,7 +206,20 @@ public class User extends BaseEntity {
         return isActive;
     }
 
+    // 탈퇴 — 계정을 끄고 개인정보를 파기한다. 이름은 결제·출결·처리 이력에서 "누구였는지"를 남기려 보존하고,
+    // 아이디는 재사용 방지 때문에 남긴다. 나머지 연락처·계좌·생년월일·보호자 정보는 지운다.
+    // 이메일은 NOT NULL이라 비우지 못해 다시 쓸 수 없는 자리표시 주소로 바꾼다.
     public void deactivate() {
         this.isActive = false;
+        this.email = "withdrawn-" + id + "@invalid";
+        this.phone = null;
+        this.bankName = null;
+        this.bankAccountNumber = null;
+        this.bankAccountHolder = null;
+        this.guardianName = null;
+        this.guardianPhone = null;
+        this.birthDate = null;
+        this.emailVerifiedAt = null;
+        this.phoneVerifiedAt = null;
     }
 }

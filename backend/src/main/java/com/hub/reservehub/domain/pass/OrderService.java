@@ -163,7 +163,7 @@ public class OrderService {
     // Confirms payment and issues one UserPass instance per purchased unit (AGENT.md event: order.paid).
     // 결제를 확정하고 구매 수량만큼 UserPass 인스턴스를 발급한다.
     public Order pay(UUID orderId, AuthenticatedUser actor, PaymentMethod paymentMethod, CashReceiptStatus cashReceiptStatus, @Nullable String receiptNumber) {
-        Order order = orderRepository.getOrThrow(orderId);
+        Order order = orderRepository.getForUpdate(orderId);
         // 결제 확정은 구매자 본인이 할 수 없다 — 실제 결제 연동(PG) 전에는 직원이 입금/카드 결제를 확인하고 처리한다.
         platformAccessGuard.verifyManagerPermission(order.getPlatformId(), actor, ManagerPermission.MENU_PAYMENT);
         order.pay(paymentMethod, cashReceiptStatus, receiptNumber, actor.getId());
@@ -178,7 +178,7 @@ public class OrderService {
             UUID orderId, AuthenticatedUser actor, int amount,
             PaymentMethod paymentMethod, CashReceiptStatus cashReceiptStatus, @Nullable String receiptNumber
     ) {
-        Order order = orderRepository.getOrThrow(orderId);
+        Order order = orderRepository.getForUpdate(orderId);
         platformAccessGuard.verifyManagerPermission(order.getPlatformId(), actor, ManagerPermission.MENU_PAYMENT);
         order.partialPay(amount, paymentMethod, cashReceiptStatus, receiptNumber, actor.getId());
         if (order.getStatus() == OrderStatus.PAID) {
@@ -211,7 +211,7 @@ public class OrderService {
 
     @Transactional
     public Order cancel(UUID orderId, AuthenticatedUser actor) {
-        Order order = orderRepository.getOrThrow(orderId);
+        Order order = orderRepository.getForUpdate(orderId);
         platformAccessGuard.verifySelfOrMember(order.getUserId(), order.getPlatformId(), actor);
         order.cancel();
         return order;
@@ -222,9 +222,9 @@ public class OrderService {
     // amount가 null이면 잔여 전액(finalAmount - 이미 환불된 금액)을 환불한다. 부분 환불은 수강권을
     // 정지하지 않는다 — 전액이 환불됐을 때만 이용 권한을 회수한다.
     public Order refund(UUID orderId, AuthenticatedUser actor, @Nullable Integer amount, @Nullable String memo) {
-        Order order = orderRepository.getOrThrow(orderId);
+        Order order = orderRepository.getForUpdate(orderId);
         platformAccessGuard.verifyManagerPermission(order.getPlatformId(), actor, ManagerPermission.REFUND); // 환불: 임원급 매니저 전용
-        int refundAmount = amount != null ? amount : order.getFinalAmount() - order.getRefundAmount();
+        int refundAmount = amount != null ? amount : order.getRefundableAmount();
         order.refund(refundAmount);
 
         if (order.getStatus() == OrderStatus.REFUNDED) {

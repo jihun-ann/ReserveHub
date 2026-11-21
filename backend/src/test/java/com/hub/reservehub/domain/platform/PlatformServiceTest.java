@@ -27,7 +27,7 @@ class PlatformServiceTest {
     private final PlatformRepository platformRepository = mock(PlatformRepository.class);
     private final PlatformStaffRepository staffRepository = mock(PlatformStaffRepository.class);
     private final PlatformAccessGuard guard = new PlatformAccessGuard(
-            platformRepository, staffRepository, mock(PlatformTaxAccountantRepository.class), mock(ManagerGroupRepository.class)
+            platformRepository, staffRepository, mock(PlatformTaxAccountantRepository.class), mock(ManagerGroupRepository.class), mock(UserPassRepository.class)
     );
     private final PlatformService service = new PlatformService(
             platformRepository, staffRepository, mock(PlatformTaxAccountantRepository.class), mock(UserPassRepository.class),

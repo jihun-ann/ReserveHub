@@ -175,9 +175,32 @@ export async function openWorkRequestAttachment(requestId, commentId) {
 		{ headers: { Authorization: `Bearer ${getAccessToken()}` } }
 	);
 	if (!response.ok) throw new Error(`Request failed: ${response.status}`);
-	const blobUrl = URL.createObjectURL(await response.blob());
-	window.open(blobUrl, "_blank");
+	// blob URL은 앱과 같은 오리진이라, html/svg 같은 타입을 새 탭에 열면 첨부 속 스크립트가 로그인 토큰에 닿는다.
+	// 안전한 타입만 새 탭에 열고, 나머지는 파일로 내려받게 한다 (서버도 같은 허용 목록으로 타입을 거른다).
+	const blob = await response.blob();
+	const blobUrl = URL.createObjectURL(blob);
+	if (INLINE_SAFE_TYPES.includes(blob.type)) {
+		window.open(blobUrl, "_blank", "noopener");
+	} else {
+		const link = document.createElement("a");
+		link.href = blobUrl;
+		link.download = attachmentFilename(response) || "attachment";
+		document.body.appendChild(link);
+		link.click();
+		document.body.removeChild(link);
+	}
 	setTimeout(() => URL.revokeObjectURL(blobUrl), 60000);
+}
+
+const INLINE_SAFE_TYPES = ["image/png", "image/jpeg", "image/gif", "image/webp", "application/pdf", "text/plain"];
+
+// Content-Disposition: attachment; filename*=UTF-8''%EB%B3%B4%EA%B3%A0%EC%84%9C.hwp
+function attachmentFilename(response) {
+	const header = response.headers.get("Content-Disposition") || "";
+	const encoded = /filename\*=UTF-8''([^;]+)/i.exec(header);
+	if (encoded) return decodeURIComponent(encoded[1]);
+	const plain = /filename="?([^";]+)"?/i.exec(header);
+	return plain ? plain[1] : null;
 }
 
 export const listActionLogs = (platformId) => apiGet(`/api/v1/platforms/${platformId}/action-logs`);

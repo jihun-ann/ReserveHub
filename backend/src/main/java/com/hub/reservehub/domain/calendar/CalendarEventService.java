@@ -1,6 +1,7 @@
 package com.hub.reservehub.domain.calendar;
 
 import com.hub.reservehub.domain.platform.PlatformAccessGuard;
+import com.hub.reservehub.domain.platform.PlatformRepository;
 import com.hub.reservehub.domain.user.Role;
 import com.hub.reservehub.security.AuthenticatedUser;
 import java.time.LocalDate;
@@ -16,10 +17,14 @@ public class CalendarEventService {
 
     private final CalendarEventRepository calendarEventRepository;
     private final PlatformAccessGuard platformAccessGuard;
+    private final PlatformRepository platformRepository;
 
-    public CalendarEventService(CalendarEventRepository calendarEventRepository, PlatformAccessGuard platformAccessGuard) {
+    public CalendarEventService(
+            CalendarEventRepository calendarEventRepository, PlatformAccessGuard platformAccessGuard, PlatformRepository platformRepository
+    ) {
         this.calendarEventRepository = calendarEventRepository;
         this.platformAccessGuard = platformAccessGuard;
+        this.platformRepository = platformRepository;
     }
 
     @Transactional
@@ -34,7 +39,10 @@ public class CalendarEventService {
         if (type == EventType.HQ_NOTICE && actor.getRole() != Role.OWNER) {
             throw new IllegalStateException("Only OWNER can create HQ_NOTICE events");
         }
-        if (platformId != null) {
+        if (platformId != null && type == EventType.HQ_NOTICE) {
+            // 본사 공지는 그 플랫폼의 오너만 — 다른 회사 플랫폼에 스태프로 소속된 대표가 거기에 본사 공지를 쓰지 못하게.
+            platformAccessGuard.verifyOwner(platformId, actor);
+        } else if (platformId != null) {
             platformAccessGuard.verify(platformId, actor);
         } else if (actor.getRole() != Role.OWNER) {
             throw new IllegalStateException("Only OWNER can create company-wide events");
@@ -46,12 +54,13 @@ public class CalendarEventService {
     }
 
     @Transactional(readOnly = true)
-    // Merges the platform's own events with company-wide (HQ) events for the same date range.
     // 플랫폼 고유 이벤트와 전사(HQ) 이벤트를 같은 기간 기준으로 합쳐서 반환한다.
+    // 전사 이벤트는 "이 플랫폼 오너가 만든 것"만 — 오너마다 다른 회사라서, 아무 오너의 전사 공지가 남의 회사 플랫폼에 뜨면 안 된다.
     public List<CalendarEvent> list(UUID platformId, AuthenticatedUser actor, LocalDate from, LocalDate to) {
         platformAccessGuard.verify(platformId, actor);
+        UUID ownerId = platformRepository.getOrThrow(platformId).getCreatedBy();
         List<CalendarEvent> events = new ArrayList<>(calendarEventRepository.findByPlatformIdAndEventDateBetween(platformId, from, to));
-        events.addAll(calendarEventRepository.findByPlatformIdIsNullAndEventDateBetween(from, to));
+        events.addAll(calendarEventRepository.findByPlatformIdIsNullAndCreatedByAndEventDateBetween(ownerId, from, to));
         return events;
     }
 }

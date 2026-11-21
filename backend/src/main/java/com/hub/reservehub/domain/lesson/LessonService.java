@@ -109,7 +109,7 @@ public class LessonService {
 
         if ((status == AttendStatus.PRESENT || status == AttendStatus.LATE) && reservationId != null) {
             Reservation reservation = reservationRepository.getOrThrow(reservationId);
-            UserPass userPass = userPassRepository.getOrThrow(reservation.getUserPassId());
+            UserPass userPass = userPassRepository.getForUpdate(reservation.getUserPassId()); // 동시 차감 시 한 번이 사라지지 않게
             userPass.useSession();
         }
 

@@ -115,6 +115,7 @@ public class SecurityConfig {
         configuration.setAllowedOrigins(allowedOrigins);
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(List.of("*"));
+        configuration.setExposedHeaders(List.of("Content-Disposition")); // 첨부 다운로드 시 프론트가 원래 파일 이름을 읽는다
         // The session cookie only reaches the browser (and gets sent back) on credentialed
         // cross-origin requests; the frontend must pair this with fetch(..., { credentials: "include" }).
         // 세션 쿠키는 credentialed 크로스오리진 요청에서만 브라우저에 오가므로, 프론트도

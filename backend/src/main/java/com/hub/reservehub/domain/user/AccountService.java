@@ -25,16 +25,19 @@ public class AccountService {
     private final PlatformRepository platformRepository;
     private final PlatformStaffRepository staffRepository;
     private final JoinRequestRepository joinRequestRepository;
+    private final ContactVerificationRepository verificationRepository;
 
     public AccountService(
             UserService userService, PasswordEncoder passwordEncoder, PlatformRepository platformRepository,
-            PlatformStaffRepository staffRepository, JoinRequestRepository joinRequestRepository
+            PlatformStaffRepository staffRepository, JoinRequestRepository joinRequestRepository,
+            ContactVerificationRepository verificationRepository
     ) {
         this.userService = userService;
         this.passwordEncoder = passwordEncoder;
         this.platformRepository = platformRepository;
         this.staffRepository = staffRepository;
         this.joinRequestRepository = joinRequestRepository;
+        this.verificationRepository = verificationRepository;
     }
 
     // 다른 사람 대신 계정을 만들어 주는 기능(현장 회원 등록 등)은 플랫폼 운영진만 쓸 수 있고, 만들 수 있는 역할은
@@ -68,6 +71,7 @@ public class AccountService {
         joinRequestRepository.findByUserIdOrderByCreatedAtDesc(userId).stream()
                 .filter(r -> r.getStatus() == JoinRequestStatus.PENDING)
                 .forEach(JoinRequest::cancel);
+        verificationRepository.deleteByUserId(userId); // 인증 요청 기록에도 연락처 원문(target)이 남아 있다
         user.deactivate();
     }
 }

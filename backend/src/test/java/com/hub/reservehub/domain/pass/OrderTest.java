@@ -2,6 +2,7 @@ package com.hub.reservehub.domain.pass;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
@@ -40,5 +41,32 @@ class OrderTest {
     void unpaidOrderHasNoProcessor() {
         Order order = newOrder(50_000);
         assertNull(order.getProcessedBy());
+    }
+
+    @Test
+    void refundOfPartialOrderIsCappedByWhatWasActuallyCollected() {
+        Order order = newOrder(100_000);
+        order.partialPay(10_000, PaymentMethod.CASH, CashReceiptStatus.NOT_ISSUED, null, UUID.randomUUID());
+        assertEquals(10_000, order.getRefundableAmount());
+
+        assertThrows(IllegalArgumentException.class, () -> order.refund(10_001), "받은 돈보다 많이 환불할 수 없다");
+        assertEquals(0, order.getRefundAmount());
+
+        order.refund(10_000);
+        assertEquals(10_000, order.getRefundAmount());
+        assertEquals(OrderStatus.REFUNDED, order.getStatus(), "받은 돈을 다 돌려주면 환불 완료");
+    }
+
+    @Test
+    void partialRefundsAccumulateUntilFullyPaidAmountIsReturned() {
+        Order order = newOrder(100_000);
+        order.pay(PaymentMethod.CARD, CashReceiptStatus.NOT_ISSUED, null, UUID.randomUUID());
+
+        order.refund(30_000);
+        assertEquals(OrderStatus.PAID, order.getStatus());
+        assertEquals(70_000, order.getRefundableAmount());
+
+        order.refund(70_000);
+        assertEquals(OrderStatus.REFUNDED, order.getStatus());
     }
 }

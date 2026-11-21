@@ -8,6 +8,8 @@ import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -93,12 +95,32 @@ public class WorkRequestCommentService {
             String storedName = UUID.randomUUID() + "_" + sanitizeFilename(file.getOriginalFilename());
             Path target = dir.resolve(storedName);
             file.transferTo(target);
+            deleteOnRollback(target);
             return WorkRequestComment.withAttachment(
                     requestId, authorId, content, file.getOriginalFilename(), target.toString(), file.getContentType(), file.getSize()
             );
         } catch (IOException e) {
             throw new UncheckedIOException("Failed to store attachment", e);
         }
+    }
+
+    // 파일은 DB 커밋 전에 디스크에 써지므로, 댓글 저장이 롤백되면 주인 없는 파일이 남는다 — 롤백 시 지운다.
+    private static void deleteOnRollback(Path file) {
+        if (!TransactionSynchronizationManager.isSynchronizationActive()) {
+            return;
+        }
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCompletion(int status) {
+                if (status != STATUS_COMMITTED) {
+                    try {
+                        Files.deleteIfExists(file);
+                    } catch (IOException ignored) {
+                        // 정리 실패는 요청 결과를 바꾸지 않는다 — 파일 하나가 남을 뿐이다.
+                    }
+                }
+            }
+        });
     }
 
     // ponytail: 특수문자를 지워 경로 조작(../, 널바이트 등)을 막는 최소한의 검증. 확장자별 화이트리스트나

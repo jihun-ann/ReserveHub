@@ -52,7 +52,9 @@ public class ReservationService {
 
     @Transactional
     public Reservation create(UUID slotId, AuthenticatedUser actor, LocalDate scheduledDate, UUID userPassId) {
-        Slot slot = slotRepository.getOrThrow(slotId);
+        // 슬롯 행을 잠가 같은 슬롯 예약을 한 줄로 세운다 — 안 그러면 동시 신청이 둘 다 "자리 있음"을 보고 정원을 넘긴다.
+        // ponytail: 슬롯 단위 잠금이라 날짜가 달라도 같은 슬롯 신청끼리는 순서대로 처리된다. 학원 규모에선 충분.
+        Slot slot = slotRepository.getForUpdate(slotId);
         if (!slot.isActive()) {
             throw new IllegalStateException("Slot is not active");
         }
@@ -76,7 +78,8 @@ public class ReservationService {
             throw new IllegalStateException("User pass is not usable for this date");
         }
 
-        if (reservationRepository.existsByUserIdAndSlotIdAndScheduledDate(actor.getId(), slotId, scheduledDate)) {
+        // 취소한 예약은 막지 않는다 — 취소 후 같은 수업을 다시 신청할 수 있어야 한다 (DB 유니크도 취소 건은 제외).
+        if (reservationRepository.existsByUserIdAndSlotIdAndScheduledDateAndStatusNot(actor.getId(), slotId, scheduledDate, ReservationStatus.CANCELLED)) {
             throw new IllegalStateException("Already reserved for this slot and date");
         }
         int confirmedCount = reservationRepository.countBySlotIdAndScheduledDateAndStatus(slotId, scheduledDate, ReservationStatus.CONFIRMED);
@@ -127,12 +130,12 @@ public class ReservationService {
     // Staff-only: records a no-show and deducts the session as a penalty (AGENT.md event: reservation.no_show).
     // 스태프 전용: 노쇼를 기록하고 페널티로 세션을 차감한다.
     public Reservation markNoShow(UUID reservationId, AuthenticatedUser actor) {
-        Reservation reservation = reservationRepository.getOrThrow(reservationId);
+        Reservation reservation = reservationRepository.getForUpdate(reservationId); // 동시 노쇼 처리로 두 번 차감되지 않게
         Program program = programOf(reservation);
         platformAccessGuard.verify(program.getPlatformId(), actor);
 
         reservation.markNoShow();
-        UserPass userPass = userPassRepository.getOrThrow(reservation.getUserPassId());
+        UserPass userPass = userPassRepository.getForUpdate(reservation.getUserPassId());
         userPass.useSession();
 
         outboxEventRepository.save(OutboxEvent.of(

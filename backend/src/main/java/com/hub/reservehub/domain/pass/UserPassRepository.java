@@ -10,4 +10,6 @@ public interface UserPassRepository extends BaseRepository<UserPass, UUID> {
     List<UserPass> findByOrderItemId(UUID orderItemId);
 
     List<UserPass> findByPlatformId(UUID platformId);
+
+    boolean existsByUserIdAndPlatformId(UUID userId, UUID platformId);
 }

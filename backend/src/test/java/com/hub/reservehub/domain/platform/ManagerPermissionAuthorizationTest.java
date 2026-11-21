@@ -61,7 +61,7 @@ class ManagerPermissionAuthorizationTest {
         platformRepository = mock(PlatformRepository.class);
         staffRepository = mock(PlatformStaffRepository.class);
         groupRepository = mock(ManagerGroupRepository.class);
-        guard = new PlatformAccessGuard(platformRepository, staffRepository, mock(PlatformTaxAccountantRepository.class), groupRepository);
+        guard = new PlatformAccessGuard(platformRepository, staffRepository, mock(PlatformTaxAccountantRepository.class), groupRepository, mock(UserPassRepository.class));
         User user = mock(User.class);
         when(user.getId()).thenReturn(userId);
         when(user.getUsername()).thenReturn("u");
@@ -154,7 +154,7 @@ class ManagerPermissionAuthorizationTest {
         // 구매자 본인(userId)이 자기 주문을 결제 확정하려는 상황
         Order order = new Order(userId, platformId, 100_000, 0, 100_000, null, userId);
         UUID orderId = UUID.randomUUID();
-        when(orderRepository.getOrThrow(orderId)).thenReturn(order);
+        when(orderRepository.getForUpdate(orderId)).thenReturn(order);
         org.mockito.Mockito.doThrow(new PlatformAccessDeniedException(platformId))
                 .when(guardMock).verifyManagerPermission(eq(platformId), any(), eq(ManagerPermission.MENU_PAYMENT));
 

@@ -1,5 +1,6 @@
 package com.hub.reservehub.domain.user;
 
+import com.hub.reservehub.common.Masking;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -17,6 +18,8 @@ public class LoggingVerificationSender implements VerificationSender {
 
     @Override
     public void send(VerificationChannel channel, String target, String code) {
-        log.warn("[인증 코드 - 개발용 로그 발송] {} {} → {}", channel, target, code);
+        // 실제 발송기가 붙기 전까지는 운영에서도 이 빈이 켜진다 — 로그에 연락처 원문이 쌓이지 않게 가린다.
+        // 코드는 로그인한 본인만 입력할 수 있어(사용자 id에 묶여 해시 저장) 로그 열람만으로는 남의 연락처를 인증할 수 없다.
+        log.warn("[인증 코드 - 개발용 로그 발송] {} {} → {}", channel, Masking.contact(target), code);
     }
 }
