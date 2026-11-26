@@ -1,10 +1,12 @@
 import { useState, useEffect, useCallback } from "react";
 import { openModal, closeModal } from "../default.js";
 import {
-	listMembers, listMemberMemos, createMemberMemo, deleteMemberMemo, listPasses, enrollMember,
+	listMembers, listMemberMemos, createMemberMemo, deleteMemberMemo, listPasses,
 	listPrograms, registerMemberPayment, updateMemberGuardian, listJoinRequests, approveJoinRequest, rejectJoinRequest,
+	createStaffInvitation, listStaffInvitations, cancelStaffInvitation,
 	PAYMENT_METHOD_LABEL, CASH_RECEIPT_STATUS_LABEL, TAX_TYPE_LABEL
 } from "../../api/common.js";
+import { formatDateTime } from "../../utils/formatDateTime.js";
 
 function PaymentFields({ form, setForm, programs }) {
 	const set = (key) => (e) => setForm((f) => ({ ...f, [key]: e.target.value }));
@@ -81,19 +83,18 @@ export default function ManagerMemberManageView({ platformId, embedded = false }
 
 	const [passes, setPasses] = useState([]);
 	const [programs, setPrograms] = useState([]);
-	const [newName, setNewName] = useState("");
-	const [newPhone, setNewPhone] = useState("");
-	const [newEmail, setNewEmail] = useState("");
-	const [newPassword, setNewPassword] = useState("");
-	const [newPassId, setNewPassId] = useState("");
-	const [enrolling, setEnrolling] = useState(false);
-	const [enrollError, setEnrollError] = useState("");
+	// 회원 초대 — 센터가 계정을 대신 만들지 않는다. 회원이 링크로 수락하면 "수강권 등록 대기"에 올라온다.
+	const [memberInvites, setMemberInvites] = useState([]);
+	const [inviteMethod, setInviteMethod] = useState("email");
+	const [inviteValue, setInviteValue] = useState("");
+	const [inviting, setInviting] = useState(false);
+	const [inviteError, setInviteError] = useState("");
+	const [inviteNotice, setInviteNotice] = useState("");
 
 	const blankPaymentForm = {
 		guardianName: "", guardianPhone: "", programId: "", enrollStart: "", enrollEnd: "",
 		paymentMethod: "CARD", cashReceiptStatus: "NOT_ISSUED", receiptNumber: "", taxType: "EXEMPT"
 	};
-	const [paymentForm, setPaymentForm] = useState(blankPaymentForm);
 
 	const [payMember, setPayMember] = useState(null);
 	const [payPassId, setPayPassId] = useState("");
@@ -113,16 +114,21 @@ export default function ManagerMemberManageView({ platformId, embedded = false }
 			return;
 		}
 		setLoading(true);
-		const [memberList, passList, programList, joinList] = await Promise.all([
-			listMembers(platformId), listPasses(platformId), listPrograms(platformId),
-			listJoinRequests(platformId).catch(() => [])
-		]);
-		setJoinRequests(joinList);
-		setMembers(memberList);
-		setPasses(passList);
-		setPrograms(programList);
-		setNewPassId((prev) => prev || passList[0]?.id || "");
-		setLoading(false);
+		try {
+			const [memberList, passList, programList, joinList, invites] = await Promise.all([
+				listMembers(platformId), listPasses(platformId), listPrograms(platformId),
+				// 가입 신청·초대는 가입 신청 처리 권한이 있어야 보인다 — 없으면 빈 목록으로 두고 나머지는 그대로 보여준다
+				listJoinRequests(platformId).catch(() => []),
+				listStaffInvitations(platformId).catch(() => [])
+			]);
+			setJoinRequests(joinList);
+			setMemberInvites(invites.filter((i) => !i.staffRole));
+			setMembers(memberList);
+			setPasses(passList);
+			setPrograms(programList);
+		} finally {
+			setLoading(false);
+		}
 	}, [platformId]);
 
 	useEffect(() => {
@@ -147,27 +153,42 @@ export default function ManagerMemberManageView({ platformId, embedded = false }
 		};
 	}
 
-	async function submitEnroll() {
-		if (!newName.trim() || !newEmail.trim() || !newPassword.trim() || !newPassId) return;
-		setEnrolling(true);
-		setEnrollError("");
+	async function submitInvite() {
+		setInviting(true);
+		setInviteError("");
 		try {
-			await enrollMember(
-				platformId, newEmail.trim(), newPassword.trim(), newName.trim(), newPhone.trim() || null,
-				itemFromForm(newPassId, paymentForm), paymentFromForm(paymentForm),
-				{ guardianName: paymentForm.guardianName.trim() || null, guardianPhone: paymentForm.guardianPhone.trim() || null }
-			);
-			setNewName("");
-			setNewPhone("");
-			setNewEmail("");
-			setNewPassword("");
-			setPaymentForm(blankPaymentForm);
+			const invitation = await createStaffInvitation(platformId, {
+				staffRole: null,
+				[inviteMethod]: inviteValue.trim()
+			});
+			setInviteValue("");
 			closeModal("addMemberModal");
+			await copyInviteLink(invitation.token);
 			await refresh();
 		} catch (err) {
-			setEnrollError(err.message || "회원 등록에 실패했습니다.");
+			setInviteError(err.message || "초대를 만들지 못했습니다.");
 		} finally {
-			setEnrolling(false);
+			setInviting(false);
+		}
+	}
+
+	async function copyInviteLink(token) {
+		const link = `${window.location.origin}/invite/${token}`;
+		try {
+			await navigator.clipboard.writeText(link);
+			setInviteNotice("초대 링크를 복사했습니다. 회원에게 전달해 주세요.");
+		} catch {
+			setInviteNotice(`초대 링크: ${link}`);
+		}
+	}
+
+	async function cancelInvite(inv) {
+		if (!window.confirm(`${inv.email || inv.phone} 초대를 취소할까요?`)) return;
+		try {
+			await cancelStaffInvitation(inv.id);
+			await refresh();
+		} catch (err) {
+			alert(err.message || "취소에 실패했습니다.");
 		}
 	}
 
@@ -335,10 +356,27 @@ export default function ManagerMemberManageView({ platformId, embedded = false }
 						{s === "all" ? "전체" : s === "active" ? "활성" : s === "soon" ? "만료 임박" : "만료"}
 					</button>
 				))}
-				<button className="btn btn-primary btn-sm" onClick={() => openModal("addMemberModal")}>
-					+ 회원 등록
+				<button className="btn btn-primary btn-sm" onClick={() => { setInviteError(""); openModal("addMemberModal"); }}>
+					+ 회원 초대
 				</button>
 			</div>
+
+			{inviteNotice && <div style={{ color: "var(--green)", fontSize: "13px", marginBottom: "12px" }}>{inviteNotice}</div>}
+			{memberInvites.length > 0 && (
+				<div className="card" style={{ marginBottom: "16px", display: "flex", flexDirection: "column", gap: "8px" }}>
+					<div style={{ fontSize: "13px", fontWeight: 600 }}>수락 대기 중인 회원 초대 {memberInvites.length}</div>
+					{memberInvites.map((inv) => (
+						<div key={inv.id} style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
+							<span style={{ flex: 1, minWidth: "160px", fontSize: "13px" }}>
+								{inv.email || inv.phone}
+								<span style={{ fontSize: "11px", color: "var(--text-dim)" }}> · {formatDateTime(inv.expiresAt)}까지</span>
+							</span>
+							<button className="btn btn-ghost btn-sm" onClick={() => copyInviteLink(inv.token)}>링크 복사</button>
+							<button className="btn btn-ghost btn-sm" onClick={() => cancelInvite(inv)}>취소</button>
+						</div>
+					))}
+				</div>
+			)}
 
 			{joinRequestsUi()}
 
@@ -482,51 +520,33 @@ export default function ManagerMemberManageView({ platformId, embedded = false }
 		<div className="modal-overlay" id="addMemberModal">
 			<div className="modal-box">
 				<div className="modal-header">
-					<div className="modal-title">회원 등록</div>
+					<div className="modal-title">회원 초대</div>
 					<button className="modal-close" onClick={() => closeModal("addMemberModal")}>✕</button>
 				</div>
 				<div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-					<div className="form-field">
-						<label>이름</label>
-						<input type="text" value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="회원 이름" />
-					</div>
-					<div className="form-field">
-						<label>연락처</label>
-						<input type="tel" value={newPhone} onChange={(e) => setNewPhone(e.target.value)} placeholder="010-0000-0000" />
-					</div>
-					<div className="form-field">
-						<label>이메일</label>
-						<input type="email" value={newEmail} onChange={(e) => setNewEmail(e.target.value)} placeholder="member@example.com" />
-					</div>
-					<div className="form-field">
-						<label>초기 비밀번호</label>
-						<input type="text" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} placeholder="회원에게 안내할 비밀번호" />
-					</div>
-					<div className="form-field">
-						<label>수강권</label>
-						<select value={newPassId} onChange={(e) => setNewPassId(e.target.value)}>
-							{passes.length === 0 && <option value="">등록된 수강권이 없습니다</option>}
-							{passes.map((p) => (
-								<option key={p.id} value={p.id}>{p.name}</option>
-							))}
-						</select>
-					</div>
 					<div style={{ display: "flex", gap: "8px" }}>
-						<div className="form-field" style={{ flex: 1 }}>
-							<label>보호자 이름</label>
-							<input type="text" value={paymentForm.guardianName} onChange={(e) => setPaymentForm((f) => ({ ...f, guardianName: e.target.value }))} />
-						</div>
-						<div className="form-field" style={{ flex: 1 }}>
-							<label>보호자 연락처</label>
-							<input type="tel" value={paymentForm.guardianPhone} onChange={(e) => setPaymentForm((f) => ({ ...f, guardianPhone: e.target.value }))} />
-						</div>
+						{[["email", "이메일"], ["phone", "연락처"]].map(([key, label]) => (
+							<button key={key} type="button" className={`filter-chip ${inviteMethod === key ? "active" : ""}`} onClick={() => { setInviteMethod(key); setInviteValue(""); }}>
+								{label}
+							</button>
+						))}
 					</div>
-					<PaymentFields form={paymentForm} setForm={setPaymentForm} programs={programs} />
-					{enrollError && <div style={{ color: "var(--red)", fontSize: "12px" }}>{enrollError}</div>}
+					<div className="form-field">
+						<label>{inviteMethod === "email" ? "이메일" : "연락처"}</label>
+						<input
+							type={inviteMethod === "email" ? "email" : "tel"} value={inviteValue} onChange={(e) => setInviteValue(e.target.value)}
+							placeholder={inviteMethod === "email" ? "member@example.com" : "010-0000-0000"}
+						/>
+					</div>
+					<div style={{ fontSize: "12px", color: "var(--text-sub)", lineHeight: 1.6 }}>
+						초대 링크를 회원에게 직접 전달하세요. 회원이 같은 이메일/연락처의 계정으로 가입·로그인해 수락하면 위의
+						"수강권 등록 대기"에 나타나고, 그때 수강권을 등록합니다. (7일간 유효)
+					</div>
+					{inviteError && <div style={{ color: "var(--red)", fontSize: "12px" }}>{inviteError}</div>}
 					<div style={{ display: "flex", justifyContent: "flex-end", gap: "8px", marginTop: "8px" }}>
 						<button className="btn btn-ghost" onClick={() => closeModal("addMemberModal")}>취소</button>
-						<button className="btn btn-primary" disabled={enrolling} onClick={submitEnroll}>
-							{enrolling ? "등록 중..." : "저장"}
+						<button className="btn btn-primary" disabled={inviting || !inviteValue.trim()} onClick={submitInvite}>
+							{inviting ? "만드는 중..." : "초대 링크 만들기"}
 						</button>
 					</div>
 				</div>

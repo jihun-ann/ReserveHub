@@ -10,6 +10,8 @@ public interface PlatformRepository extends BaseRepository<Platform, UUID> {
 
     boolean existsByIdAndCreatedBy(UUID id, UUID createdBy);
 
+    boolean existsByCreatedBy(UUID createdBy);
+
     boolean existsByCode(String code);
 
     Optional<Platform> findByCode(String code);

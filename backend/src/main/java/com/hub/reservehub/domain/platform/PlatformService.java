@@ -66,13 +66,15 @@ public class PlatformService {
     }
 
     @Transactional
-    // Creates a platform owned by the calling OWNER (role check happens at the controller via @PreAuthorize).
-    // 호출한 OWNER 소유의 플랫폼을 생성한다 (역할 검증은 컨트롤러의 @PreAuthorize에서 수행).
+    // Creates a platform owned by ownerId. No permission check here — the only callers are an approved
+    // PlatformApplication (ADMIN-reviewed) and the local dummy-data seeder.
+    // ownerId 소유의 플랫폼을 만든다. 권한 검사는 하지 않는다 — 관리자가 승인한 개설 신청(PlatformApplicationService)과
+    // 로컬 더미데이터 시더만 호출한다.
     public Platform create(
-            AuthenticatedUser owner, String name, BusinessType businessType,
+            UUID ownerId, String name, BusinessType businessType,
             @Nullable String phone, @Nullable String address, @Nullable String description
     ) {
-        Platform platform = platformRepository.save(new Platform(newPlatformCode(), name, businessType, phone, address, description, owner.getId()));
+        Platform platform = platformRepository.save(new Platform(newPlatformCode(), name, businessType, phone, address, description, ownerId));
         managerGroupService.seedDefaults(platform.getId());
         return platform;
     }

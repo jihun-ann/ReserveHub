@@ -31,15 +31,17 @@ public class StaffInvitationService {
     private final ManagerGroupRepository managerGroupRepository;
     private final ActionLogger actionLogger;
     private final UserService userService;
+    private final JoinRequestService joinRequestService;
     private final boolean requireVerifiedContact;
 
     public StaffInvitationService(
             StaffInvitationRepository invitationRepository, PlatformRepository platformRepository,
             PlatformService platformService, PlatformAccessGuard platformAccessGuard,
             ManagerGroupRepository managerGroupRepository,
-            ActionLogger actionLogger, UserService userService,
+            ActionLogger actionLogger, UserService userService, JoinRequestService joinRequestService,
             @Value("${app.invitation.require-verified-contact:false}") boolean requireVerifiedContact
     ) {
+        this.joinRequestService = joinRequestService;
         this.invitationRepository = invitationRepository;
         this.platformRepository = platformRepository;
         this.platformService = platformService;
@@ -50,14 +52,23 @@ public class StaffInvitationService {
         this.requireVerifiedContact = requireVerifiedContact;
     }
 
-    // 초대 권한은 직접 배정과 같다 — 매니저 초대는 HIGH 등급/오너, 강사 초대는 MEDIUM 이상.
-    private void verifyCanManage(UUID platformId, AuthenticatedUser actor, StaffRole role) {
-        platformAccessGuard.verifyManagerPermission(platformId, actor, role == StaffRole.MANAGER ? ManagerPermission.MANAGER_MANAGE : ManagerPermission.TUTOR_MANAGE);
+    // 초대 권한은 직접 배정과 같다 — 매니저 초대는 매니저 관리, 강사 초대는 강사 관리, 회원 초대(role == null)는
+    // 가입 신청 처리 권한(가입 승인과 같은 일이므로).
+    private void verifyCanManage(UUID platformId, AuthenticatedUser actor, @Nullable StaffRole role) {
+        platformAccessGuard.verifyManagerPermission(platformId, actor, permissionFor(role));
+    }
+
+    private static ManagerPermission permissionFor(@Nullable StaffRole role) {
+        if (role == null) {
+            return ManagerPermission.JOIN_REQUEST_MANAGE;
+        }
+        return role == StaffRole.MANAGER ? ManagerPermission.MANAGER_MANAGE : ManagerPermission.TUTOR_MANAGE;
     }
 
     @Transactional
+    // role이 null이면 회원 초대 — 수락하면 승인된 가입 신청이 되고, 센터가 이어서 수강권을 등록한다.
     public StaffInvitation create(
-            UUID platformId, AuthenticatedUser actor, StaffRole role, @Nullable ManagerTier tier, @Nullable UUID managerGroupId,
+            UUID platformId, AuthenticatedUser actor, @Nullable StaffRole role, @Nullable ManagerTier tier, @Nullable UUID managerGroupId,
             @Nullable String email, @Nullable String phone
     ) {
         verifyCanManage(platformId, actor, role);
@@ -78,17 +89,27 @@ public class StaffInvitationService {
                 normEmail, normPhone, actor.getId(), Instant.now().plus(VALID_FOR)
         ));
         actionLogger.log(
-                platformId, actor.getId(), ActionTarget.STAFF_CHANGE, invitation.getId(), "INVITE_" + role.name(),
-                "직원 초대: " + roleLabel(role) + " — " + contact(normEmail, normPhone) + " (유효 " + VALID_FOR.toDays() + "일)"
+                platformId, actor.getId(), role == null ? ActionTarget.JOIN_REQUEST : ActionTarget.STAFF_CHANGE, invitation.getId(),
+                "INVITE_" + (role == null ? "MEMBER" : role.name()),
+                (role == null ? "회원 초대: " : "직원 초대: " + roleLabel(role) + " — ") + contact(normEmail, normPhone)
+                        + " (유효 " + VALID_FOR.toDays() + "일)"
         );
         return invitation;
     }
 
     @Transactional(readOnly = true)
+    // 볼 권한이 있는 종류의 초대만 돌려준다 — 강사·매니저 초대는 각 관리 권한, 회원 초대는 가입 신청 처리 권한.
     public List<StaffInvitation> listPending(UUID platformId, AuthenticatedUser actor) {
-        platformAccessGuard.verifyManagerPermission(platformId, actor, ManagerPermission.TUTOR_MANAGE, ManagerPermission.MANAGER_MANAGE);
+        platformAccessGuard.verifyManagerPermission(platformId, actor,
+                ManagerPermission.TUTOR_MANAGE, ManagerPermission.MANAGER_MANAGE, ManagerPermission.JOIN_REQUEST_MANAGE);
+        var have = platformAccessGuard.permissionsOf(platformId, actor);
         return invitationRepository.findByPlatformIdAndStatusOrderByCreatedAtDesc(platformId, InvitationStatus.PENDING)
-                .stream().filter(i -> !i.isExpired()).toList();
+                .stream()
+                .filter(i -> !i.isExpired())
+                .filter(i -> i.isMemberInvite()
+                        ? have.contains(ManagerPermission.JOIN_REQUEST_MANAGE)
+                        : have.contains(ManagerPermission.TUTOR_MANAGE) || have.contains(ManagerPermission.MANAGER_MANAGE))
+                .toList();
     }
 
     @Transactional
@@ -117,7 +138,7 @@ public class StaffInvitationService {
     }
 
     @Transactional
-    public PlatformStaff accept(String token, AuthenticatedUser actor) {
+    public void accept(String token, AuthenticatedUser actor) {
         StaffInvitation invitation = findByToken(token);
         if (invitation.getStatus() != InvitationStatus.PENDING) {
             throw new IllegalStateException("이미 처리된 초대입니다.");
@@ -136,6 +157,12 @@ public class StaffInvitationService {
                     ? "초대받은 이메일/연락처와 일치하는 인증된 계정이 아닙니다. 내 정보에서 이메일/연락처 인증을 완료해 주세요."
                     : "초대받은 이메일/연락처와 로그인한 계정 정보가 일치하지 않습니다.");
         }
+        if (invitation.isMemberInvite()) {
+            // 회원은 승인된 가입 신청으로 — 센터가 "수강권 등록 대기"에서 이어서 수강권을 등록한다.
+            joinRequestService.acceptMemberInvitation(invitation.getPlatformId(), user.getId(), invitation.getCreatedBy());
+            invitation.accept();
+            return;
+        }
         PlatformStaff staff = platformService.createAssignment(
                 invitation.getPlatformId(), invitation.getCreatedBy(), user.getId(),
                 invitation.getStaffRole(), invitation.getManagerTier()
@@ -149,10 +176,12 @@ public class StaffInvitationService {
                 invitation.getPlatformId(), actor.getId(), ActionTarget.STAFF_CHANGE, invitation.getId(), "INVITE_ACCEPT",
                 "초대 수락: " + LogMemo.who(user) + " → " + roleLabel(invitation.getStaffRole()) + " 배정"
         );
-        return staff;
     }
 
-    private static String roleLabel(StaffRole role) {
+    private static String roleLabel(@Nullable StaffRole role) {
+        if (role == null) {
+            return "회원";
+        }
         return role == StaffRole.MANAGER ? "매니저" : "강사";
     }
 

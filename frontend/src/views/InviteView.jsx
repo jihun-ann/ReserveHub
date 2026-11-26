@@ -99,7 +99,7 @@ export default function InviteView() {
 				) : (
 					<>
 						<h1 style={{ fontSize: "18px", fontWeight: 700, color: "var(--text)" }}>
-							{invite.platformName}의 {ROLE_LABEL[invite.staffRole]} 초대
+							{invite.platformName}의 {ROLE_LABEL[invite.staffRole] || "회원"} 초대
 						</h1>
 						{!usable ? (
 							<div style={{ color: "var(--red)", fontSize: "13px" }}>

@@ -76,6 +76,37 @@ public class ProgramService {
         return program;
     }
 
+    // 수강권 화면에서 수강권과 함께 입력하는 수업 설정 — 프로그램명은 항상 수강권명을 따른다.
+    public record ProgramSpec(ProgramType type, @Nullable EnrollmentMode enrollmentMode, short capacity, short durationMin) {
+    }
+
+    @Transactional
+    // Creates or updates the program bound to a pass, as part of saving that pass (same transaction as PassService),
+    // so a failure here rolls the pass back too. Uses the pass screen's permission (MENU_PAYMENT), not PROGRAM_MANAGE.
+    // 수강권에 딸린 프로그램을 만들거나 고친다. 수강권 저장과 같은 트랜잭션이라 여기서 실패하면 수강권도 되돌려진다.
+    // 권한은 수강권 화면 권한(MENU_PAYMENT) — 수강권만 저장되고 프로그램은 권한 부족으로 빠지는 일이 없게.
+    public Program saveForPass(Pass pass, AuthenticatedUser actor, ProgramSpec spec) {
+        platformAccessGuard.verifyManagerPermission(pass.getPlatformId(), actor, ManagerPermission.MENU_PAYMENT);
+        if (spec.type() == ProgramType.GROUP && spec.enrollmentMode() == null) {
+            throw new IllegalArgumentException("그룹반은 운영 방식(고정형/신청형)을 골라야 합니다.");
+        }
+        EnrollmentMode mode = spec.type() == ProgramType.GROUP ? spec.enrollmentMode() : null;
+        var existing = programRepository.findFirstByPassIdAndIsActiveTrue(pass.getId());
+        if (existing.isPresent()) {
+            Program program = existing.get();
+            program.update(spec.type(), mode, spec.capacity(), spec.durationMin(), program.getDescription());
+            actionLogger.log(pass.getPlatformId(), actor.getId(), ActionTarget.PROGRAM_CHANGE, program.getId(), "UPDATE",
+                    "프로그램 수정: '" + pass.getName() + "' (" + spec.type() + ", 정원 " + spec.capacity() + "명, " + spec.durationMin() + "분)");
+            return program;
+        }
+        Program program = programRepository.save(new Program(
+                pass.getPlatformId(), pass.getName(), spec.type(), mode, spec.capacity(), spec.durationMin(), null, pass.getId()
+        ));
+        actionLogger.log(pass.getPlatformId(), actor.getId(), ActionTarget.PROGRAM_CHANGE, program.getId(), "CREATE",
+                "프로그램 등록: '" + pass.getName() + "' (" + spec.type() + ", 정원 " + spec.capacity() + "명, " + spec.durationMin() + "분)");
+        return program;
+    }
+
     @Transactional
     public Program update(
             UUID programId, AuthenticatedUser actor, ProgramType type, @Nullable EnrollmentMode enrollmentMode,

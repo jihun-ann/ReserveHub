@@ -12,8 +12,9 @@ import java.util.UUID;
 import org.springframework.lang.Nullable;
 
 /**
- * 오너/상위 매니저가 보낸 강사·매니저 초대. 초대받은 사람이 링크(token)로 들어와 로그인한 뒤, 계정의
- * 이메일 또는 연락처가 초대에 적힌 값과 일치할 때 수락해야 PlatformStaff로 배정된다.
+ * 오너/상위 매니저가 보낸 강사·매니저·회원 초대. 초대받은 사람이 링크(token)로 들어와 로그인한 뒤, 계정의
+ * 이메일 또는 연락처가 초대에 적힌 값과 일치할 때 수락한다. 강사·매니저는 PlatformStaff로 배정되고,
+ * 회원(staffRole == null)은 승인된 가입 신청이 되어 센터의 "수강권 등록 대기" 목록에 올라간다.
  */
 @Entity
 @Table(name = "staff_invitations")
@@ -26,8 +27,9 @@ public class StaffInvitation {
     @Column(nullable = false)
     private UUID platformId;
 
+    // null이면 회원 초대
+    @Nullable
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
     private StaffRole staffRole;
 
     // MANAGER 초대에서만 의미를 가진다.
@@ -67,7 +69,7 @@ public class StaffInvitation {
     }
 
     public StaffInvitation(
-            UUID platformId, StaffRole staffRole, @Nullable ManagerTier managerTier, @Nullable UUID managerGroupId,
+            UUID platformId, @Nullable StaffRole staffRole, @Nullable ManagerTier managerTier, @Nullable UUID managerGroupId,
             @Nullable String email, @Nullable String phone, UUID createdBy, Instant expiresAt
     ) {
         this.platformId = platformId;
@@ -90,8 +92,13 @@ public class StaffInvitation {
         return platformId;
     }
 
+    @Nullable
     public StaffRole getStaffRole() {
         return staffRole;
+    }
+
+    public boolean isMemberInvite() {
+        return staffRole == null;
     }
 
     @Nullable

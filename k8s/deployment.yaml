@@ -44,6 +44,20 @@ spec:
                 secretKeyRef:
                   name: reservehub-jwt
                   key: JWT_SECRET
+            # 서비스 운영자(플랫폼 개설 심사) 계정 — reservehub-admin 시크릿이 있으면 기동 시 한 번 만든다.
+            # 시크릿이 없어도 파드는 뜬다(optional) — 그땐 운영자 계정만 안 생긴다.
+            - name: ADMIN_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: reservehub-admin
+                  key: ADMIN_USERNAME
+                  optional: true
+            - name: ADMIN_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: reservehub-admin
+                  key: ADMIN_PASSWORD
+                  optional: true
 
           ports:
             - containerPort: 8080

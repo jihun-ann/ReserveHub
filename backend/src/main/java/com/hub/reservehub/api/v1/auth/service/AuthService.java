@@ -47,10 +47,10 @@ public class AuthService {
             throw new IllegalArgumentException("Role is required");
         }
         if (userRepository.findByUsername(username).isPresent()) {
-            throw new IllegalStateException("Username already exists");
+            throw new IllegalStateException("이미 사용 중인 아이디입니다.");
         }
         if (userRepository.findByEmailAndIsActiveTrue(email).isPresent()) {
-            throw new IllegalStateException("Email already exists");
+            throw new IllegalStateException("이미 가입된 이메일입니다.");
         }
 
         User user = userRepository.save(new User(username, email, passwordEncoder.encode(rawPassword), role, name, phone));
@@ -73,7 +73,7 @@ public class AuthService {
                     new UsernamePasswordAuthenticationToken(username, rawPassword)
             );
         } catch (BadCredentialsException ex) {
-            throw new IllegalArgumentException("Invalid username or password");
+            throw new IllegalArgumentException("아이디 또는 비밀번호가 올바르지 않습니다.");
         }
 
         SecurityContextHolder.getContext().setAuthentication(authentication);

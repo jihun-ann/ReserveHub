@@ -6,6 +6,8 @@ import com.hub.reservehub.domain.approval.ActionLogger;
 import com.hub.reservehub.domain.approval.ActionTarget;
 import com.hub.reservehub.domain.platform.PlatformAccessGuard;
 import com.hub.reservehub.domain.platform.StaffRole;
+import com.hub.reservehub.domain.program.ProgramService;
+import com.hub.reservehub.domain.program.ProgramService.ProgramSpec;
 import com.hub.reservehub.security.AuthenticatedUser;
 import java.util.List;
 import java.util.UUID;
@@ -19,11 +21,41 @@ public class PassService {
     private final PassRepository passRepository;
     private final PlatformAccessGuard platformAccessGuard;
     private final ActionLogger actionLogger;
+    private final ProgramService programService;
 
-    public PassService(PassRepository passRepository, PlatformAccessGuard platformAccessGuard, ActionLogger actionLogger) {
+    public PassService(
+            PassRepository passRepository, PlatformAccessGuard platformAccessGuard, ActionLogger actionLogger, ProgramService programService
+    ) {
         this.passRepository = passRepository;
         this.platformAccessGuard = platformAccessGuard;
         this.actionLogger = actionLogger;
+        this.programService = programService;
+    }
+
+    @Transactional
+    // 수강권 화면의 저장 — 수강권과 그 수업 설정(프로그램)을 한 트랜잭션으로 저장한다. 프로그램 저장이 실패하면
+    // 수강권도 되돌려져서, "수강권만 생기고 다시 누르면 중복" 되는 일이 없다.
+    public Pass createWithProgram(
+            UUID platformId, AuthenticatedUser actor, String name, PassType type,
+            int price, @Nullable Short sessionCount, short validDays, @Nullable ProgramSpec program
+    ) {
+        Pass pass = create(platformId, actor, name, type, price, sessionCount, validDays);
+        if (program != null) {
+            programService.saveForPass(pass, actor, program);
+        }
+        return pass;
+    }
+
+    @Transactional
+    public Pass updateWithProgram(
+            UUID passId, AuthenticatedUser actor, String name, PassType type,
+            int price, @Nullable Short sessionCount, short validDays, @Nullable ProgramSpec program
+    ) {
+        Pass pass = update(passId, actor, name, type, price, sessionCount, validDays);
+        if (program != null) {
+            programService.saveForPass(pass, actor, program);
+        }
+        return pass;
     }
 
     @Transactional

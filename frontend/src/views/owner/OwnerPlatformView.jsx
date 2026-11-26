@@ -1,10 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { apiGet } from "../../api/http.js";
 import {
-	BUSINESS_TYPES,
 	businessTypeLabel,
 	businessTypeIcon,
-	createPlatform,
 	cancelStaffInvitation,
 	removeStaff,
 	createStaffInvitation,
@@ -28,6 +26,7 @@ import {
 } from "../../api/common.js";
 import { formatDateTime } from "../../utils/formatDateTime.js";
 import ManagerAdminPanel from "../../components/ManagerAdminPanel.jsx";
+import PlatformApplicationPanel from "../../components/PlatformApplicationPanel.jsx";
 import ManagerLessonManageView from "../manager/ManagerLessonManageView.jsx";
 import ManagerPaymentView from "../manager/ManagerPaymentView.jsx";
 import ManagerMemberManageView from "../manager/ManagerMemberManageView.jsx";
@@ -48,7 +47,6 @@ const TABS = [
 
 const NOT_CONNECTED_TABS = { stats: true };
 
-const EMPTY_FORM = { name: "", businessType: "FITNESS", phone: "", address: "", description: "" };
 const EMPTY_TAX_FORM = { username: "", email: "", password: "", name: "", phone: "" };
 const EMPTY_STAFF_FORM = { method: "email", value: "" };
 const PAGE_SIZE = 10;
@@ -58,8 +56,6 @@ const inviteLink = (token) => `${window.location.origin}/invite/${token}`;
 export default function OwnerPlatformView({ platforms, currentPlatformId, onSelectPlatform, onPlatformsChanged }) {
 	const [activeTab, setActiveTab] = useState("info");
 	const [showCreate, setShowCreate] = useState(false);
-	const [form, setForm] = useState(EMPTY_FORM);
-	const [saving, setSaving] = useState(false);
 
 	const [programs, setPrograms] = useState([]);
 
@@ -344,21 +340,6 @@ export default function OwnerPlatformView({ platforms, currentPlatformId, onSele
 		}
 	}
 
-	async function submitCreate(e) {
-		e.preventDefault();
-		setSaving(true);
-		try {
-			await createPlatform(form);
-			setForm(EMPTY_FORM);
-			setShowCreate(false);
-			await onPlatformsChanged();
-		} catch (err) {
-			alert(err.message || "플랫폼 생성에 실패했습니다.");
-		} finally {
-			setSaving(false);
-		}
-	}
-
 	async function toggleSuspend() {
 		if (!plat) return;
 		try {
@@ -383,7 +364,7 @@ export default function OwnerPlatformView({ platforms, currentPlatformId, onSele
 					<div className="card" style={{ padding: 0, overflow: "hidden" }}>
 						<div style={{ padding: "16px 16px", borderBottom: "1px solid var(--border)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
 							<span style={{ fontSize: "11px", fontWeight: 600, color: "var(--text-sub)" }}>플랫폼 목록</span>
-							<button className="btn btn-sm btn-primary" style={{ padding: "4px 12px", fontSize: "11px" }} onClick={() => setShowCreate((v) => !v)}>+ 추가</button>
+							<button className="btn btn-sm btn-primary" style={{ padding: "4px 12px", fontSize: "11px" }} onClick={() => setShowCreate((v) => !v)}>+ 개설 신청</button>
 						</div>
 						{platforms.map((p) => (
 							<div
@@ -414,20 +395,11 @@ export default function OwnerPlatformView({ platforms, currentPlatformId, onSele
 						)}
 					</div>
 
+					{/* 새 플랫폼도 사업자등록증을 첨부한 개설 신청 → 운영자 승인을 거친다. */}
 					{showCreate && (
-						<form onSubmit={submitCreate} className="card" style={{ marginTop: "12px", display: "flex", flexDirection: "column", gap: "12px" }}>
-							<div className="form-field"><label>플랫폼명</label><input required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} /></div>
-							<div className="form-field">
-								<label>업종</label>
-								<select value={form.businessType} onChange={(e) => setForm({ ...form, businessType: e.target.value })}>
-									{BUSINESS_TYPES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
-								</select>
-							</div>
-							<div className="form-field"><label>대표 전화</label><input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} /></div>
-							<div className="form-field"><label>주소</label><input value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} /></div>
-							<div className="form-field"><label>소개</label><textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} /></div>
-							<button className="btn btn-primary btn-sm" type="submit" disabled={saving}>{saving ? "생성 중..." : "생성"}</button>
-						</form>
+						<div style={{ marginTop: "12px" }}>
+							<PlatformApplicationPanel defaultOpen onApproved={onPlatformsChanged} />
+						</div>
 					)}
 				</div>
 

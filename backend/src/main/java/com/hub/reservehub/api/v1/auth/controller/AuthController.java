@@ -50,9 +50,9 @@ public class AuthController {
     // 새 사용자 계정을 만들고 바로 액세스 토큰을 발급한다 (별도 로그인 호출 불필요).
     public ResponseEntity<TokenResponse> register(@Valid @RequestBody RegisterRequest request) {
         // 공개 가입은 일반 회원(USER)만 만들 수 있다. 강사/매니저는 초대 링크로 합류하고(전역 역할이 아니라 플랫폼의
-        // 직원 배정으로 권한이 정해진다), 대표/세무사 계정은 운영자가 만든다 — 클라이언트가 보낸 role을 그대로 믿지 않는다.
+        // 직원 배정으로 권한이 정해진다), 대표는 가입 후 개설 신청이 승인되면 오너가 된다 — 클라이언트가 보낸 role을 그대로 믿지 않는다.
         if (request.role() != null && request.role() != Role.USER) {
-            throw new IllegalArgumentException("회원가입은 일반 회원으로만 할 수 있습니다. 강사/매니저는 초대 링크로, 대표 계정은 운영자에게 문의하세요.");
+            throw new IllegalArgumentException("회원가입은 일반 회원으로만 할 수 있습니다. 강사/매니저는 초대 링크로 합류하고, 대표는 가입 후 '플랫폼 찾기'에서 개설 신청을 하세요.");
         }
         User user = authService.register(
                 request.username(), request.email(), request.password(), Role.USER, request.name(), request.phone()

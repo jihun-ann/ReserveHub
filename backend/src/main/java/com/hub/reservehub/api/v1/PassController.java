@@ -3,6 +3,9 @@ package com.hub.reservehub.api.v1;
 import com.hub.reservehub.domain.pass.Pass;
 import com.hub.reservehub.domain.pass.PassService;
 import com.hub.reservehub.domain.pass.PassType;
+import com.hub.reservehub.domain.program.EnrollmentMode;
+import com.hub.reservehub.domain.program.ProgramService.ProgramSpec;
+import com.hub.reservehub.domain.program.ProgramType;
 import com.hub.reservehub.security.CurrentAuthenticatedUser;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
@@ -36,9 +39,9 @@ public class PassController {
 
     @PostMapping("/api/v1/platforms/{platformId}/passes")
     public ResponseEntity<PassResponse> createPass(@PathVariable UUID platformId, @Valid @RequestBody CreatePassRequest request) {
-        Pass pass = passService.create(
+        Pass pass = passService.createWithProgram(
                 platformId, currentAuthenticatedUser.get(), request.name(), request.type(),
-                request.price(), request.sessionCount(), request.validDays()
+                request.price(), request.sessionCount(), request.validDays(), ProgramSpecRequest.toSpec(request.program())
         );
         return ResponseEntity.status(HttpStatus.CREATED).body(PassResponse.from(pass));
     }
@@ -55,9 +58,9 @@ public class PassController {
 
     @PatchMapping("/api/v1/passes/{id}")
     public PassResponse updatePass(@PathVariable UUID id, @Valid @RequestBody CreatePassRequest request) {
-        Pass pass = passService.update(
+        Pass pass = passService.updateWithProgram(
                 id, currentAuthenticatedUser.get(), request.name(), request.type(),
-                request.price(), request.sessionCount(), request.validDays()
+                request.price(), request.sessionCount(), request.validDays(), ProgramSpecRequest.toSpec(request.program())
         );
         return PassResponse.from(pass);
     }
@@ -73,8 +76,18 @@ public class PassController {
             @NotNull PassType type,
             @PositiveOrZero int price,
             Short sessionCount,
-            @Positive short validDays
+            @Positive short validDays,
+            // 이 수강권으로 듣는 수업 설정 — 함께 보내면 같은 트랜잭션에서 저장된다(없으면 수강권만)
+            @Valid ProgramSpecRequest program
     ) {
+    }
+
+    public record ProgramSpecRequest(
+            @NotNull ProgramType type, EnrollmentMode enrollmentMode, @Positive short capacity, @Positive short durationMin
+    ) {
+        static ProgramSpec toSpec(ProgramSpecRequest r) {
+            return r == null ? null : new ProgramSpec(r.type(), r.enrollmentMode(), r.capacity(), r.durationMin());
+        }
     }
 
     public record PassResponse(

@@ -3,7 +3,7 @@ import { openModal, closeModal } from "../default.js";
 import {
 	listPasses, createPass, updatePass, deactivatePass,
 	DISCOUNT_TYPES, listDiscountPolicies, createDiscountPolicy, updateDiscountPolicy, deactivateDiscountPolicy,
-	listMembers, createProgram, updateProgram, listPrograms, PROGRAM_TYPE_LABEL, ENROLLMENT_MODE_LABEL
+	listMembers, listPrograms, PROGRAM_TYPE_LABEL, ENROLLMENT_MODE_LABEL
 } from "../../api/common.js";
 
 const PASS_TYPES = [
@@ -38,6 +38,9 @@ export default function ManagerPaymentView({ platformId, embedded = false }) {
 	const [editingDiscountId, setEditingDiscountId] = useState(null);
 	const [discountError, setDiscountError] = useState("");
 
+	const [loadError, setLoadError] = useState("");
+	const [canManageDiscounts, setCanManageDiscounts] = useState(true);
+
 	const refresh = useCallback(async () => {
 		if (!platformId) {
 			setPasses([]);
@@ -46,21 +49,28 @@ export default function ManagerPaymentView({ platformId, embedded = false }) {
 			return;
 		}
 		setLoading(true);
-		const [passList, discountList, members, programList] = await Promise.all([
-			listPasses(platformId),
-			listDiscountPolicies(platformId),
-			listMembers(platformId),
-			listPrograms(platformId)
-		]);
-		setPasses(passList);
-		setDiscounts(discountList);
-		setPrograms(programList);
+		setLoadError("");
+		try {
+			const [passList, discountList, members, programList] = await Promise.all([
+				listPasses(platformId),
+				// 할인정책은 "할인정책 관리" 권한(임원급)이 있어야 보인다 — 없으면 이 목록만 비우고 나머지 화면은 그대로 쓴다
+				listDiscountPolicies(platformId).then((list) => { setCanManageDiscounts(true); return list; })
+					.catch(() => { setCanManageDiscounts(false); return []; }),
+				listMembers(platformId),
+				listPrograms(platformId)
+			]);
+			setPasses(passList);
+			setDiscounts(discountList);
+			setPrograms(programList);
 
-		const counts = {};
-		members.forEach((m) => { counts[m.passName] = (counts[m.passName] || 0) + 1; });
-		setSubscriberCounts(counts);
-
-		setLoading(false);
+			const counts = {};
+			members.forEach((m) => { counts[m.passName] = (counts[m.passName] || 0) + 1; });
+			setSubscriberCounts(counts);
+		} catch (err) {
+			setLoadError(err.message || "목록을 불러오지 못했습니다.");
+		} finally {
+			setLoading(false);
+		}
 	}, [platformId]);
 
 	useEffect(() => {
@@ -98,21 +108,18 @@ export default function ManagerPaymentView({ platformId, embedded = false }) {
 				sessionCount: passForm.type === "SESSION" && passForm.sessionCount ? Number(passForm.sessionCount) : null,
 				validDays: Number(passForm.validDays)
 			};
-			const programPayload = {
+			// 수강권과 이 수강권으로 듣는 수업(프로그램)을 한 요청으로 보낸다 — 서버가 한 트랜잭션으로 저장하므로
+			// 프로그램 저장이 실패하면 수강권도 남지 않는다. 프로그램명은 항상 수강권명을 따른다.
+			const program = {
 				type: passForm.programType,
 				enrollmentMode: passForm.programType === "GROUP" ? passForm.enrollmentMode : null,
 				capacity: Number(passForm.capacity),
 				durationMin: Number(passForm.durationMin)
 			};
 			if (editingPassId) {
-				await updatePass(editingPassId, passPayload);
-				const program = programs.find((pr) => pr.passId === editingPassId);
-				if (program) await updateProgram(program.id, programPayload);
-				else await createProgram(platformId, { ...programPayload, passId: editingPassId });
+				await updatePass(editingPassId, { ...passPayload, program });
 			} else {
-				// 수강권과 이 수강권으로 듣는 수업(프로그램)을 한 번에 만든다 — 프로그램명은 항상 수강권명을 따른다.
-				const pass = await createPass(platformId, passPayload);
-				await createProgram(platformId, { ...programPayload, passId: pass.id });
+				await createPass(platformId, { ...passPayload, program });
 			}
 			setPassForm(EMPTY_PASS_FORM);
 			setEditingPassId(null);
@@ -183,6 +190,7 @@ export default function ManagerPaymentView({ platformId, embedded = false }) {
 				<button className={`tab-btn ${activeTab === "pass" ? "active" : ""}`} onClick={() => setActiveTab("pass")}>수강권 목록</button>
 				<button className={`tab-btn ${activeTab === "discount" ? "active" : ""}`} onClick={() => setActiveTab("discount")}>할인 정책</button>
 			</div>
+			{loadError && <div style={{ color: "var(--red)", fontSize: "13px", marginBottom: "12px" }}>{loadError}</div>}
 
 			{/* 수강권 목록 */}
 			<div className={`tab-pane ${activeTab === "pass" ? "active" : ""}`}>
@@ -243,11 +251,17 @@ export default function ManagerPaymentView({ platformId, embedded = false }) {
 
 			{/* 할인 정책 */}
 			<div className={`tab-pane ${activeTab === "discount" ? "active" : ""}`}>
-				<div style={{ display: "flex", justifyContent: "flex-end", marginBottom: "16px" }}>
-					<button className="btn btn-primary btn-sm" onClick={openCreateDiscountModal}>+ 할인 정책 추가</button>
-				</div>
+				{canManageDiscounts && (
+					<div style={{ display: "flex", justifyContent: "flex-end", marginBottom: "16px" }}>
+						<button className="btn btn-primary btn-sm" onClick={openCreateDiscountModal}>+ 할인 정책 추가</button>
+					</div>
+				)}
 				<div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-					{loading ? (
+					{!canManageDiscounts ? (
+						<div className="card" style={{ padding: "24px", textAlign: "center", color: "var(--text-dim)", fontSize: "13px" }}>
+							할인 정책은 "할인정책 관리" 권한이 있는 그룹만 보고 관리할 수 있습니다.
+						</div>
+					) : loading ? (
 						<div style={{ padding: "24px", textAlign: "center", color: "var(--text-dim)", fontSize: "13px" }}>불러오는 중...</div>
 					) : discounts.length === 0 ? (
 						<div className="card" style={{ padding: "24px", textAlign: "center", color: "var(--text-dim)", fontSize: "13px" }}>등록된 할인 정책이 없습니다</div>

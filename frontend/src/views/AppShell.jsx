@@ -251,6 +251,11 @@ export default function AppShell() {
 					}
 					setUser(current);
 				}
+				// 운영자 계정은 플랫폼이 없는 심사 전용 계정이라 별도 화면을 쓴다.
+				if (current.role === "ADMIN") {
+					navigate("/admin", { replace: true });
+					return;
+				}
 				await refreshPlatforms();
 			} finally {
 				setLoading(false);
@@ -581,9 +586,9 @@ export default function AppShell() {
 			);
 		// 플랫폼 찾기는 플랫폼/역할과 무관하다. 소속 플랫폼이 없으면 이 화면과 내 정보만 쓴다.
 		if (noPlatform) {
-			return shownContext === "mypage" ? <AccountMypageView key={user?.email || "account"} user={user} onDeactivated={handleLogout} /> : <UserJoinPlatformView />;
+			return shownContext === "mypage" ? <AccountMypageView key={user?.email || "account"} user={user} onDeactivated={handleLogout} /> : <UserJoinPlatformView onPlatformsChanged={refreshPlatforms} />;
 		}
-		if (currentContext === "join") return <UserJoinPlatformView />;
+		if (currentContext === "join") return <UserJoinPlatformView onPlatformsChanged={refreshPlatforms} />;
 		if (!activeRole)
 			return (
 				<div style={{ padding: "40px", textAlign: "center", color: "var(--text-dim)", fontSize: "13px" }}>

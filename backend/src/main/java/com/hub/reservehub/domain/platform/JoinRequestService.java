@@ -134,6 +134,28 @@ public class JoinRequestService {
         return request;
     }
 
+    // 회원 초대 수락(StaffInvitationService에서 호출) — 센터가 먼저 초대했으니 승인된 가입 신청으로 만들어
+    // 센터의 "수강권 등록 대기" 목록에 올린다. 이미 넣어 둔 신청이 있으면 새로 만들지 않고 그걸 쓴다.
+    JoinRequest acceptMemberInvitation(UUID platformId, UUID userId, UUID inviterId) {
+        boolean isOwner = platformRepository.existsByIdAndCreatedBy(platformId, userId);
+        if (isOwner || staffRepository.existsByPlatformIdAndUserIdAndIsActiveTrue(platformId, userId)) {
+            throw new IllegalStateException("이 플랫폼의 운영진은 회원으로 합류할 수 없습니다.");
+        }
+        if (userPassRepository.existsByUserIdAndPlatformId(userId, platformId)) {
+            throw new IllegalStateException("이미 이 플랫폼의 회원입니다.");
+        }
+        var approved = requestRepository.findFirstByPlatformIdAndUserIdAndStatusOrderByCreatedAtDesc(platformId, userId, JoinRequestStatus.APPROVED);
+        if (approved.isPresent()) {
+            return approved.get();
+        }
+        JoinRequest request = requestRepository.findFirstByPlatformIdAndUserIdAndStatusOrderByCreatedAtDesc(platformId, userId, JoinRequestStatus.PENDING)
+                .orElseGet(() -> requestRepository.save(new JoinRequest(platformId, userId, "센터 초대로 합류")));
+        request.approve(inviterId, "회원 초대 수락");
+        actionLogger.log(platformId, userId, ActionTarget.JOIN_REQUEST, request.getId(), "JOIN_INVITE_ACCEPT",
+                "회원 초대 수락: " + LogMemo.who(userService.get(userId)));
+        return request;
+    }
+
     @Transactional
     public JoinRequest reject(UUID requestId, AuthenticatedUser actor, @Nullable String memo) {
         JoinRequest request = requestRepository.getOrThrow(requestId);

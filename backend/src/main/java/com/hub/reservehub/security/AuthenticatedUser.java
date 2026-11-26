@@ -55,6 +55,11 @@ public class AuthenticatedUser implements UserDetails {
         return role;
     }
 
+    // 전역 role 또는 플랫폼에서 실제로 가진 역할(직원 배정·플랫폼 소유) 중 하나라도 해당하면 true — @PreAuthorize의 hasRole과 같은 기준.
+    public boolean hasRole(Role r) {
+        return role == r || platformRoles.contains(r);
+    }
+
     @Override
     // Maps the domain role to the Spring Security authority convention.
     // 도메인 역할을 Spring Security 권한 규칙에 맞는 형태로 변환한다.

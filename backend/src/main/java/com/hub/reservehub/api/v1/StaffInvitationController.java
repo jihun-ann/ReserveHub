@@ -72,7 +72,8 @@ public class StaffInvitationController {
     }
 
     public record CreateInvitationRequest(
-            @NotNull StaffRole staffRole, @Nullable ManagerTier managerTier,
+            // 비우면 회원 초대 — 수락하면 승인된 가입 신청이 되고 센터가 이어서 수강권을 등록한다
+            @Nullable StaffRole staffRole, @Nullable ManagerTier managerTier,
             // MANAGER 초대에서만 의미 — 수락하는 순간 이 그룹에 배정된다(없으면 그룹 없이 배정)
             @Nullable UUID managerGroupId,
             @Nullable String email, @Nullable String phone

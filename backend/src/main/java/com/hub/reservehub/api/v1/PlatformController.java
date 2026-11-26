@@ -10,7 +10,6 @@ import com.hub.reservehub.domain.platform.StaffRole;
 import com.hub.reservehub.security.AuthenticatedUser;
 import com.hub.reservehub.security.CurrentAuthenticatedUser;
 import jakarta.validation.Valid;
-import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.PositiveOrZero;
 import java.util.List;
@@ -42,17 +41,7 @@ public class PlatformController {
         this.currentAuthenticatedUser = currentAuthenticatedUser;
     }
 
-    @PostMapping
-    @PreAuthorize("hasRole('OWNER')")
-    // Creates a platform; only OWNER may create one (AGENT.md 3: 플랫폼 생성은 OWNER만 가능).
-    // 플랫폼을 생성한다. 플랫폼 생성은 OWNER만 가능하다.
-    public ResponseEntity<PlatformResponse> createPlatform(@Valid @RequestBody CreatePlatformRequest request) {
-        Platform platform = platformService.create(
-                currentAuthenticatedUser.get(), request.name(), request.businessType(),
-                request.phone(), request.address(), request.description()
-        );
-        return ResponseEntity.status(HttpStatus.CREATED).body(PlatformResponse.from(platform, List.of("OWNER")));
-    }
+    // 플랫폼은 여기서 바로 만들지 않는다 — 개설 신청(PlatformApplicationController)을 운영자가 승인할 때 만들어진다.
 
     @GetMapping("/{id}")
     public PlatformResponse getPlatform(@PathVariable UUID id) {
@@ -130,15 +119,6 @@ public class PlatformController {
     }
 
     public record UpdateStatusRequest(@NotNull Boolean suspended) {
-    }
-
-    public record CreatePlatformRequest(
-            @NotBlank String name,
-            @NotNull BusinessType businessType,
-            String phone,
-            String address,
-            String description
-    ) {
     }
 
     public record AssignStaffRequest(@NotNull UUID userId, @NotNull StaffRole staffRole, ManagerTier managerTier) {

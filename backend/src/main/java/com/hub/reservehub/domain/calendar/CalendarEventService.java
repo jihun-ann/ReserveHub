@@ -36,7 +36,7 @@ public class CalendarEventService {
             @Nullable String description, LocalDate eventDate, @Nullable LocalDate eventEndDate,
             boolean allDay, ShareScope shareScope
     ) {
-        if (type == EventType.HQ_NOTICE && actor.getRole() != Role.OWNER) {
+        if (type == EventType.HQ_NOTICE && !actor.hasRole(Role.OWNER)) {
             throw new IllegalStateException("Only OWNER can create HQ_NOTICE events");
         }
         if (platformId != null && type == EventType.HQ_NOTICE) {
@@ -44,7 +44,7 @@ public class CalendarEventService {
             platformAccessGuard.verifyOwner(platformId, actor);
         } else if (platformId != null) {
             platformAccessGuard.verify(platformId, actor);
-        } else if (actor.getRole() != Role.OWNER) {
+        } else if (!actor.hasRole(Role.OWNER)) {
             throw new IllegalStateException("Only OWNER can create company-wide events");
         }
 

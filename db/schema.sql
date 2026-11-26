@@ -18,7 +18,8 @@ CREATE TYPE user_role AS ENUM (
     'MANAGER',        -- 매니저 (점주/사장)
     'TUTOR',          -- 강사
     'USER',           -- 수강생
-    'TAX_ACCOUNTANT'  -- 세무사 — 오너가 초대한 플랫폼의 재무/정산 데이터만 조회 (platform_tax_accountants)
+    'TAX_ACCOUNTANT', -- 세무사 — 오너가 초대한 플랫폼의 재무/정산 데이터만 조회 (platform_tax_accountants)
+    'ADMIN'           -- 서비스 운영자 — 플랫폼 개설 신청 심사 (회원가입 불가, 환경변수로만 생성)
 );
 
 CREATE TABLE users (
@@ -145,7 +146,7 @@ CREATE TYPE invitation_status AS ENUM ('PENDING', 'ACCEPTED', 'CANCELLED');
 CREATE TABLE staff_invitations (
                                    id              UUID               PRIMARY KEY DEFAULT uuid_generate_v4(),
                                    platform_id     UUID               NOT NULL REFERENCES platforms(id) ON DELETE CASCADE,
-                                   staff_role      staff_role         NOT NULL,
+                                   staff_role      staff_role,                          -- NULL이면 회원 초대 (수락 시 승인된 가입 신청이 됨)
                                    manager_tier    manager_tier,                        -- MANAGER 초대에서만 의미 있음
                                    manager_group_id UUID REFERENCES manager_groups(id) ON DELETE SET NULL, -- MANAGER 초대: 수락 시 배정할 그룹
                                    email           VARCHAR(255),                        -- email/phone 중 최소 하나
@@ -179,6 +180,35 @@ CREATE TABLE platform_join_requests (
 CREATE UNIQUE INDEX uq_join_request_pending ON platform_join_requests(platform_id, user_id) WHERE status = 'PENDING';
 CREATE INDEX idx_join_request_platform ON platform_join_requests(platform_id, status);
 CREATE INDEX idx_join_request_user ON platform_join_requests(user_id);
+
+-- 플랫폼 개설 신청 — 누구나 사업자등록증을 첨부해 신청하고, 서비스 운영자(ADMIN)가 승인하면 그때 platforms 행이 생긴다.
+-- 심사 전에는 platforms에 아무것도 만들지 않으므로, 소유권(created_by) 기반 권한 검사가 미승인 신청자에게 열리지 않는다.
+CREATE TYPE platform_application_status AS ENUM ('PENDING', 'APPROVED', 'REJECTED', 'CANCELLED');
+
+CREATE TABLE platform_applications (
+                                       id                        UUID                         PRIMARY KEY DEFAULT uuid_generate_v4(),
+                                       applicant_id              UUID                         NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                                       name                      VARCHAR(100)                 NOT NULL,
+                                       business_type             business_type                NOT NULL,
+                                       phone                     VARCHAR(20),
+                                       address                   TEXT,
+                                       description               TEXT,
+                                       business_number           VARCHAR(10)                  NOT NULL CHECK (business_number ~ '^[0-9]{10}$'),
+                                       certificate_original_name TEXT                         NOT NULL,
+                                       certificate_stored_path   TEXT                         NOT NULL,
+                                       certificate_content_type  VARCHAR(100),
+                                       status                    platform_application_status  NOT NULL DEFAULT 'PENDING',
+                                       decided_by                UUID                         REFERENCES users(id),
+                                       decision_memo             TEXT,
+                                       platform_id               UUID                         REFERENCES platforms(id) ON DELETE SET NULL,
+                                       created_at                TIMESTAMPTZ                  NOT NULL DEFAULT NOW(),
+                                       decided_at                TIMESTAMPTZ
+);
+
+-- 같은 사업자번호로 대기 중인 신청은 하나만 — 중복 클릭/재신청으로 심사 목록이 쌓이지 않게
+CREATE UNIQUE INDEX uq_platform_application_pending ON platform_applications(business_number) WHERE status = 'PENDING';
+CREATE INDEX idx_platform_application_status ON platform_applications(status, created_at);
+CREATE INDEX idx_platform_application_applicant ON platform_applications(applicant_id);
 
 
 -- 플랫폼 ↔ 세무사 — platform_staff와 별개 테이블. 스태프가 아니라 오너가 초대한 읽기 전용

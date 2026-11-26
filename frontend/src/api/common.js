@@ -31,8 +31,6 @@ export function hexAlpha(hex, alpha) {
 
 export const listPlatforms = () => apiGet("/api/v1/platforms");
 
-export const createPlatform = (payload) => apiPost("/api/v1/platforms", payload);
-
 export const setPlatformSuspended = (id, suspended) => apiPatch(`/api/v1/platforms/${id}/status`, { suspended });
 
 export const listStaff = (platformId, includeInactive = false) =>
@@ -167,13 +165,41 @@ export const addWorkRequestComment = (requestId, { content, file } = {}) => {
 	return apiPostForm(`/api/v1/work-requests/${requestId}/comments`, formData);
 };
 
+export const openWorkRequestAttachment = (requestId, commentId) =>
+	openProtectedFile(`/api/v1/work-requests/${requestId}/comments/${commentId}/attachment`);
+
+// 플랫폼 개설 신청 — 사업자등록증 파일과 함께 보낸다. 운영자(ADMIN)가 승인하면 플랫폼이 만들어지고 신청자가 오너가 된다.
+export const submitPlatformApplication = (fields, certificate) => {
+	const formData = new FormData();
+	Object.entries(fields).forEach(([key, value]) => {
+		if (value != null && String(value).trim() !== "") formData.append(key, value);
+	});
+	formData.append("certificate", certificate);
+	return apiPostForm("/api/v1/platform-applications", formData);
+};
+export const listMyPlatformApplications = () => apiGet("/api/v1/platform-applications/mine");
+export const cancelPlatformApplication = (id) => apiPost(`/api/v1/platform-applications/${id}/cancel`, {});
+export const openPlatformCertificate = (id) => openProtectedFile(`/api/v1/platform-applications/${id}/certificate`);
+
+// 운영자 전용 — 개설 신청 심사
+export const listPlatformApplicationsForAdmin = (status) => apiGet(`/api/v1/admin/platform-applications?status=${status}`);
+export const approvePlatformApplication = (id, memo) => apiPost(`/api/v1/admin/platform-applications/${id}/approve`, { memo });
+export const rejectPlatformApplication = (id, memo) => apiPost(`/api/v1/admin/platform-applications/${id}/reject`, { memo });
+
+export const APPLICATION_STATUS = {
+	PENDING: { label: "심사 중", color: "var(--text-sub)" },
+	APPROVED: { label: "승인됨", color: "var(--green)" },
+	REJECTED: { label: "반려됨", color: "var(--red)" },
+	CANCELLED: { label: "취소됨", color: "var(--text-dim)" }
+};
+
+// 123-45-67890 형태로 보여준다 (서버에는 숫자 10자리로 저장된다).
+export const formatBusinessNumber = (n) => (n?.length === 10 ? `${n.slice(0, 3)}-${n.slice(3, 5)}-${n.slice(5)}` : n);
+
 // 인증이 Bearer 토큰이라 <a href>로 그냥 열 수 없다 — Authorization 헤더를 실어 fetch한 뒤
 // blob URL로 새 탭에 연다.
-export async function openWorkRequestAttachment(requestId, commentId) {
-	const response = await fetch(
-		`${API_BASE_URL}/api/v1/work-requests/${requestId}/comments/${commentId}/attachment`,
-		{ headers: { Authorization: `Bearer ${getAccessToken()}` } }
-	);
+async function openProtectedFile(path) {
+	const response = await fetch(`${API_BASE_URL}${path}`, { headers: { Authorization: `Bearer ${getAccessToken()}` } });
 	if (!response.ok) throw new Error(`Request failed: ${response.status}`);
 	// blob URL은 앱과 같은 오리진이라, html/svg 같은 타입을 새 탭에 열면 첨부 속 스크립트가 로그인 토큰에 닿는다.
 	// 안전한 타입만 새 탭에 열고, 나머지는 파일로 내려받게 한다 (서버도 같은 허용 목록으로 타입을 거른다).
@@ -364,7 +390,7 @@ export const partialPayOrder = (id, payload) => apiPost(`/api/v1/orders/${id}/pa
 
 // 기존 회원에게 새 결제(재등록/월별 반복 결제 등)를 등록하고 바로 결제 확정까지 처리한다.
 export async function registerMemberPayment(platformId, buyerUserId, item, payment) {
-	const order = await createOrder(platformId, { buyerUserId, items: [item] });
+	const order = await createOrder(platformId, { buyerUserId, items: [{ ...item, quantity: 1 }] });
 	return payOrder(order.id, payment);
 }
 
@@ -387,6 +413,8 @@ export const listLessonAttendance = (lessonId) => apiGet(`/api/v1/lessons/${less
 export const recordAttendance = (lessonId, userId, status) =>
 	apiPost(`/api/v1/lessons/${lessonId}/attendances`, { userId, status });
 
+// 수업 회차(Lesson) 기록을 만든다 — 강사가 오늘 수업을 시작할 때 처음 한 번. 고정 로스터면 서버가 예약도 함께 만든다.
+export const createLesson = (slotId, lessonDate) => apiPost(`/api/v1/slots/${slotId}/lessons`, { lessonDate });
 export const startLesson = (lessonId) => apiPost(`/api/v1/lessons/${lessonId}/start`);
 
 export const endLesson = (lessonId) => apiPost(`/api/v1/lessons/${lessonId}/end`);
@@ -458,40 +486,7 @@ export const createCalendarEvent = (payload) => apiPost("/api/v1/calendar-events
 export const refundOrder = (id, memo, amount) =>
 	apiPost(`/api/v1/orders/${id}/refund`, memo || amount ? { memo, amount } : undefined);
 
-// 로그인 아이디(username)는 이메일 앞부분 + 임의 접미사로 자동 생성한다 — 백엔드는 username을 이메일과
-// 별개의 필수 고유 식별자로 요구하지만, 이 화면들에는 아이디를 별도로 입력받는 필드가 없기 때문이다.
-function deriveUsername(email) {
-	const base = (email.split("@")[0] || "user").replace(/[^a-zA-Z0-9_]/g, "").slice(0, 15) || "user";
-	const suffix = Math.random().toString(36).slice(2, 6);
-	return (base + suffix).slice(0, 20);
-}
-
-export const createUserAccount = (email, password, name, phone, role = "USER") =>
-	apiPost("/api/v1/users", { username: deriveUsername(email), email, password, name, phone, role });
-
-// 회원 등록: 계정 생성 -> 수강권 주문 -> 결제 확정 -> (있으면) 보호자 정보 저장까지 이어서 처리한다.
-// item: { passId, programId, enrollStart, enrollEnd, taxType }, payment: { paymentMethod, cashReceiptStatus, receiptNumber }
-export async function enrollMember(platformId, email, password, name, phone, item, payment, guardian) {
-	const user = await createUserAccount(email, password, name, phone);
-	const order = await createOrder(platformId, {
-		buyerUserId: user.id,
-		items: [{ ...item, quantity: 1 }]
-	});
-	await payOrder(order.id, payment);
-	if (guardian?.guardianName || guardian?.guardianPhone) {
-		await updateMemberGuardian(platformId, user.id, guardian.guardianName, guardian.guardianPhone);
-	}
-	return user;
-}
-
-// 강사 등록: 계정 생성(TUTOR role) -> 플랫폼 스태프 배정까지 이어서 처리한다.
-export async function enrollTutor(platformId, email, password, name, phone) {
-	const user = await createUserAccount(email, password, name, phone, "TUTOR");
-	await assignStaff(platformId, user.id, "TUTOR");
-	return user;
-}
-
-// 강사/매니저 초대 — 링크(token)를 발급하고, 초대받은 사람이 로그인 후 이메일/연락처 일치를 확인받아 수락한다.
+// 강사/매니저/회원(staffRole: null) 초대 — 링크(token)를 발급하고, 초대받은 사람이 로그인 후 이메일/연락처 일치를 확인받아 수락한다.
 export const createStaffInvitation = (platformId, payload) =>
 	apiPost(`/api/v1/platforms/${platformId}/staff-invitations`, payload);
 

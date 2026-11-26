@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import {
-	listMySlots, listMyLessons, listLessonAttendance, recordAttendance, startLesson, endLesson,
+	listMySlots, listMyLessons, listLessonAttendance, recordAttendance, createLesson, startLesson, endLesson,
 	listMembers, listPlatforms
 } from "../../api/common.js";
 
@@ -29,8 +29,21 @@ export default function TutorAttendanceView({ platformId }) {
 	const [monthLessons, setMonthLessons] = useState([]);
 	const [loading, setLoading] = useState(true);
 
+	const [error, setError] = useState("");
+
 	const refresh = useCallback(async () => {
 		setLoading(true);
+		setError("");
+		try {
+			await load();
+		} catch (err) {
+			setError(err.message || "불러오지 못했습니다.");
+		} finally {
+			setLoading(false);
+		}
+	}, [todayIso, platformId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+	async function load() {
 		const monthStart = isoDate(new Date(today.getFullYear(), today.getMonth(), 1));
 		const monthEnd = isoDate(new Date(today.getFullYear(), today.getMonth() + 1, 0));
 		const [mySlots, platforms, todaysLessons, monthly] = await Promise.all([
@@ -56,13 +69,31 @@ export default function TutorAttendanceView({ platformId }) {
 			membersMap[id] = memberLists[i].filter((m) => (seen.has(m.userId) ? false : seen.add(m.userId)));
 		});
 		setMembersByPlatform(membersMap);
-
-		setLoading(false);
-	}, [todayIso, platformId]);
+	}
 
 	useEffect(() => {
 		refresh();
 	}, [refresh]);
+
+	// 오늘 열리는 수업인데 아직 회차 기록(Lesson)이 없는 것 — 기록은 강사가 "수업 시작"을 누를 때 만든다.
+	const startedSlotIds = new Set(todayLessons.map((l) => l.slotId));
+	const pendingSlots = slots.filter((s) =>
+		s.dayOfWeek === todayKey
+		&& (!s.validFrom || s.validFrom <= todayIso)
+		&& (!s.validUntil || s.validUntil >= todayIso)
+		&& !startedSlotIds.has(s.id)
+	);
+
+	async function beginSlot(slotId) {
+		setError("");
+		try {
+			const lesson = await createLesson(slotId, todayIso);
+			await startLesson(lesson.id);
+		} catch (err) {
+			setError(err.message || "수업을 시작하지 못했습니다.");
+		}
+		await refresh();
+	}
 
 	async function mark(lessonId, userId, status) {
 		await recordAttendance(lessonId, userId, status);
@@ -136,9 +167,23 @@ export default function TutorAttendanceView({ platformId }) {
 					</div>
 
 					<div className="card-title" style={{ marginBottom: "12px" }}>오늘 출석 처리</div>
+					{error && <div style={{ color: "var(--red)", fontSize: "13px", marginBottom: "12px" }}>{error}</div>}
+					{!loading && pendingSlots.map((s) => (
+						<div className="card" key={s.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "12px", marginBottom: "16px", flexWrap: "wrap" }}>
+							<div>
+								<div style={{ fontWeight: 600, fontSize: "14px" }}>{s.slotName || s.programName}</div>
+								<div style={{ fontSize: "11px", color: "var(--text-sub)" }}>
+									{platformsById[s.platformId]} · {s.startTime?.slice(0, 5)}-{s.endTime?.slice(0, 5)}
+								</div>
+							</div>
+							<button className="btn btn-sm" style={{ background: "rgba(var(--green-rgb),.12)", color: "var(--green)", border: "1px solid rgba(var(--green-rgb),.3)" }} onClick={() => beginSlot(s.id)}>
+								수업 시작
+							</button>
+						</div>
+					))}
 					{loading ? (
 						<div className="card" style={{ padding: "24px", textAlign: "center", color: "var(--text-dim)", fontSize: "13px" }}>불러오는 중...</div>
-					) : todayLessons.length === 0 ? (
+					) : todayLessons.length === 0 && pendingSlots.length === 0 ? (
 						<div className="card" style={{ padding: "24px", textAlign: "center", color: "var(--text-dim)", fontSize: "13px" }}>오늘 예정된 수업이 없습니다</div>
 					) : (
 						todayLessons.map((lesson) => {

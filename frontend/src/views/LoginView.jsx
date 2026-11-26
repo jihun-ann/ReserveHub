@@ -16,8 +16,8 @@ export default function LoginView() {
 		try {
 			const result = await apiPost("/api/v1/auth/login", { username, password });
 			setSession(result.accessToken);
-			await loadCurrentUser();
-			navigate("/app");
+			const me = await loadCurrentUser();
+			navigate(me?.role === "ADMIN" ? "/admin" : "/app");
 		} catch (err) {
 			setError(err.message || "로그인에 실패했습니다.");
 		} finally {

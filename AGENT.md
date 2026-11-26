@@ -50,6 +50,9 @@ OWNER        오너 (대표)
 
 TAX_ACCOUNTANT   세무사 — 위 계층에 속하지 않는 플랫폼별 별도 부여(PlatformTaxAccountant)
                  스태프가 아니므로 여러 오너의 플랫폼과 동시에 계약 가능
+
+ADMIN            서비스 운영자 — 플랫폼 개설 신청(사업자등록증) 심사 전용. 플랫폼 데이터 접근 없음.
+                 회원가입 불가, 기동 시 ADMIN_USERNAME/ADMIN_PASSWORD 환경변수로만 생성(AdminAccountInitializer)
 ```
 
 ### 권한 규칙 — 반드시 준수
@@ -57,7 +60,8 @@ TAX_ACCOUNTANT   세무사 — 위 계층에 속하지 않는 플랫폼별 별�
 | 규칙 | 내용 |
 |------|------|
 | MANAGER 플랫폼 제한 | **1개 플랫폼만 담당**. DB 트리거 + 앱 레이어 이중 검증 |
-| 플랫폼 생성 | OWNER만 가능 |
+| 플랫폼 생성 | 누구나 개설 신청(`platform_applications`, 사업자등록증 첨부) → ADMIN 승인 시에만 생성되고 신청자가 OWNER가 됨. 직접 생성 API 없음 |
+| OWNER 권한 판단 | 전역 role이 아니라 플랫폼 소유(`platforms.created_by`) 여부. 소유 플랫폼이 있으면 `ROLE_OWNER` 권한이 붙음(`AuthenticatedUserService`) |
 | 승인 처리 | MANAGER 이상만 가능. 처리 시 `action_logs` 필수 기록 |
 | 타 플랫폼 데이터 조회 | 절대 불가. 모든 쿼리에 `platform_id` 필터 필수 |
 | 세무사 권한 판단 | 전역 role이 아니라 `PlatformTaxAccountant` 부여 기록으로 확인 (`PlatformAccessGuard`) |

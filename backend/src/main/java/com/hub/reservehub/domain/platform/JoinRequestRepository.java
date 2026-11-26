@@ -11,4 +11,6 @@ public interface JoinRequestRepository extends BaseRepository<JoinRequest, UUID>
     List<JoinRequest> findByPlatformIdAndStatusInOrderByCreatedAtDesc(UUID platformId, Collection<JoinRequestStatus> statuses);
 
     boolean existsByPlatformIdAndUserIdAndStatus(UUID platformId, UUID userId, JoinRequestStatus status);
+
+    java.util.Optional<JoinRequest> findFirstByPlatformIdAndUserIdAndStatusOrderByCreatedAtDesc(UUID platformId, UUID userId, JoinRequestStatus status);
 }

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { searchPlatforms, applyJoinRequest, listMyJoinRequests, cancelJoinRequest, businessTypeLabel } from "../../api/common.js";
 import { formatDateTime } from "../../utils/formatDateTime.js";
+import PlatformApplicationPanel from "../../components/PlatformApplicationPanel.jsx";
 
 const STATUS = {
 	PENDING: { label: "대기 중", color: "var(--text-sub)" },
@@ -25,7 +26,8 @@ const cardStyle = {
 
 // 회원이 플랫폼을 이름 또는 ID로 찾아 가입을 신청하는 화면 — 플랫폼이 하나도 없는 계정의 기본 화면이기도 하다.
 // 센터가 승인한 뒤 수강권/프로그램을 등록하면 그 플랫폼이 내 플랫폼 목록에 나타난다.
-export default function UserJoinPlatformView() {
+// 아래쪽에서는 내 플랫폼 개설 신청(사업자등록증 첨부)도 할 수 있다 — 운영자가 승인하면 오너가 된다.
+export default function UserJoinPlatformView({ onPlatformsChanged }) {
 	const [query, setQuery] = useState("");
 	const [results, setResults] = useState(null); // null=아직 검색 안 함
 	const [searchError, setSearchError] = useState("");
@@ -92,7 +94,7 @@ export default function UserJoinPlatformView() {
 		<div className="page" id="page-join-platform">
 			<div className="page-header">
 				<div className="page-title">플랫폼 찾기</div>
-				<div className="page-subtitle">센터 이름이나 플랫폼 ID로 찾아 가입 신청</div>
+				<div className="page-subtitle">센터 이름이나 플랫폼 ID로 찾아 가입 신청 · 내 플랫폼 개설 신청</div>
 			</div>
 
 			{notice && <div style={{ color: "var(--green)", fontSize: "13px", marginBottom: "12px" }}>{notice}</div>}
@@ -162,6 +164,10 @@ export default function UserJoinPlatformView() {
 						{r.status === "PENDING" && <button style={ghostButtonStyle} onClick={() => cancel(r)}>신청 취소</button>}
 					</div>
 				))}
+			</div>
+
+			<div style={{ borderTop: "1px solid var(--border)", marginTop: "28px", paddingTop: "20px" }}>
+				<PlatformApplicationPanel onApproved={onPlatformsChanged} />
 			</div>
 		</div>
 	);

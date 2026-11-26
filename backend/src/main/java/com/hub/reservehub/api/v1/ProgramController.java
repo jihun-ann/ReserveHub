@@ -161,14 +161,17 @@ public class ProgramController {
 
     public record MySlotResponse(
             UUID id, UUID platformId, UUID programId, String slotName, String programName, ProgramType programType,
-            short capacity, DayOfWeek dayOfWeek, LocalTime startTime, LocalTime endTime
+            short capacity, DayOfWeek dayOfWeek, LocalTime startTime, LocalTime endTime,
+            // 강사 출석 화면이 "오늘 열리는 수업"을 고를 때 반복 기간을 본다.
+            LocalDate validFrom, LocalDate validUntil
     ) {
         static MySlotResponse from(ProgramService.SlotWithProgram sp) {
             return new MySlotResponse(
                     sp.slot().getId(), sp.program() != null ? sp.program().getPlatformId() : null,
                     sp.slot().getProgramId(), sp.slot().getName(), sp.program() != null ? sp.program().getName() : "-",
                     sp.program() != null ? sp.program().getType() : null, sp.program() != null ? sp.program().getCapacity() : 0,
-                    sp.slot().getDayOfWeek(), sp.slot().getStartTime(), sp.slot().getEndTime()
+                    sp.slot().getDayOfWeek(), sp.slot().getStartTime(), sp.slot().getEndTime(),
+                    sp.slot().getValidFrom(), sp.slot().getValidUntil()
             );
         }
     }

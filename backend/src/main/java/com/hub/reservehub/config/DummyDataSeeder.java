@@ -122,6 +122,8 @@ public class DummyDataSeeder implements CommandLineRunner {
         User managerJunior = authService.register("manager_low", "manager-low@test.com", PASSWORD, Role.MANAGER, "오지훈", "010-2222-5555");
         User tutor = authService.register("tutor", "tutor@test.com", PASSWORD, Role.TUTOR, "박지훈", "010-3333-4444");
         User user = authService.register("user", "user@test.com", PASSWORD, Role.USER, "최민서", "010-4444-5555");
+        // 플랫폼 개설 신청 심사용 운영자 — 실 DB에서는 AdminAccountInitializer가 환경변수로 만든다.
+        authService.register("admin", "admin@test.com", PASSWORD, Role.ADMIN, "운영자", null);
 
         // 세무사가 조회할 정산 계좌 — 실제 서비스에선 본인이 마이페이지에서 등록하지만, 더미데이터는
         // 미리 채워둬서 세무사 계정 시드 즉시 "직원 정보" 화면에 값이 보이도록 한다.
@@ -130,7 +132,7 @@ public class DummyDataSeeder implements CommandLineRunner {
 
         AuthenticatedUser ownerPrincipal = AuthenticatedUser.from(owner);
         Platform platform = platformService.create(
-                ownerPrincipal, "ReserveHub 테스트 스튜디오", BusinessType.FITNESS,
+                owner.getId(), "ReserveHub 테스트 스튜디오", BusinessType.FITNESS,
                 "02-1234-5678", "서울시 강남구", "더미 데이터용 테스트 플랫폼"
         );
         platformService.assignStaff(platform.getId(), ownerPrincipal, manager.getId(), StaffRole.MANAGER, ManagerTier.HIGH);
@@ -169,7 +171,7 @@ public class DummyDataSeeder implements CommandLineRunner {
         // 강사는 두 플랫폼(필라테스 스튜디오 + 요가 스튜디오)에 동시 소속되어 요일이 겹치지 않는
         // 고정 주간 시간표를 테스트할 수 있다.
         Platform platform2 = platformService.create(
-                ownerPrincipal, "홍대 요가 스튜디오", BusinessType.FITNESS,
+                owner.getId(), "홍대 요가 스튜디오", BusinessType.FITNESS,
                 "02-2345-6789", "서울시 마포구", "더미 데이터용 테스트 플랫폼 2"
         );
         platformService.assignStaff(platform2.getId(), ownerPrincipal, tutor.getId(), StaffRole.TUTOR);
@@ -182,7 +184,7 @@ public class DummyDataSeeder implements CommandLineRunner {
         // 매니저(MANAGER)로 배정된 세 번째 플랫폼 — 같은 계정이 플랫폼마다 다른 역할을 가지는
         // 시나리오를 두 계정 모두에서 재현해, 강사/매니저 역할이 겹치는 케이스를 양쪽 계정으로 테스트할 수 있다.
         Platform platform3 = platformService.create(
-                ownerPrincipal, "잠실 댄스 아카데미", BusinessType.ARTS,
+                owner.getId(), "잠실 댄스 아카데미", BusinessType.ARTS,
                 "02-3456-7890", "서울시 송파구", "더미 데이터용 테스트 플랫폼 3"
         );
         platformService.assignStaff(platform3.getId(), ownerPrincipal, manager.getId(), StaffRole.TUTOR);

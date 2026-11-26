@@ -22,6 +22,13 @@ public class UserService {
     // Saves a new user after the caller has already prepared the password hash.
     // 호출 측에서 준비한 비밀번호 해시를 받아 새 사용자를 저장한다.
     public User create(String username, String email, String passwordHash, Role role, String name, String phone) {
+        // DB 유니크 제약에서 터지기 전에 알아듣는 문구로 막는다.
+        if (userRepository.findByUsername(username).isPresent()) {
+            throw new IllegalStateException("이미 사용 중인 아이디입니다.");
+        }
+        if (userRepository.findByEmailAndIsActiveTrue(email).isPresent()) {
+            throw new IllegalStateException("이미 가입된 이메일입니다. 회원이라면 초대 링크로 합류하게 해 주세요.");
+        }
         return userRepository.save(new User(username, email, passwordHash, role, name, phone));
     }
 
@@ -70,7 +77,7 @@ public class UserService {
         userRepository.findByEmailAndIsActiveTrue(email)
                 .filter(existing -> !existing.getId().equals(id))
                 .ifPresent(existing -> {
-                    throw new IllegalStateException("Email already exists");
+                    throw new IllegalStateException("이미 가입된 이메일입니다.");
                 });
         user.updateProfile(name, phone, email);
         return user;

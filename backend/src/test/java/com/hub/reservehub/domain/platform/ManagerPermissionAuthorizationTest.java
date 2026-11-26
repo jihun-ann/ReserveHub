@@ -126,10 +126,16 @@ class ManagerPermissionAuthorizationTest {
         when(manager.getStaffRole()).thenReturn(StaffRole.MANAGER);
         when(staffRepository.findByUserIdAndIsActiveTrue(userId)).thenReturn(List.of(manager));
 
-        UserDetails details = new AuthenticatedUserService(userRepository, staffRepository).loadUserByUsername("invited");
+        UserDetails details = new AuthenticatedUserService(userRepository, staffRepository, platformRepository).loadUserByUsername("invited");
 
         Set<String> authorities = details.getAuthorities().stream().map(GrantedAuthority::getAuthority).collect(java.util.stream.Collectors.toSet());
         assertEquals(Set.of("ROLE_USER", "ROLE_MANAGER"), authorities);
+
+        // 개설 신청이 승인돼 플랫폼을 갖게 되면, 전역 역할이 USER여도 다음 요청부터 OWNER 권한이 붙는다.
+        when(platformRepository.existsByCreatedBy(userId)).thenReturn(true);
+        UserDetails owner = new AuthenticatedUserService(userRepository, staffRepository, platformRepository).loadUserByUsername("invited");
+        assertEquals(Set.of("ROLE_USER", "ROLE_MANAGER", "ROLE_OWNER"),
+                owner.getAuthorities().stream().map(GrantedAuthority::getAuthority).collect(java.util.stream.Collectors.toSet()));
     }
 
     @Test

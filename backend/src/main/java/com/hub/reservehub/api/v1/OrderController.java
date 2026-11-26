@@ -119,7 +119,8 @@ public class OrderController {
 
     public record CreateOrderRequest(
             UUID buyerUserId,
-            @NotEmpty List<OrderItemRequest> items,
+            // @Valid: 항목 안의 @Positive quantity 같은 검증이 실제로 돌게 한다(없으면 0이 DB 제약까지 가서 터진다).
+            @NotEmpty List<@Valid OrderItemRequest> items,
             List<UUID> discountPolicyIds,
             String memo
     ) {

@@ -1,5 +1,6 @@
 package com.hub.reservehub.security;
 
+import jakarta.servlet.DispatcherType;
 import java.util.List;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
@@ -76,6 +77,10 @@ public class SecurityConfig {
                         .requestMatchers("/api/v1/health").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/v1/auth/login", "/api/v1/auth/register").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/staff-invitations/token/*").permitAll()
+                        // 컨트롤러 밖으로 나간 오류는 /error로 다시 디스패치된다. 이 경로가 막혀 있으면 원래 400/500이
+                        // "Authentication is required"(401)로 바뀌어 원인이 가려지고 사용자는 로그인이 풀린 줄 안다.
+                        .dispatcherTypeMatchers(DispatcherType.ERROR).permitAll()
+                        .requestMatchers("/error").permitAll()
                         .anyRequest().authenticated()
                 )
                 .authenticationProvider(authenticationProvider())
