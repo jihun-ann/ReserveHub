@@ -19,7 +19,7 @@ spec:
         - name: ghcr-secret
       containers:
         - name: reservehub
-          image: ghcr.io/jihun-ann/reservehub:36cf0380be3a145b46210d2557293dea42071aad
+          image: ghcr.io/jihun-ann/reservehub:82621b0295efa17463c7b0dc4e50e1c1a4dcceaa
 
           # DB 접속 정보는 secret.yaml(reservehub-db)에서 키로 꺼내 쓴다.
           env:
